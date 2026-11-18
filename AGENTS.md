@@ -8,3 +8,5 @@
 - Keep stages small enough to resume without chat history. Record architectural changes in `ARCHITECTURE.md` and adjust the remaining plan when evidence requires it.
 - The owner explicitly requested committing the plan and work for continuity. Commit completed increments after appropriate verification; stage only relevant project files. Do not commit private configuration, real internal URLs, credentials, or build artifacts.
 - Do not change the machine's hotkeys, keyboard mappings, login items, or privacy grants merely to verify code. Interactive setup must be clearly tied to an explicit user action in the app or an authorized manual test.
+
+- Mandatory updated requirement: Uficast must not require or request Accessibility or Input Monitoring. The launcher uses ordinary Cmd+Space (either Command key) through RegisterEventHotKey. Do not restore the earlier side-specific event-tap design.

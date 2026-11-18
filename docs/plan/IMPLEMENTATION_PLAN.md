@@ -15,21 +15,21 @@ Implement stages in order. A stage is a reviewable unit and may span more than o
 Tasks:
 
 - Create SwiftPM targets, minimal test setup, Info.plist, ignored build directories, and a reproducible `.app` packaging script.
-- Add a menu bar entry with Open, Settings placeholder, Quit, and visible hotkey-permission status.
+- Add a menu bar entry with Open, Settings placeholder, Quit, and visible hotkey-registration status.
 - Show a minimal input-capable NSPanel from the menu; include a real Edit menu.
-- Prototype side-specific Right Command + Space interception and consumption, with recovery and repeat handling.
-- Establish actual privacy grants and local signing/install behavior on macOS 26. Do not change existing shortcut assignments automatically.
+- Implement ordinary Cmd+Space with Carbon RegisterEventHotKey, exclusive-conflict reporting and pressed/released repeat debouncing. No Accessibility or Input Monitoring requests or keyboard event taps.
+- Verify no privacy grant is needed for launcher registration and establish local signing/install behavior on macOS 26. Do not change existing shortcut assignments automatically.
 
 Validation:
 
 - Build/package with Command Line Tools and launch the bundle, not only the SwiftPM executable.
-- Owner-assisted check: Right Command + Space opens/closes once per press; Left Command + Space retains its configured behavior; both Command keys and extra modifiers follow the documented policy.
-- No leaked Space/repeat or stuck modifier when Command is released before Space. Repeat after sleep/wake and permission loss/regrant.
+- Owner-assisted check: Cmd+Space opens/closes once per press using either Command key, with no Accessibility/Input Monitoring. The owner must release conflicting Spotlight/Raycast bindings; check extra modifiers and repeats.
+- No leaked Space/repeat or stuck modifier when Command is released before Space. Repeat after sleep/wake and shortcut retry.
 - The panel accepts Cmd+V and returns focus after Escape. Check normal and full-screen apps and two displays when available.
 
-**Exit gate:** a recorded supported solution for the exact chord. If the tap conflicts with Spotlight, investigate here; do not silently replace it with generic Cmd+Space. Unavailable manual checks must be recorded as pending before proceeding past this gate.
+**Exit gate:** a recorded Carbon implementation for ordinary Cmd+Space without Accessibility. Verify Spotlight coexistence with the conflicting system binding released by the owner; never silently reassign system settings. Unavailable manual checks must be recorded as pending before proceeding past this gate.
 
-Suggested commit: `feat: scaffold native app and right-command launcher trigger`.
+Suggested commit: `feat: scaffold native app and global-shortcut launcher trigger`.
 
 ## Stage 2 — Application catalog and fast search
 

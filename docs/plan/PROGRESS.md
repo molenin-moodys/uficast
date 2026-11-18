@@ -4,68 +4,42 @@ Last updated: November 18, 2026 (America/Los_Angeles).
 
 ## Current state
 
-**Planning is complete. Application implementation has not started.** The owner's current request is to prepare and commit the English implementation plan. Do not interpret this planning checkpoint as authorization to apply keyboard mappings or change system shortcuts now.
+The owner requested autonomous implementation while context permits. Stage 1 scaffold is implemented and release-built. **Mandatory steering: ordinary Cmd+Space, with no Accessibility or Input Monitoring requirement/request.** The earlier right-only event tap has been removed. Real desktop shortcut delivery remains pending manual acceptance; continue independent catalog/settings work without claiming that check passed.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
-| 0 — Plan and durable context | Complete | README, AGENTS, requirements, architecture, staged implementation plan, and this handoff prepared and reviewed. Git history contains the planning checkpoint once committed. |
-| 1 — Build and right-command spike | Not started | Highest-priority next implementation work. |
-| 2 — Application catalog/search | Not started | Depends on Stage 1 chord gate. |
+| 0 — Plan | Complete | Initial planning commit a5021c5; updated by subsequent steering. |
+| 1 — Native app and global shortcut | Implemented; manual acceptance pending | SwiftPM/AppKit app, Carbon registration, menu/Edit actions, panel and settings scaffold. Real shortcut delivery/focus still pending. |
+| 2 — Application catalog/search | Next | Can proceed with Stage 1 manual checks explicitly pending. |
 | 3 — Settings/persistence/aliases | Not started | Depends on models/catalog. |
 | 4 — Script runner | Not started | Depends on persistence/settings. |
-| 5 — Inline argument/URL workflow | Not started | Depends on runner and panel. |
-| 6 — Caps Lock/login lifecycle | Not started | Depends on app lifecycle/settings. |
-| 7 — Daily-use validation/handoff | Not started | Depends on preceding stages. |
+| 5 — Inline argument/URL workflow | Not started | Depends on runner/panel. |
+| 6 — Caps Lock/login lifecycle | Not started | Depends on lifecycle/settings. |
+| 7 — Daily-use validation/handoff | Not started | Requires actual desktop acceptance. |
 
-## Confirmed environment
+## Environment and implemented paths
 
-Read-only inspection on November 18, 2026:
+- macOS 26.6.2 (25G83), arm64, Swift 6.2.3, Command Line Tools; no full Xcode dependency or remote packages.
+- Package.swift, Resources/Info.plist, scripts/build.sh and test.sh, Sources/UficastCore and Sources/Uficast, Tests/UficastCoreTests.
+- App menu includes Open Launcher, Settings, registration status, Retry and Quit. Standard Edit actions support ordinary text editing. Panel is a nonactivating key-capable NSPanel.
+- HotkeyService uses Carbon RegisterEventHotKey/pressed/released events, exclusive conflicts and repeat debouncing. No keyboard event tap or privacy preflight/request calls remain.
+- --diagnostics reports bundle identity and the no-Accessibility design without registering a shortcut.
+- Command Line Tools contains Testing.framework but SwiftPM needs an explicit framework path/rpath. test.sh handles that and disables unavailable XCTest.
 
-- Repository: `/Users/ufian/pet/uficast`; initially empty, with an unborn `main` branch and no commits.
-- macOS `26.6.2`, build `25G83`; `arm64`.
-- Developer directory: `/Library/Developer/CommandLineTools`.
-- Swift `6.2.3`; full Xcode has not been established as installed and must not be required initially.
-- Installed SDK headers expose distinct right/left Command key codes and device flags.
-- No application source, user scripts, real Kibana URL, or persisted config has been supplied.
-- No hotkey, permission, remapping, browser, launch-at-login, or visual runtime checks have been performed.
+## Evidence and pending checks
 
-## Decisions to preserve
+- The initial right-only scaffold built/tests passed, then was superseded before commit by the owner's no-Accessibility steering. Current Carbon implementation: scripts/test.sh passed both lifecycle tests; scripts/build.sh passed release build and strict signing verification; plutil lint passed; --diagnostics reports the expected bundle and requiresAccessibility=false.
+- The initial packaged diagnostics reported the correct bundle identity and no existing keyboard permissions. These calls have since been removed; app diagnostics no longer query privacy state.
+- Desktop launch through Computer Use timed out twice; the app did not appear in that inventory. Its optional launch API was unavailable. **No successful GUI launch or visual/focus/paste/shortcut test is claimed.** This does not establish the cause of the launch failure.
+- No Accessibility/Input Monitoring grants, Spotlight/Raycast settings, keyboard mappings, or login items were changed by the agent.
+- Matching Spotlight/Raycast chords must be released by the owner. Carbon success alone cannot prove freedom from system shortcut interference.
 
-- Native Swift + AppKit. Personal source builds. English product UI and documentation.
-- Exact **Right Command + Space**, not generic Command + Space.
-- UI configuration close to the Raycast settings screenshot; exact aliases beat fuzzy matches.
-- One pasted text argument in the launcher. The `k`/Tab workflow is a first-class acceptance case.
-- Shell/AppleScript/executable support with explicit argv and result handling.
-- Caps Lock → F19 plus the system input-source shortcut is sufficient; the goal is improved responsiveness between the owner's two existing layouts.
-- Kasa and general Shortcuts support are deferred.
-- Follow requirements' explicit defaults unless actual testing or owner feedback warrants a recorded change.
+## Next action
 
-## Verification of this checkpoint
+Implement Stage 2: stable app records, asynchronous discovery, deterministic alias-first/fuzzy ranking, result rows and app launch. Leave desktop acceptance explicitly pending.
 
-- Reviewed both supplied screenshots; recorded essential launcher and settings layout details in REQUIREMENTS rather than relying on temporary image paths.
-- Checked the empty working tree, system/toolchain, and relevant SDK definitions.
-- Consulted primary Apple sources for event-tap/key-state APIs, key remapping, Process, and login items; links are in ARCHITECTURE.
-- Documentation-only checkpoint: application build/tests are not applicable yet. All six Markdown files passed local-link and code-fence validation; `git diff --cached --check` passed with no whitespace errors.
+## Remaining evidence gaps
 
-## Next concrete action
+Actual GUI launch and delivery of Cmd+Space, repeat/release behavior, Spotlight/Raycast coexistence, standard editing/focus, fullscreen/two monitors, sleep/wake/Secure Input; Automation consent/signing behavior; owner's real Kibana script/environment; F19 remapping and perceived switching latency. Use generic scripts and fixture mappings until actual tests are authorized through normal user actions.
 
-When implementation is requested, begin **Stage 1**:
-
-1. Read AGENTS, REQUIREMENTS, ARCHITECTURE, and the Stage 1 acceptance gate.
-2. Inspect `git status` and toolchain again; add SwiftPM scaffolding, a minimal AppKit menu bar app, and a reproducible `.app` bundle script.
-3. Prove the Right Command + Space chord with a minimal input-capable NSPanel before investing in full search/settings.
-4. Record the actual grant requirements, shortcut coexistence, and signing behavior. Manual validation may require the owner to grant macOS permissions and temporarily release Raycast's conflicting chord.
-
-## Open evidence gaps
-
-These are implementation/test tasks, not unanswered planning questions that block scaffolding:
-
-- Exact event-tap interception/coexistence and permissions on this macOS build.
-- Local build identity stability for TCC, Automation, and start-at-login.
-- Availability of a second monitor/external keyboard and an appropriate manual test opportunity.
-- Owner's real Kibana script and its environment requirements. Use generic examples until provided.
-- Whether F19-based system switching resolves the owner's perceived delay; requires hands-on verification.
-
-## How to update this file
-
-At the next session boundary replace the next-action section with the actual next step, update stage states, list changed code paths and checks with results, and record pending manual tests accurately. Keep this file concise enough to read at the start of every session. Use Git history for commit identifiers rather than inserting a self-referential hash into this checkpoint.
+At every checkpoint update actual checks/results, stage states, and the next concrete action, then commit relevant files. Use Git history for the latest checkpoint hash.

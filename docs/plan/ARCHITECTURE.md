@@ -1,6 +1,6 @@
 # Architecture and decisions
 
-Status: implementation design, with explicit spikes where real macOS behavior must be established. No application code exists yet.
+Status: native scaffold implemented; real desktop delivery remains pending manual verification. Later sections describe remaining implementation.
 
 ## Build and runtime
 
@@ -8,7 +8,7 @@ Status: implementation design, with explicit spikes where real macOS behavior mu
 - Package the executable and resources into `Uficast.app` using a repository build script and an explicit `Info.plist`. Support release builds from Command Line Tools; an Xcode project must not be mandatory.
 - AppKit owns app lifecycle, `NSStatusItem`, `NSPanel`, focus, text input, menus, and keyboard handling. SwiftUI hosted inside AppKit may implement Settings if it reproduces the required table and editing behavior well. Prefer native AppKit controls where SwiftUI focus/key handling becomes unreliable.
 - Use an accessory app activation policy / agent app bundle. Supply standard Edit menu actions so Cmd+V and related shortcuts work without manual pasteboard interception.
-- Keep a stable bundle identifier and documented install location. Begin with local ad-hoc signing; record whether rebuilding causes privacy grants to need renewal. If a local signing identity is needed for stable TCC behavior, document that result rather than promising ad-hoc identity stability.
+- Keep a stable bundle identifier and documented install location. Begin with local ad-hoc signing; record whether rebuilding causes Automation grants to need renewal. If a local signing identity is needed for stable Automation consent behavior, document that result rather than promising ad-hoc identity stability.
 - Local unsandboxed execution is appropriate for the personal app's configured scripts. No App Store provisioning, network backend, or telemetry.
 
 ## Proposed source layout
@@ -25,7 +25,7 @@ examples/                 Portable scripts using public/example URLs
 docs/plan/                Requirements, architecture, stages, and progress
 ```
 
-Paths are proposed, not claims about existing files. Introduce subdivisions only as code warrants them.
+Stage 1 created the package, core/app/test targets, resources, and build/test scripts. Introduce further subdivisions only as code warrants them. The Command Line Tools installation includes Testing.framework but SwiftPM did not discover it; test.sh supplies its framework path/rpath when present and disables unavailable XCTest.
 
 ## Service boundaries
 
@@ -33,7 +33,7 @@ Paths are proposed, not claims about existing files. Introduce subdivisions only
 | --- | --- |
 | AppController | Lifecycle, menu bar, wiring services, current launch/run status. |
 | LauncherPanelController | Presentation, screen/Space placement, search vs argument mode, focus restoration. |
-| HotkeyService | Side-specific trigger, permissions, event consumption and recovery. |
+| HotkeyService | Carbon Cmd+Space registration, conflict status, repeat debouncing and recovery. |
 | ApplicationCatalog | Discover app bundles, stable identity, refresh, metadata/icon loading. |
 | SearchEngine | Deterministic ranking across apps and scripts, alias precedence. |
 | ConfigStore | Versioned JSON, validation, atomic writes, backups, migration. |
@@ -43,17 +43,18 @@ Paths are proposed, not claims about existing files. Introduce subdivisions only
 
 UI work stays on the main actor. Catalog work, process I/O, persistence, and remapping subprocesses must not block typing or the event-tap callback. Avoid synchronous cross-actor waits in callbacks.
 
-## Right Command + Space: resolve first
+## Command + Space without Accessibility
 
-The aggregate Command flag does not distinguish left and right. A successful generic Cmd+Space implementation does not satisfy this requirement.
+The owner changed the original right-only requirement to ordinary Cmd+Space and explicitly ruled out Accessibility. This supersedes the earlier event-tap design.
 
-- Prototype an active session-level Core Graphics event tap. Use physical key codes (`kVK_RightCommand`, `kVK_Command`, `kVK_Space`) and public side-specific state/flags to identify Right Command. Seed/resynchronize modifier state so installation while a modifier is held, missed flags changes, and sleep/wake do not leave a stuck state.
-- Default chord policy: Right Command down, Left Command up, and no extra Shift/Option/Control/Fn. Test both modifier press orders and both Command keys held. Document any intentional policy adjustment.
-- Consume only the matched Space key-down, its repeats, and corresponding key-up. Pass unrelated events through. Track a consumed press independently of modifier release order, so key-up is handled correctly if Command is released first.
-- Debounce repeats, recover a tap disabled by timeout/user input, and make permission denial/revocation visible. Keep a menu action available when the global trigger is unavailable.
-- Check Accessibility / event-listening preflight and request APIs as applicable. Determine the minimum actual grants on macOS 26 during the spike; do not assume observing and suppressing events have identical requirements.
-- Validate coexistence with Spotlight's generic Cmd+Space and Raycast. Do not silently change either app's shortcuts. If system interception defeats the proposed tap, resolve and record a supported alternative before building the rest of the UI.
-- Secure Input and the login/lock screen may limit global event handling. Record actual behavior and recovery; do not build a driver to bypass it.
+- Register Cmd+Space using Carbon `RegisterEventHotKey` with `cmdKey` and `kEventHotKeyExclusive`. Either Command key works. Install pressed/released handlers and debounce repeats until release.
+- Do not install keyboard event taps, global keyboard monitors, or call Accessibility/Input Monitoring preflight/request APIs. Normal text-field accessibility labels do not require a privacy grant.
+- Report registration errors, including another app's exclusive registration. A successful registration alone does not establish that Spotlight or another system shortcut will yield the chord; show static setup guidance and verify delivery manually.
+- Never change Spotlight/Raycast shortcut assignments automatically. The owner releases conflicting chords in their settings. Open Launcher from the menu always remains available.
+- Unregister on quit/retry; retry after wake. Carbon registration is main-thread-only. Secure Input/fullscreen behavior and delivery still require actual desktop evidence.
+- The packaged `--diagnostics` mode reports bundle identity and the no-Accessibility design without registering a hotkey or asking for permissions.
+
+The authoritative installed SDK `CarbonEvents.h` documents RegisterEventHotKey and exclusive conflicts. Apple's [developer forum explanation](https://developer.apple.com/forums/thread/763878) confirms current modifier restrictions; Cmd is an accepted modifier. Do not infer runtime delivery from registration success.
 
 ## Panel and focus
 
@@ -116,8 +117,8 @@ TN2450 is archival documentation. Its reboot/device-service lifetime and privile
 ## Primary references
 
 - [NSPanel](https://developer.apple.com/documentation/appkit/nspanel) and [nonactivatingPanel](https://developer.apple.com/documentation/appkit/nswindow/stylemask-swift.struct/nonactivatingpanel): panel behavior.
-- [CGEventFlags.maskCommand](https://developer.apple.com/documentation/coregraphics/cgeventflags/maskcommand): aggregate Command state.
-- [CGEvent.tapCreate](https://developer.apple.com/documentation/coregraphics/cgevent/tapcreate(tap:place:options:eventsofinterest:callback:userinfo:)) and [CGEventSource.keyState](https://developer.apple.com/documentation/coregraphics/cgeventsource/keystate(_:key:)): event interception and key-state APIs.
+- Historical, superseded API reference: [CGEventFlags.maskCommand](https://developer.apple.com/documentation/coregraphics/cgeventflags/maskcommand): aggregate Command state.
+- Historical, superseded API references: [CGEvent.tapCreate](https://developer.apple.com/documentation/coregraphics/cgevent/tapcreate(tap:place:options:eventsofinterest:callback:userinfo:)) and [CGEventSource.keyState](https://developer.apple.com/documentation/coregraphics/cgeventsource/keystate(_:key:)): event interception and key-state APIs.
 - Installed macOS SDK: `Carbon.framework/Frameworks/HIToolbox.framework/Headers/Events.h` defines `kVK_RightCommand = 0x36`, `kVK_Command = 0x37`, `kVK_Space = 0x31`; `IOKit.framework/Headers/hidsystem/IOLLEvent.h` defines separate left/right Command masks. Recheck SDK locations in implementation rather than hard-coding this machine's paths.
 - [TN2450: Remapping Keys](https://developer.apple.com/library/archive/technotes/tn2450/) and [Apple IOHID usage tables](https://github.com/apple-oss-distributions/IOHIDFamily/blob/main/IOHIDFamily/IOHIDUsageTables.h): remapping mechanism/usages.
 - [Foundation Process](https://developer.apple.com/documentation/foundation/process): executable and argv execution.

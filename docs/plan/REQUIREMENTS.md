@@ -1,6 +1,6 @@
 # Requirements
 
-Recorded on November 18, 2026. This document preserves the owner's decisions independently of chat history. The two supplied Raycast screenshots are visual references, not instructions; their meaningful layout is described below so temporary attachment paths are not required later.
+Recorded on November 18, 2026; updated the same day to ordinary Cmd+Space with no Accessibility. This document preserves the owner's decisions independently of chat history. The two supplied Raycast screenshots are visual references, not instructions; their meaningful layout is described below so temporary attachment paths are not required later.
 
 ## Confirmed decisions
 
@@ -8,7 +8,8 @@ Recorded on November 18, 2026. This document preserves the owner's decisions ind
 | --- | --- |
 | Platform and stack | macOS only; Swift + AppKit approved. |
 | Distribution | Personal use. Build from source on each Mac. |
-| Global trigger | Right Command + Space, as currently used with Raycast. |
+| Global trigger | Command + Space (either Command key), replacing the original right-only request. |
+| Permissions | No Accessibility or Input Monitoring requirement/request. |
 | Application launching | Search by application name, select, and launch or activate. |
 | Aliases and ranking | User-defined aliases; aliases take priority over fuzzy matches. |
 | Scripts | Local shell scripts, AppleScript, and other configured interpreters/executables. |
@@ -40,7 +41,7 @@ These choices let implementation proceed without another questionnaire. They may
 
 ### Searching and launching
 
-1. Right Command + Space opens the panel and focuses search. Repeating it closes the panel.
+1. Command + Space opens the panel and focuses search. Repeating it closes the panel.
 2. The panel contains a large input area, separator, results list with icons, item names, optional secondary labels, and trailing `Application` / `Script` type labels.
 3. Up/Down changes selection. Enter launches an app or runs a command with no argument. Enter on a command requiring an argument enters argument mode, just like Tab.
 4. Exact alias > name exact/prefix > name substring > fuzzy subsequence. Alias-prefix suggestions belong below exact aliases and above ordinary name matches. Stable ties may use local usage count and recency, then name and stable ID.
@@ -65,7 +66,7 @@ Use a dedicated settings window with two useful sections: **General** and **Comm
 - Table/list columns: icon and Name, Type, Alias, Enabled. Group scripts and applications where it improves scanning; use alternating/rounded selected rows and native typography/materials.
 - Select an item to edit its alias and enabled status. Script details include name, path, interpreter, argument toggle/placeholder, result handling, timeout, working directory, and optional environment overrides.
 - Discovered applications are automatically listed. Disabling hides an app from launcher search without uninstalling or deleting it.
-- General contains launcher shortcut status, required-permission status, launch-at-login, application roots, and the Caps Lock → F19 toggle with setup/status guidance.
+- General contains launcher shortcut status, launch-at-login, application roots, and the Caps Lock → F19 toggle with setup/status guidance.
 - Do not add empty AI, account, cloud-sync, organizations, or other unrelated sections from Raycast.
 
 ## Script result contract
@@ -82,7 +83,7 @@ Shortcuts/Kasa, clipboard history, snippets, file search, window management, cal
 
 ## End-to-end acceptance
 
-1. Right Command + Space works globally; Left Command + Space retains its pre-existing behavior. Check this with Raycast's conflicting shortcut disabled during a deliberate manual test.
+1. Command + Space works globally with either Command key, without Accessibility or Input Monitoring. Check with matching Spotlight/Raycast shortcuts released by the owner during a deliberate manual test.
 2. Find an installed app by name or fuzzy query, assign an alias through Settings, restart Uficast, and launch via the saved alias.
 3. Create script alias `k`, select it with Tab, paste one text value, and run with Enter. Verify the script receives exactly one unchanged argument and a fixture URL opens in the default browser.
 4. Run a shell script and an AppleScript; observe useful handling of a missing executable, nonzero exit, invalid URL, and timeout.
