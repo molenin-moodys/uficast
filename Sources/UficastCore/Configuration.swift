@@ -65,10 +65,11 @@ public struct Configuration: Codable, Equatable, Sendable {
     public var scripts: [ScriptCommand] = []
     public var scriptDirectories: [String] = []
     public var capsLockToF19Enabled = false
+    public var menuBarClock = MenuBarClockPreferences()
 
     public init() {}
 
-    private enum CodingKeys: String, CodingKey { case schemaVersion, applicationRoots, applications, scripts, scriptDirectories, capsLockToF19Enabled }
+    private enum CodingKeys: String, CodingKey { case schemaVersion, applicationRoots, applications, scripts, scriptDirectories, capsLockToF19Enabled, menuBarClock }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -78,6 +79,7 @@ public struct Configuration: Codable, Equatable, Sendable {
         scripts = try values.decode([ScriptCommand].self, forKey: .scripts)
         scriptDirectories = try values.decodeIfPresent([String].self, forKey: .scriptDirectories) ?? []
         capsLockToF19Enabled = try values.decodeIfPresent(Bool.self, forKey: .capsLockToF19Enabled) ?? false
+        menuBarClock = try values.decodeIfPresent(MenuBarClockPreferences.self, forKey: .menuBarClock) ?? MenuBarClockPreferences()
     }
 
     public static func fileURL(_ path: String) -> URL {
@@ -102,6 +104,7 @@ public struct Configuration: Codable, Equatable, Sendable {
 
     public func validated() throws -> Configuration {
         guard schemaVersion == Self.currentVersion else { throw ConfigError.unsupportedVersion(schemaVersion) }
+        try menuBarClock.validate()
         var aliases: Set<String> = []
         func checkAlias(_ alias: String?, enabled: Bool) throws {
             guard let alias else { return }

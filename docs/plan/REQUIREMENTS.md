@@ -26,6 +26,7 @@ Recorded on November 18, 2026; updated the same day to ordinary Cmd+Space with n
 | Keyboard | Two input sources already configured in macOS. Eliminate the current Caps Lock switching delay; Caps Lock → F19 plus a system shortcut is sufficient. Support multiple keyboards and reconnection; diagnose conflicting macOS Modifier Keys profiles. |
 | Built-in commands | `caffeine` / `cafe` enables indefinite Keep Awake; `decaffeine` / `decafe` disables it. Fuzzy and wrong-layout search apply. |
 | Keep Awake (added November 18) | Built-in Caffeine-style prevention of idle Mac sleep; native app-owned power assertion. |
+| Menu bar calendar experiment | The clock is the single Uficast menu-bar button. Use Day-O’s standard native calendar appearance, month browsing and Today; configurable date/time format and Show Icon. Upper menu bar only, no Dock addition. |
 | Deferred | Kasa/Shortcuts integration. |
 | Continuity | English plan in the repository, committed to Git; implementation can span sessions. |
 
@@ -35,7 +36,7 @@ These choices let implementation proceed without another questionnaire. They may
 
 - Working name: **Uficast**, derived from the repository name.
 - Initial deployment target: macOS 26, matching the development machine. Do not claim support for older versions or Intel before testing them.
-- Background menu bar app with no permanent Dock icon. Explicit opening immediately shows the launcher, and the menu includes Open Launcher, Settings, Keep Awake and Quit.
+- Background menu bar app with no permanent Dock icon. Explicit opening immediately shows the launcher, and the menu includes a compact native calendar, Open Launcher, Settings, Date & Time, Keep Awake and Quit.
 - Settings UI is the primary configuration interface. Versioned local JSON provides persistence, backup, and portability.
 - Script commands accept either no argument or one required argument. Multiple fields are deferred.
 - One unique alias per enabled item initially. Match aliases case-insensitively after normalization; reject duplicate aliases across enabled apps and scripts. No empty or whitespace-containing aliases in v1.
@@ -108,7 +109,7 @@ Shortcuts/Kasa, clipboard history, snippets, file search, window management, cal
 - App shortcuts use physical key code/modifiers; duplicate combinations are rejected regardless of display labels. While recording, Uficast temporarily releases its own registrations and restores them when recording ends.
 - Show/hide means activate/unhide a background app, hide an already active app, and launch a closed app. This applies to the application, not individual windows.
 - App icons load on a serial background queue as small bitmap data. Completion updates only the matching existing launcher cell; search, selection and scroll position must remain stable.
-- Keep Awake uses native IOPM idle-system-sleep assertions, off on first installation, with indefinite/30-minute/one-hour sessions. Remember the last active/off state locally across exits; timed sessions resume the remaining deadline or stay off if expired. Show a cup icon while active and a `zzz` sleep icon while off (including startup and decaf mode). Release exactly this app's assertion on stop, expiry or quit. Display sleep and explicit system/lid sleep behavior remain governed by macOS.
+- Keep Awake uses native IOPM idle-system-sleep assertions, off on first installation, with indefinite/30-minute/one-hour sessions. Remember the last active/off state locally across exits; timed sessions resume the remaining deadline or stay off if expired. When the clock is disabled, show a cup icon while active and a `zzz` sleep icon while off (including startup and decaf mode); with the clock enabled, expose state in the tooltip and menu. Release exactly this app's assertion on stop, expiry or quit. Display sleep and explicit system/lid sleep behavior remain governed by macOS.
 - Verify actual login after enabling start-at-login, multiple physical keyboards, reconnect/wake, per-app show/hide cycles and a real idle-sleep session. Record observed outcomes separately from fixture tests.
 
 ## Keyboard conventions (owner additions)
@@ -116,3 +117,12 @@ Shortcuts/Kasa, clipboard history, snippets, file search, window management, cal
 - Settings opens locally with Cmd+, and the owner's additional Cmd+P (macOS normally uses Cmd+P for printing). Esc closes Settings, except that inline alias/hotkey edits consume the first Esc to cancel; script sheets retain their own Cancel behavior.
 - Provide standard menu commands: Cmd+W close window/panel, Cmd+F search (Commands in Settings), Cmd+H hide, Option+Cmd+H hide others, Cmd+M minimize Settings and Cmd+Q quit. Preserve normal text editing, undo/redo and focus navigation. No additional global keyboard registrations or input observation.
 - Follow Apple's documented conventions where applicable; a launcher has no document printing/opening/tab system to assign those commands to.
+
+## Day-O calendar experiment (owner addition)
+
+- Work on `codex/day0-calendar-experiment`, branched from `7ebcf04` after the adjacent chat completed. The owner's screenshots are visual references. The owner explicitly clarified that the upper menu bar is intended and that the clock itself is Uficast's one button.
+- Match Day-O using AppKit's standard `NSDatePicker` in `clockAndCalendar` mode, rather than a custom date grid. Preserve native compact sizing, previous/next month controls, Today, selected-date appearance and light/dark behavior. Reset to today on each menu opening. No event/account integration.
+- Keep the main menu narrow; diagnostics, refresh and shortcut retry are in Settings. Keep Awake uses its existing service through a submenu. Add the Date & Time settings entry shown in the reference.
+- General offers Date & Time Format and Show Icon. The calendar icon includes the current day. Implementation defaults: clock enabled, icon shown, format `EEE HH:mm:ss`, Monday-first Gregorian calendar with English labels; users may disable the clock to restore the cup/zzz button. Settings persist in the existing versioned configuration, with legacy files decoding defaults.
+- Seconds must follow system-second boundaries, rather than an arbitrary one-second interval starting at app launch. Recalculate the next tick from wall time each time and resynchronize on clock/time-zone changes and wake. Actual side-by-side visual timing remains a manual check.
+- The owner authorized read-only examination of installed Day-O for matching its design. No Day-O executable, artwork or other bundled asset is copied into the repository or needed at runtime.

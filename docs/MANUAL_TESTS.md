@@ -59,3 +59,11 @@ Follow [requirements](plan/REQUIREMENTS.md). Caps Lock remapping, login items, o
 - Cmd+F focuses/selects search; from General it switches to Commands. Cmd+W closes Settings or launcher, Cmd+M minimizes Settings, Cmd+H hides the app, Option+Cmd+H hides others and Cmd+Q quits normally. Don't invoke hide-others/quit in unrelated apps for verification.
 - During an owner-initiated power test: enable caffeine, quit/reopen and confirm active restoration with one fresh owned assertion. Stop, quit/reopen and confirm decaf stays off. A timed session resumes only its remaining time; let it expire while closed and confirm it stays off. Tests use fake assertions, not the actual machine's sleep policy.
 - --verify-keyboard-shortcuts checks native menu equivalence, Esc priority and hotkey capture with fixtures and no global registration. Core restoration tests round-trip the saved session and verify release/reacquire/expiry using fake backends.
+
+## Day-O calendar experiment
+
+- [ ] Compare the installed experiment with Day-O: one Uficast clock button, compact menu width, native calendar typography/arrows/selection, and light/dark appearance.
+- [ ] Click previous/next repeatedly across a year boundary, click Today, dismiss and reopen; native navigation works and reopening returns to today.
+- [ ] Observe the seconds beside the system clock for at least a minute, including while browsing the menu. Repeat after wake and an owner-initiated time-zone change; do not change the system clock merely for verification.
+- [ ] Change the format and Show Icon, reopen/restart and confirm persistence; disabling the clock restores the cup/zzz button. Restore the owner's chosen preferences.
+- [ ] Check Open Launcher, Settings, Date & Time, Keep Awake submenu and Quit; actual power changes remain part of the owner-led power test.

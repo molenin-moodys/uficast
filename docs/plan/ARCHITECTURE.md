@@ -183,3 +183,15 @@ Owner steering supersedes closing the launcher on accepted execution: scripts ke
 ## Local keyboard commands
 
 AppMenu builds standard application/File/Edit/Window menus and a hidden-but-active Cmd+P Settings alias while preserving visible Cmd+,. Cmd+F focuses launcher search or requests Commands search focus through SwiftUI FocusState. Cmd+W uses native performClose; the launcher routes it through dismiss for cleanup. SettingsWindow handles only window-local Esc events: attached sheets keep native dispatch, active inline edits cancel first, otherwise Settings closes. Native view key equivalents continue to handle recorded chords before menus. Menu actions do not register more global shortcuts. References: [Apple shortcuts](https://support.apple.com/en-us/102650), [Cocoa key-equivalent routing](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/EventOverview/HandlingKeyEvents/HandlingKeyEvents.html).
+
+## Experimental menu-bar calendar
+
+MenuBarClockController updates the existing NSStatusItem, never creating a second permanent button. Clock enabled/Show Icon/format live in schema-1 menuBarClock with default decoding for older files. Turning off the clock restores the existing cup/zzz state. The clock's tooltip and menu still expose Keep Awake; power behavior does not change.
+
+Read-only inspection of installed Day-O 3.0.1 revealed SIDatePicker inheriting NSDatePicker and using setDatePickerStyle. MenuBarCalendarView embeds the same public AppKit clockAndCalendar control, unbordered with transparent background and vibrancy. sizeToFit produces a 139×148-point picker; padding makes the custom menu view 163×164 points. No manual grid, date arithmetic, copied resources, calendar-account permission or Day-O runtime dependency. NSMenu owns tracking/outside-click/Esc; NSDatePicker owns month navigation and Today. The menu delegate resets dateValue on open.
+
+The root menu contains the calendar, Open Launcher, Settings, Date & Time, a Keep Awake submenu and Quit. Long status rows no longer dictate its width. General retains shortcut diagnostics/retry and application refresh; latest action status moves to General / Recent Runs.
+
+The clock uses one-shot Timer deadlines on the next integral Unix second, registered for common and event-tracking run-loop modes, with zero tolerance. Every tick redraws from current Date and computes a fresh boundary. System-clock/locale/time-zone notifications and AppController's existing wake handler resynchronize it. Stop invalidates the timer and unregisters observers. This avoids launch-phase drift and missed updates during menu tracking; it is not a real-time rendering guarantee if the main thread is blocked.
+
+Development-only --preview-calendar renders a deterministic July 2027 NSDatePicker in either appearance without AppController/configuration/services. --verify-menu-clock temporarily creates and removes a status item, checks native sizing, reopening reset, icon/fallback settings, three actual tick phases in menu-tracking mode and a synthetic clock-change notification; it does not alter the machine's date, hotkeys, mappings, login items or power state.

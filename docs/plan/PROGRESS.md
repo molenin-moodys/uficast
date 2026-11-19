@@ -4,7 +4,7 @@ Last updated: November 18, 2026 (America/Los_Angeles).
 
 ## Current state
 
-Requested personal-use features through Stage 6k are implemented. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. The current increment adds window shortcuts, remembered caffeine and clearing errors on hide; screenshots use only neutral standard-app fixtures.
+Requested personal-use features through Stage 6k are implemented; Stage 6l is implemented on the separate calendar experiment branch with manual acceptance pending. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. Window-shortcut/power checkpoint 7ebcf04 is pushed to origin/main. The current calendar increment is on codex/day0-calendar-experiment, branched from that clean checkpoint after the adjacent chat completed; main is unchanged.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
@@ -22,6 +22,7 @@ Requested personal-use features through Stage 6k are implemented. Mandatory: ord
 | 6i — Argument styling and failure correction | Implemented | Appearance previews checked; 48 core tests plus native feedback tests pass. Private-script failure/browser flow remains owner-led. |
 | 6j — Window keyboard conventions | Implemented | Native menu/Esc-priority checks pass; desktop Cmd+P and Cmd+, opened Settings. Broader physical focus/minimize/hide acceptance remains pending. |
 | 6k — Remembered caffeine / transient errors | Implemented | 50 core tests pass with fake power restoration; native feedback check confirms hide clears retained errors and rejects late completion. |
+| 6l — Day-O calendar experiment | Implemented on experiment branch | 51 core tests and native clock/menu-mode checks pass; compact NSDatePicker previews inspected. Real menu navigation, side-by-side seconds and preference persistence acceptance pending. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -110,7 +111,21 @@ The README checkpoint **2db8863** is pushed. The canonical `dist/Uficast.app` ha
 - Isolated/canonical release builds and strict signature checks passed. After a normal Quit, the canonical dist app reopened with new menus and no stale error. Desktop Cmd+P and Cmd+, opened Settings; an Esc interaction returned to the launcher. A later Cmd+F automation interaction focused the launcher rather than confirming Commands search; physical Settings focus/hide/minimize acceptance remains on the checklist. General displayed the new remembered-mode guidance and off state; no private scripts or power toggles were executed by the agent.
 - README now has a keyboard shortcut table with Apple references; requirements/architecture/stages/manual checks were updated. Existing public screenshots remain representative; no private screenshot/configuration/defaults are committed.
 
-Next product work is the remaining owner-led daily-use acceptance above; do not mark it complete from automated/preview results. No new feature implementation is implied by this handoff.
+Stage 6l owner-requested calendar work is recorded below; the earlier daily-use acceptance gaps remain pending.
+
+
+## Day-O calendar experiment
+
+- Waited for adjacent project chat to complete and publish 7ebcf04, confirmed a clean tree, then created `codex/day0-calendar-experiment`. The owner clarified upper menu bar only and that the clock itself must be Uficast's single button. No extra Dock icon or second permanent status item.
+- Added General Date & Time Format, Apply/Enter, Reset, live preview, Show Icon and optional clock-off fallback. Schema-1 menuBarClock defaults preserve loading older configurations. The owner’s existing startup checkbox remains at the top. No personal configuration was edited by the verification fixtures.
+- The first custom-grid implementation was installed. The owner's screenshot identified an oversized root menu and mismatched calendar. With explicit authorization, read-only inspection of installed Day-O 3.0.1 revealed its standard NSDatePicker. Replaced the custom grid with that native clockAndCalendar control; no custom date-arithmetic model remains. The native picker is 139×148 pt; the padded menu view is 163×164 pt. Fixed-date July 2027 light/dark previews were rendered and visually inspected. No Day-O assets/code were copied; no calendar event access.
+- Root menu now contains the calendar, Open Launcher, Settings, Date & Time, Keep Awake submenu and Quit. Long shortcut/action diagnostics no longer stretch it: shortcut retry, refresh and diagnostics stay in General; the latest action/error is in General / Recent Runs. Keep Awake keeps its shared service and timed controls.
+- Owner reported seconds out of phase with the system clock. Replaced the launch-relative repeating timer with a fresh one-shot deadline at each next integral system second, zero tolerance, common/menu-tracking modes. Wake and clock/locale/time-zone notifications resynchronize. Native --verify-menu-clock passed icon/fallback preferences, native picker/sizing, today reset, synthetic clock-change handling and three observed actual menu-tracking tick phases of **36, 5 and 5 ms** after the second boundary. No system time was changed. This is measured idle-loop evidence, not a guarantee under main-thread stalls or a physical side-by-side observation.
+- **51 core tests passed** with scripts/test.sh --disable-sandbox, including legacy decode, preference round trip and format limits. Warm search p95 **22.95 ms** over 2,000 fixtures. The earlier 53-test run covered the abandoned custom date grid; it does not describe the final implementation. SwiftPM nested sandboxing was unavailable here, so release builds used approved unsandboxed execution; no machine-wide preference was changed.
+- Isolated and final canonical release builds and strict ad-hoc signature checks passed. The running app was normally quit before each canonical bundle replacement and reopened through the desktop tool. The final canonical app is running with the native calendar and aligned timer. Desktop tooling could inspect the launcher but could not access the status extra; do not mark actual native menu-arrow clicks, one-minute side-by-side timing, format/Show Icon persistence across restart, Date & Time navigation or wake behavior as passed. No private scripts, actual power toggles, login/hotkey/privacy changes or new test mappings were performed.
+- Requirements/architecture/implementation plan/README/manual checklist and AGENTS continuity updated in English. No private paths, Day-O resources, build outputs or personal screenshots added to Git.
+
+**Exact next step:** owner tries the running clock menu against Day-O: browse previous/next months and Today, verify compact width and seconds beside the system clock, then try format/Show Icon and restart persistence. Record actual observations, fix any result on this branch, and merge only after owner acceptance. Other Stage 7 manual gaps remain open.
 
 ### Earlier cursor report checkpoint
 

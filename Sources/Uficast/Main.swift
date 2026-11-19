@@ -6,6 +6,31 @@ import UficastCore
 struct UficastMain {
     @MainActor
     static func main() {
+        if CommandLine.arguments.contains("--verify-menu-clock") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do { try MenuBarClockVerification.run() }
+            catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
+            return
+        }
+        if let index = CommandLine.arguments.firstIndex(of: "--preview-calendar"), CommandLine.arguments.indices.contains(index + 1) {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            if CommandLine.arguments.contains("--dark") { application.appearance = NSAppearance(named: .darkAqua) }
+            let calendar = MenuBarCalendarView()
+            calendar.wantsLayer = true
+            calendar.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+            calendar.reset(to: ISO8601DateFormatter().date(from: "2027-07-18T12:00:00Z")!)
+            let window = NSWindow(contentRect: calendar.bounds, styleMask: [.borderless], backing: .buffered, defer: false)
+            window.contentView = calendar
+            do {
+                try ViewPreview.write(calendar, to: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
+                print("Wrote native NSDatePicker calendar preview (\(calendar.frame.width) × \(calendar.frame.height) points).")
+            } catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
+            return
+        }
         if CommandLine.arguments.contains("--verify-keyboard-shortcuts") {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)

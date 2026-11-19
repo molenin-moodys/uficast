@@ -4,6 +4,8 @@ A lightweight, native macOS launcher for applications and local scripts. Built w
 
 **Status:** personal-use feature implementation is available. Automated checks and selected desktop flows pass; remaining hands-on acceptance is tracked in [PROGRESS](docs/plan/PROGRESS.md).
 
+**Calendar experiment:** this branch adds a Day-O-style clock and native calendar to the single Uficast menu-bar button.
+
 ## Features
 
 - **Cmd+Space launcher** with application icons, fuzzy search and aliases that rank first.
@@ -12,6 +14,7 @@ A lightweight, native macOS launcher for applications and local scripts. Built w
 - **Local scripts** using shell, AppleScript or another configured interpreter. Pass one unchanged text argument and optionally open a generated URL.
 - **Per-app shortcuts** to show, hide or launch an application.
 - **Keep Awake** with timed or indefinite sessions, plus optional start at login.
+- **Menu-bar clock and calendar** using the same standard AppKit calendar control as Day-O, with month browsing, Today and customizable format.
 - **Caps Lock → F19** remapping for macOS input-source switching, with mapping ownership and keyboard-conflict diagnostics.
 - **Native menu bar app** with light/dark appearance, a Settings gear in the launcher and one running instance per user.
 
@@ -56,7 +59,7 @@ scripts/build.sh
 open dist/Uficast.app
 ```
 
-Opening the app shows the launcher immediately. Its gear button opens Settings; **Cmd+,** and **Cmd+P** also open Settings. The menu bar includes **Open Launcher**, **Settings…**, **Keep Awake**, **Retry Shortcut** and **Quit**. The global shortcut uses Carbon registration and never requests Accessibility or Input Monitoring. Release conflicting Cmd+Space shortcuts in Spotlight/Raycast yourself; Uficast does not change their settings. A successful registration does not prove a system shortcut yields the chord.
+Opening the app shows the launcher immediately. Its gear button opens Settings; **Cmd+,** and **Cmd+P** also open Settings. The menu bar includes the native calendar, **Open Launcher**, **Settings…**, **Date & Time…**, **Keep Awake** and **Quit**. **Retry Shortcut** and application refresh are available in General. The global shortcut uses Carbon registration and never requests Accessibility or Input Monitoring. Release conflicting Cmd+Space shortcuts in Spotlight/Raycast yourself; Uficast does not change their settings. A successful registration does not prove a system shortcut yields the chord.
 
 Build output is `dist/Uficast.app`, locally ad-hoc signed. `scripts/build.sh debug` builds a debug bundle. Optionally set `UFICAST_SIGN_IDENTITY` to an existing signing identity. Quit the running copy before rebuilding or replacing it. Opening a rebuilt bundle while an older copy is still running reveals that existing process; it does not reload its executable. For an isolated build, set `UFICAST_OUTPUT_ROOT` to another output directory. Script Automation consent may need renewal after ad-hoc rebuilds; a stable installation path is recommended.
 
@@ -92,7 +95,7 @@ Apple's [standard Mac shortcuts](https://support.apple.com/en-us/102650) use Cmd
 
 ## Settings and aliases
 
-In **Settings… → Commands**, double-click an **Alias** cell (or the alias in the inspector), type a value and press **Enter** to save. **Escape** cancels without saving; click **×** to remove an assigned alias. Invalid or duplicate aliases keep the draft open and show an error. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General starts with **Start Uficast at login** and also contains Keep Awake, Caps Lock, application roots, refresh, import/export and backup recovery.
+In **Settings… → Commands**, double-click an **Alias** cell (or the alias in the inspector), type a value and press **Enter** to save. **Escape** cancels without saving; click **×** to remove an assigned alias. Invalid or duplicate aliases keep the draft open and show an error. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General starts with **Start Uficast at login** and also contains Menu Bar Calendar, Keep Awake, Caps Lock, application roots, refresh, import/export and backup recovery.
 
 In **Settings → Commands**, double-click an application’s **Hotkey** cell (the current shortcut or **Add Hotkey**) to open its inline recorder. A single click only selects the row. **Escape** closes recording without saving and keeps the previous shortcut. Click the **×** beside an assigned shortcut to remove it. You can also select an application and click **Record Hotkey** under **Show / Hide**. Press a combination containing Command, Control or Option; Escape cancels and Delete clears it. Enabled app shortcuts must be unique, and Cmd+Space is reserved for the launcher. The table shows assigned shortcuts and registration errors. If another app claims a chord, release it there first. Script-specific global hotkeys remain deferred.
 
@@ -149,9 +152,24 @@ Assign **F19** to **Select the previous input source** under macOS **Input Sourc
 
 In the launcher, run **caffeine** (or **cafe**) to stay awake until stopped, and **decaffeine** (or **decafe**) to allow idle sleep again. Fuzzy input and U.S./Russian wrong-layout search apply to these commands too. An explicit user alias wins if it reuses a built-in abbreviation; full command names remain searchable. These commands use the same native assertion as the menu and Settings.
 
-Use the menu bar **Keep Awake** toggle or choose **30 Minutes**, **1 Hour**, or **Until Stopped**. General offers the same controls. The menu bar shows a cup during an active session and a `zzz` sleep icon when Keep Awake is off (decaf mode). A native, process-owned IOPM assertion prevents idle system sleep; no `caffeinate` child process or Accessibility permission is used.
+Use the menu bar **Keep Awake** toggle or choose **30 Minutes**, **1 Hour**, or **Until Stopped**. General offers the same controls. With the clock enabled, its button opens the calendar and Keep Awake submenu; the toggle and tooltip show the power state. Disabling the clock restores a cup during an active session and a `zzz` sleep icon when off. A native, process-owned IOPM assertion prevents idle system sleep; no `caffeinate` child process or Accessibility permission is used.
 
 The last caffeine/decaf mode is remembered locally and restored on relaunch. Timed sessions resume their remaining time; an already expired session stays off. A fresh installation starts off. Quit releases the process-owned assertion while preserving the remembered mode for the next launch. The display may dim or sleep; explicit Sleep, closing the lid, low battery and other macOS sleep reasons still apply. This is the behavior of Apple's [idle-system-sleep assertion](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep).
+
+## Menu-bar calendar (experiment)
+
+The clock is Uficast's one menu-bar button. Click it for a compact native calendar, use its arrows to browse months and the dot to return to today. Each opening starts at today. The menu also offers Open Launcher, Settings, macOS Date & Time, Keep Awake and Quit.
+
+In **Settings → General → Menu Bar Calendar**, edit **Date & Time Format** and press Enter or Apply. **Show Icon** controls the calendar/day icon beside the text. The default `EEE HH:mm:ss` shows weekday and 24-hour time; `E h:mm:ss a` uses 12-hour time. A preview updates while you edit. Disabling date/time restores the cup/zzz button.
+
+Seconds are scheduled at system-second boundaries, including during menu tracking, and resynchronize after wake or time-zone/clock changes. Calendar browsing uses AppKit NSDatePicker; it does not read calendar events/accounts.
+
+Native development checks (without normal app services):
+
+```sh
+dist/Uficast.app/Contents/MacOS/Uficast --verify-menu-clock
+dist/Uficast.app/Contents/MacOS/Uficast --preview-calendar /tmp/uficast-calendar.png
+```
 
 ## Start at login
 

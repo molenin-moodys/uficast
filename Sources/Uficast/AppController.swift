@@ -7,9 +7,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     private let hotkey = HotkeyService()
     private let launcher = LauncherPanelController()
     private let catalog = CatalogService()
-    private let actionStatus = NSMenuItem(title: "No recent errors", action: nil, keyEquivalent: "")
     private var statusItem: NSStatusItem!
-    private let statusLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private var menuBarClock: MenuBarClockController?
     private let configStore = ConfigStore()
     private let scriptRunner = ScriptRunner()
     private let keyboard = KeyboardRemapService()
@@ -35,28 +34,25 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         let menu = NSMenu()
         menu.addItem(item("Open Launcher", #selector(openLauncher)))
         menu.addItem(item("Settings…", #selector(openSettings), key: ","))
-        menu.addItem(item("Refresh Applications", #selector(refreshCatalog)))
-        menu.addItem(actionStatus)
-        menu.addItem(.separator())
+        menu.addItem(item("Date & Time…", #selector(openDateTimeSettings)))
+        let powerItem = NSMenuItem(title: "Keep Awake", action: nil, keyEquivalent: "")
+        let powerMenu = NSMenu()
         keepAwakeToggle.target = self
         keepAwakeToggle.action = #selector(toggleKeepAwake)
-        menu.addItem(keepAwakeToggle)
-        menu.addItem(keepAwakeDetail)
-        let durationItem = NSMenuItem(title: "Keep Awake For", action: nil, keyEquivalent: "")
-        let durations = NSMenu()
+        powerMenu.addItem(keepAwakeToggle)
+        powerMenu.addItem(keepAwakeDetail)
+        powerMenu.addItem(.separator())
         for (title, seconds) in [("30 Minutes", 1800), ("1 Hour", 3600), ("Until Stopped", 0)] {
             let choice = item(title, #selector(keepAwakeFor(_:)))
             choice.representedObject = NSNumber(value: seconds)
-            durations.addItem(choice)
+            powerMenu.addItem(choice)
         }
-        durationItem.submenu = durations
-        menu.addItem(durationItem)
-        menu.addItem(.separator())
-        menu.addItem(statusLine)
-        menu.addItem(item("Retry Shortcut", #selector(retryShortcut)))
+        powerItem.submenu = powerMenu
+        menu.addItem(powerItem)
         menu.addItem(.separator())
         menu.addItem(item("Quit Uficast", #selector(quit), key: "q"))
         statusItem.menu = menu
+        menuBarClock = MenuBarClockController(statusItem: statusItem, menu: menu)
         hotkey.onToggle = { [weak self] in self?.launcher.toggle() }
         hotkey.onAppToggle = { [weak self] in self?.toggleApplication($0) }
         hotkey.onStatusChange = { [weak self] in self?.updateStatus() }
@@ -122,7 +118,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         launcher.show()
     }
 
-    func applicationWillTerminate(_ notification: Notification) { hotkey.stop(); devices.stop() }
+    func applicationWillTerminate(_ notification: Notification) { menuBarClock?.stop(); hotkey.stop(); devices.stop() }
 
     func applicationDidBecomeActive(_ notification: Notification) { updateLoginItemStatus() }
     func applicationDidHide(_ notification: Notification) { launcher.dismiss(restoreFocus: false) }
@@ -154,7 +150,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func retryShortcut() { hotkey.start() }
     @objc private func refreshCatalog() { catalog.refresh() }
-    @objc private func resumeServices() { hotkey.start(); reconcileKeyboard(reapplyOwned: true) }
+    @objc private func openDateTimeSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Date-Time-Settings.extension") { NSWorkspace.shared.open(url) }
+    }
+    @objc private func resumeServices() { menuBarClock?.synchronize(); hotkey.start(); reconcileKeyboard(reapplyOwned: true) }
 
     @objc private func toggleKeepAwake() { changeKeepAwake(enabled: !settingsModel.keepAwakeActive) }
     @objc private func keepAwakeFor(_ sender: NSMenuItem) {
@@ -179,10 +178,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
             do {
                 if enabled { try await keepAwake.enable(for: seconds) }
                 else { try await keepAwake.disable() }
-                actionStatus.title = enabled ? "Keep Awake enabled." : "Automatic idle sleep is allowed."
+                settingsModel.lastActionStatus = enabled ? "Keep Awake enabled." : "Automatic idle sleep is allowed."
             } catch {
                 settingsModel.status = error.localizedDescription
-                actionStatus.title = "Keep Awake failed: \(error.localizedDescription)"
+                settingsModel.lastActionStatus = "Keep Awake failed: \(error.localizedDescription)"
             }
             settingsModel.isKeepAwakeBusy = false
         }
@@ -200,8 +199,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         } else { detail = "Automatic idle sleep is allowed." }
         keepAwakeDetail.title = detail
         settingsModel.keepAwakeStatus = error.map { "\(detail) \($0)" } ?? detail
-        statusItem.button?.image = NSImage(systemSymbolName: state.isActive ? "cup.and.saucer.fill" : "zzz",
-                                          accessibilityDescription: state.isActive ? "Uficast — Keep Awake on" : "Uficast — Keep Awake off")
+        menuBarClock?.setKeepAwake(active: state.isActive)
     }
 
     private func rememberPower(_ state: KeepAwakeState) {
@@ -276,9 +274,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
                 usage.count += 1
                 usage.lastUsed = .now
                 launcher.usage[entry.id] = usage
-                actionStatus.title = "Opened \(entry.name)"
+                settingsModel.lastActionStatus = "Opened \(entry.name)"
             } catch {
-                actionStatus.title = "Could not open \(entry.name): \(error.localizedDescription)"
+                settingsModel.lastActionStatus = "Could not open \(entry.name): \(error.localizedDescription)"
             }
         }
     }
@@ -301,7 +299,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         }
         settingsModel.activeScripts[id] = command.name
         cancelledScripts.remove(id)
-        actionStatus.title = "Running \(command.name)…"
+        settingsModel.lastActionStatus = "Running \(command.name)…"
         let presentation = launcher.beginScriptRun(command)
         Task {
             let message: String
@@ -333,12 +331,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
             if !isTerminating { launcher.finishScriptRun(presentation, command: command, argument: argument, error: failure) }
             settingsModel.recentRuns.insert(message, at: 0)
             settingsModel.recentRuns = Array(settingsModel.recentRuns.prefix(10))
-            actionStatus.title = String(message.prefix(180))
+            settingsModel.lastActionStatus = String(message.prefix(180))
         }
     }
 
     private func updateStatus() {
-        statusLine.title = hotkey.status
         settingsModel.shortcutStatus = hotkey.status
         settingsModel.hotkeyErrors = hotkey.appErrors
     }
@@ -351,10 +348,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         }
         guard let running else { launch(entry); return }
         if running.isActive && !running.isHidden {
-            if !running.hide() { actionStatus.title = "Could not hide \(entry.name)." }
+            if !running.hide() { settingsModel.lastActionStatus = "Could not hide \(entry.name)." }
         } else {
             running.unhide()
-            if !running.activate() { actionStatus.title = "Could not activate \(entry.name)." }
+            if !running.activate() { settingsModel.lastActionStatus = "Could not activate \(entry.name)." }
         }
     }
 
@@ -372,6 +369,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     private func applyConfiguration(_ configuration: Configuration) {
         let remapChanged = settingsModel.configuration.capsLockToF19Enabled != configuration.capsLockToF19Enabled
         settingsModel.configuration = configuration
+        menuBarClock?.configure(configuration.menuBarClock)
         hotkey.configure(appShortcuts: configuration.applications.compactMapValues { $0.isEnabled ? $0.hotkey : nil })
         let roots = configuration.applicationRoots.map(Configuration.fileURL)
         if roots != catalog.roots || catalog.entries.isEmpty { catalog.roots = roots; catalog.refresh() }

@@ -20,3 +20,5 @@
 - Alias cells/inspector edit on double-click; Enter saves, Escape discards, and × removes. Script execution keeps its current launcher view while running and offers failure text/Edit Input on failure. Never retry automatically or let a late result overwrite newer input/reopen a dismissed panel.
 
 - Local Settings shortcuts: Cmd+, and owner-requested Cmd+P; Esc cancels an inline edit first, otherwise closes Settings. Remember caffeine mode/deadline locally across normal exits. Hiding the launcher clears its error/input and invalidates late completion; never show that stale error on reopen.
+
+- Calendar experiment: `codex/day0-calendar-experiment` uses the clock as the single upper-menu-bar Uficast button. Match Day-O with native NSDatePicker, compact menus, format/Show Icon settings and seconds aligned to system boundaries. No Dock addition. Keep experimental work out of main until accepted.

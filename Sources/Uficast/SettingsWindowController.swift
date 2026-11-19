@@ -12,6 +12,7 @@ final class SettingsModel: ObservableObject {
     @Published var searchFocusRequest = 0
     @Published var selectedID: String?
     @Published var status = "Loading settings…"
+    @Published var lastActionStatus = "No recent actions."
     @Published var shortcutStatus = ""
     @Published var isBusy = true
     @Published var isReadOnly = false
@@ -322,6 +323,8 @@ private struct SettingsView: View {
                 Text(model.loginItemStatus).font(.caption).foregroundStyle(.secondary)
                 Button("Login Items…") { LoginItemService.openSettings() }
                 Divider()
+                MenuBarClockSettings(model: model)
+                Divider()
                 Text("Launcher").font(.title2.bold())
                 Text("Command + Space · Either Command key")
                 Text("No Accessibility or Input Monitoring access is required.").foregroundStyle(.secondary)
@@ -378,6 +381,7 @@ private struct SettingsView: View {
                 }.disabled(model.isBusy)
                 Divider()
                 Text("Recent Runs").font(.title2.bold())
+                Text(model.lastActionStatus).font(.caption).textSelection(.enabled)
                 ForEach(model.activeScripts.keys.sorted(), id: \.self) { id in
                     HStack {
                         Text("Running: \(model.activeScripts[id] ?? "Script")")
