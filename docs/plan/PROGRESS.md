@@ -163,6 +163,13 @@ Stage 6l owner-requested calendar work is recorded below; the earlier daily-use 
 - **51 core tests passed**, including fake-backend acquire/renew/release, expiry, failure and restore checks; warm search p95 **20.03 ms**. Isolated/canonical release builds and strict ad-hoc signature checks passed. The canonical app was normally quit before replacement and reopened through the desktop tool.
 - The owner's already-active caffeine session restored after relaunch. General visibly showed Keep Mac awake checked, Awake until stopped and the revised screen-and-Mac guidance. Read-only pmset then showed a live Uficast-owned **PreventUserIdleDisplaySleep** assertion and global PreventUserIdleDisplaySleep = 1. No extra manual power toggle was performed. This verifies actual native assertion creation/restoration, not a controlled long idle, battery/lid or stop/expiry session.
 
+### Caffeine follow-up observation
+
+- On the owner's request to continue, performed read-only checks without changing app/system state. pmset showed the same Uficast-owned PreventUserIdleDisplaySleep assertion active for **19 minutes 31 seconds** at 20:49:58 (America/Los_Angeles). The corrected native assertion was still present.
+- Read the power-management log for actual Display is turned on/off and Entering Sleep events. The latest recorded display-off event was **20:06:01**, followed by display-on at **20:11:17**, both before the corrected app's approximately 20:30 launch. No later display-off or system-sleep event appeared in the retrieved log.
+- The current AC profile already had displaysleep=0 and sleep=0; these settings were only read. Recent user activity was also present, so this is continued-running/log evidence, not a controlled idle-prevention acceptance test. IODisplayWrangler did not expose matching power-state properties on this Mac; no success is claimed for that optional query.
+- No new code change, rebuild, restart, power toggle or test rerun was needed. The corrected implementation remains checkpoint 8d18892. The remaining exact next step below is unchanged.
+
 **Exact next step:** owner checks normal idle use with caffeine active and confirms the screen stays on, then verifies stop/expiry restores normal idle behavior. If it still goes black, record the time and distinguish an automatic display-off event from screen saver/lock or explicit system sleep in the system log. Other daily-use/manual gaps remain open.
 
 
