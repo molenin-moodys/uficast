@@ -59,8 +59,20 @@ public struct Configuration: Codable, Equatable, Sendable {
     public var applicationRoots: [String] = ["/Applications", "/System/Applications", "~/Applications"]
     public var applications: [String: AppOverride] = [:]
     public var scripts: [ScriptCommand] = []
+    public var capsLockToF19Enabled = false
 
     public init() {}
+
+    private enum CodingKeys: String, CodingKey { case schemaVersion, applicationRoots, applications, scripts, capsLockToF19Enabled }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try values.decode(Int.self, forKey: .schemaVersion)
+        applicationRoots = try values.decode([String].self, forKey: .applicationRoots)
+        applications = try values.decode([String: AppOverride].self, forKey: .applications)
+        scripts = try values.decode([ScriptCommand].self, forKey: .scripts)
+        capsLockToF19Enabled = try values.decodeIfPresent(Bool.self, forKey: .capsLockToF19Enabled) ?? false
+    }
 
     public static func fileURL(_ path: String) -> URL {
         URL(fileURLWithPath: (path as NSString).expandingTildeInPath).standardizedFileURL

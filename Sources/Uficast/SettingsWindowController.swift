@@ -5,6 +5,7 @@ import UficastCore
 @MainActor
 final class SettingsModel: ObservableObject {
     @Published var configuration = Configuration()
+    @Published var section = "Commands"
     @Published var catalogEntries: [LauncherEntry] = []
     @Published var query = ""
     @Published var filter = "All"
@@ -25,6 +26,14 @@ final class SettingsModel: ObservableObject {
     @Published var recentRuns: [String] = []
     @Published var activeScripts: [String: String] = [:]
     var onCancelScript: ((String) -> Void)?
+    @Published var keyboardStatus = "Caps Lock remapping is disabled."
+    @Published var isKeyboardBusy = false
+    @Published var loginItemRegistered = false
+    @Published var loginItemStatus = "Start at login is disabled."
+    @Published var isLoginItemBusy = false
+    var onSetCapsLock: ((Bool) -> Void)?
+    var onCheckKeyboard: (() -> Void)?
+    var onSetLoginItem: ((Bool) -> Void)?
 
     var entries: [LauncherEntry] {
         configuration.entries(catalog: catalogEntries).filter {
@@ -98,7 +107,6 @@ final class SettingsWindowController: NSWindowController {
 
 private struct SettingsView: View {
     @ObservedObject var model: SettingsModel
-    @State private var section = "Commands"
     @State private var alias = ""
     @State private var roots = ""
 
@@ -112,7 +120,7 @@ private struct SettingsView: View {
             .frame(maxWidth: .infinity)
             .background(.bar)
             Divider()
-            if section == "General" { general } else { commands }
+            if model.section == "General" { general } else { commands }
             Divider()
             HStack {
                 if model.isBusy { ProgressView().controlSize(.small) }
@@ -128,13 +136,13 @@ private struct SettingsView: View {
     }
 
     private func sectionButton(_ title: String, icon: String) -> some View {
-        Button { section = title } label: {
+        Button { model.section = title } label: {
             VStack(spacing: 6) {
                 Image(systemName: icon).font(.system(size: 25))
                 Text(title).font(.system(size: 14, weight: .semibold))
             }
             .frame(width: 110, height: 62)
-            .background(section == title ? Color.primary.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 14))
+            .background(model.section == title ? Color.primary.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 14))
         }.buttonStyle(.plain)
     }
 
@@ -211,6 +219,20 @@ private struct SettingsView: View {
                 }
                 Text("If Spotlight or Raycast uses the same shortcut, release it in their settings. Uficast does not change those assignments.")
                     .font(.caption).foregroundStyle(.secondary)
+                Divider()
+                Text("Keyboard").font(.title2.bold())
+                Toggle("Map Caps Lock to F19", isOn: Binding(get: { model.configuration.capsLockToF19Enabled }, set: { model.onSetCapsLock?($0) }))
+                    .disabled(model.isBusy || model.isReadOnly || model.isKeyboardBusy)
+                Text(model.keyboardStatus).font(.callout)
+                Text("Then assign F19 in Keyboard Shortcuts → Input Sources to switch between your two layouts. Uficast preserves other mappings and restores only its own on normal quit.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("Check Current Mapping") { model.onCheckKeyboard?() }.disabled(model.isKeyboardBusy)
+                Divider()
+                Text("Startup").font(.title2.bold())
+                Toggle("Start Uficast at login", isOn: Binding(get: { model.loginItemRegistered }, set: { model.onSetLoginItem?($0) }))
+                    .disabled(model.isLoginItemBusy)
+                Text(model.loginItemStatus).font(.caption).foregroundStyle(.secondary)
+                Button("Login Items…") { LoginItemService.openSettings() }
                 Divider()
                 Text("Application Folders").font(.title2.bold())
                 Text("One folder or application path per line. Paths may start with ~/.").foregroundStyle(.secondary)

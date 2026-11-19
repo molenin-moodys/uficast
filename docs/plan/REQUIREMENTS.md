@@ -17,6 +17,7 @@ Recorded on November 18, 2026; updated the same day to ordinary Cmd+Space with n
 | Reference workflow | `k` → Tab → input for Kibana's `log_stream` → Enter → script → browser URL. |
 | UI | As close to the supplied Raycast references as practical; English text. |
 | Keyboard | Two input sources already configured in macOS. Eliminate the current Caps Lock switching delay; Caps Lock → F19 plus a system shortcut is sufficient. |
+| Keep Awake (added November 18) | Built-in Caffeine-style prevention of idle Mac sleep; native app-owned power assertion. |
 | Deferred | Kasa/Shortcuts integration. |
 | Continuity | English plan in the repository, committed to Git; implementation can span sessions. |
 

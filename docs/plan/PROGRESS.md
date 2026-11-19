@@ -14,7 +14,7 @@ The owner requested autonomous implementation while context permits. Native scaf
 | 3 — Settings/persistence/aliases | Implemented; desktop acceptance pending | 11 tests pass; release builds. Manual UI/restart flow remains pending. |
 | 4 — Script runner | Implemented; app-controlled Automation checks pending | Native process-group runner, editor, run/cancel/history, shell and AppleScript fixtures pass. |
 | 5 — Inline argument/URL workflow | Implemented; desktop workflow pending | Native NSTextView input and explicit URL mode; 22 tests pass and offscreen previews inspected. |
-| 6 — Caps Lock/login lifecycle | Not started | Depends on lifecycle/settings. |
+| 6 — Caps Lock/login lifecycle | Implemented; real system acceptance pending | 28 tests pass; real mapping/login items were not changed. |
 | 7 — Daily-use validation/handoff | Not started | Requires actual desktop acceptance. |
 
 ## Environment and implemented paths
@@ -62,9 +62,17 @@ The owner requested autonomous implementation while context permits. Native scaf
 - Offscreen native launcher, argument and Settings PNGs were rendered and visually inspected under .build/previews. Fixed token sizing and hosted control/background rendering. These are deterministic fixture previews with no hotkey registration or grants, and do not establish real keyboard/paste/focus/browser behavior.
 - Read-only hidutil property --get UserKeyMapping returned (null). No mapping was applied.
 
+## Stage 6 validation
+
+- Caps Lock → F19 uses hidutil through the bounded native utility runner. Ownership is recorded atomically before a write; unrelated entries survive, existing identical mappings stay externally owned, competing Caps Lock maps are rejected, and disable/quit restores only a still-owned entry. Failed verification retains recovery state.
+- Registry-only IOKit device lifecycle notifications and wake events trigger reconciliation. No HID devices are opened and no keyboard input is observed.
+- Preferences default off, including legacy schema-1 decoding. Settings exposes the explicit toggle, current-map read and F19/system shortcut guidance. Native SMAppService provides optional start-at-login with actual enabled/pending/disabled status.
+- 28 tests pass, including remapping ownership/restart/failure fixtures and literal utility argv. Release build/signing passed. Actual hidutil writes, input-source latency, device reconnect and login-item registration remain untested by design.
+- Offscreen General, script editor and dark argument previews generated. Script-editor header/footer background needs the same explicit root background as Settings (transparent offscreen regions); real desktop remains pending.
+
 ## Next action
 
-Implement Stage 6 Caps Lock → F19 ownership/recovery with fixture-only write tests, explicit Settings toggle and system-shortcut guidance, plus optional SMAppService start-at-login. Never request Accessibility/Input Monitoring or alter actual mappings/login settings merely to validate source.
+Owner added a built-in Caffeine / Keep Awake feature. Implement Stage 6b with native IOPM assertions (no Accessibility or caffeinate subprocess), explicit menu toggle and optional session duration, default off and no automatic restore across app launches. Test with an injected fake assertion backend. Then finish clean-source build and Stage 7 handoff.
 
 ## Remaining evidence gaps
 

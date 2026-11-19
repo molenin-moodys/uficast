@@ -1,11 +1,12 @@
 import AppKit
+import SwiftUI
 import UficastCore
 
 @main
 struct UficastMain {
     @MainActor
     static func main() {
-        if let flag = CommandLine.arguments.firstIndex(where: { $0 == "--preview-launcher" || $0 == "--preview-settings" }) {
+        if let flag = CommandLine.arguments.firstIndex(where: { ["--preview-launcher", "--preview-settings", "--preview-script-editor"].contains($0) }) {
             guard CommandLine.arguments.indices.contains(flag + 1) else {
                 print("Provide an output PNG path for the preview.")
                 exit(2)
@@ -13,6 +14,7 @@ struct UficastMain {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)
             application.finishLaunching()
+            if CommandLine.arguments.contains("--dark") { application.appearance = NSAppearance(named: .darkAqua) }
             let path = URL(fileURLWithPath: CommandLine.arguments[flag + 1])
             do {
                 if CommandLine.arguments[flag] == "--preview-launcher" {
@@ -21,12 +23,23 @@ struct UficastMain {
                     let model = SettingsModel()
                     model.isBusy = false
                     model.status = "Settings ready."
+                    if CommandLine.arguments.contains("--general") { model.section = "General" }
                     model.configuration.scripts = [ScriptCommand(name: "Kibana", alias: "k", path: "/tmp/fixture.py")]
                     model.catalogEntries = [
                         LauncherEntry(id: "fixture-kitty", name: "kitty", fileURL: URL(fileURLWithPath: "/tmp/kitty.app")),
                         LauncherEntry(id: "fixture-browser", name: "Browser", fileURL: URL(fileURLWithPath: "/tmp/Browser.app")),
                     ]
-                    try SettingsWindowController(model: model).renderPreview(to: path)
+                    if CommandLine.arguments[flag] == "--preview-script-editor" {
+                        var command = model.configuration.scripts[0]
+                        command.requiresArgument = true
+                        command.argumentPlaceholder = "log_stream"
+                        command.interpreter = "/usr/bin/python3"
+                        command.resultMode = .openURL
+                        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 680, height: 720),
+                                              styleMask: [.borderless], backing: .buffered, defer: false)
+                        window.contentView = NSHostingView(rootView: ScriptEditor(model: model, script: command))
+                        try ViewPreview.write(window.contentView!, to: path)
+                    } else { try SettingsWindowController(model: model).renderPreview(to: path) }
                 }
                 print("Wrote offscreen preview: \(path.path)")
             } catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }

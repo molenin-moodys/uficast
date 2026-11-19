@@ -12,6 +12,12 @@ final class AppController: NSObject, NSApplicationDelegate {
     private let statusLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let configStore = ConfigStore()
     private let scriptRunner = ScriptRunner()
+    private let keyboard = KeyboardRemapService()
+    private let devices = KeyboardDeviceObserver()
+    private var didLoadConfiguration = false
+    private var didReconcileKeyboard = false
+    private var isTerminating = false
+    private var cancelledScripts: Set<String> = []
     private let settingsModel = SettingsModel()
     private lazy var settings = SettingsWindowController(model: settingsModel)
 
@@ -50,22 +56,45 @@ final class AppController: NSObject, NSApplicationDelegate {
         settingsModel.onExport = { [weak self] in self?.exportConfiguration() }
         settingsModel.onRestore = { [weak self] in self?.restoreConfiguration() }
         settingsModel.onCancelScript = { [weak self] id in
+            self?.cancelledScripts.insert(id)
             Task { await self?.scriptRunner.cancel(id) }
         }
+        settingsModel.onSetCapsLock = { [weak self] enabled in
+            guard let self else { return }
+            var config = self.settingsModel.configuration
+            config.capsLockToF19Enabled = enabled
+            self.saveConfiguration(config)
+        }
+        settingsModel.onCheckKeyboard = { [weak self] in self?.checkKeyboard() }
+        settingsModel.onSetLoginItem = { [weak self] in self?.setLoginItem($0) }
+        updateLoginItemStatus()
+        devices.onChange = { [weak self] in self?.reconcileKeyboard() }
+        devices.start()
         loadConfiguration()
         NSWorkspace.shared.notificationCenter.addObserver(
-            self, selector: #selector(retryShortcut), name: NSWorkspace.didWakeNotification, object: nil
+            self, selector: #selector(resumeServices), name: NSWorkspace.didWakeNotification, object: nil
         )
         if CommandLine.arguments.contains("--show") { launcher.show() }
     }
 
-    func applicationWillTerminate(_ notification: Notification) { hotkey.stop() }
+    func applicationWillTerminate(_ notification: Notification) { hotkey.stop(); devices.stop() }
+
+    func applicationDidBecomeActive(_ notification: Notification) { updateLoginItemStatus() }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        launcher.show()
+        return false
+    }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard !settingsModel.activeScripts.isEmpty else { return .terminateNow }
+        guard !isTerminating else { return .terminateLater }
+        isTerminating = true
+        devices.stop()
         Task {
             await scriptRunner.cancelAll()
             await scriptRunner.waitUntilIdle()
+            await keyboard.waitUntilIdle()
+            if !settingsModel.isReadOnly { _ = try? await keyboard.reconcile(enabled: false) }
             NSApp.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
@@ -75,6 +104,45 @@ final class AppController: NSObject, NSApplicationDelegate {
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func retryShortcut() { hotkey.start() }
     @objc private func refreshCatalog() { catalog.refresh() }
+    @objc private func resumeServices() { hotkey.start(); reconcileKeyboard() }
+
+    private func reconcileKeyboard() {
+        guard didLoadConfiguration, !isTerminating, !settingsModel.isReadOnly, !settingsModel.isKeyboardBusy else { return }
+        settingsModel.isKeyboardBusy = true
+        let enabled = settingsModel.configuration.capsLockToF19Enabled
+        Task {
+            do { settingsModel.keyboardStatus = try await keyboard.reconcile(enabled: enabled) }
+            catch { settingsModel.keyboardStatus = error.localizedDescription }
+            settingsModel.isKeyboardBusy = false
+        }
+    }
+
+    private func checkKeyboard() {
+        guard !settingsModel.isKeyboardBusy else { return }
+        settingsModel.isKeyboardBusy = true
+        Task {
+            do { settingsModel.keyboardStatus = try await keyboard.checkStatus() }
+            catch { settingsModel.keyboardStatus = error.localizedDescription }
+            settingsModel.isKeyboardBusy = false
+        }
+    }
+
+    private func updateLoginItemStatus() {
+        let status = LoginItemService.status()
+        settingsModel.loginItemRegistered = status.registered
+        settingsModel.loginItemStatus = status.message
+    }
+
+    private func setLoginItem(_ enabled: Bool) {
+        guard !settingsModel.isLoginItemBusy else { return }
+        settingsModel.isLoginItemBusy = true
+        Task {
+            do { try await LoginItemService.setEnabled(enabled) }
+            catch { settingsModel.status = "Login-item update failed: \(error.localizedDescription)" }
+            updateLoginItemStatus()
+            settingsModel.isLoginItemBusy = false
+        }
+    }
 
     private func launch(_ entry: LauncherEntry) {
         if entry.kind == .script {
@@ -115,13 +183,16 @@ final class AppController: NSObject, NSApplicationDelegate {
             launcher.showInputError("The command's argument settings changed. Select it again."); return
         }
         settingsModel.activeScripts[id] = command.name
+        cancelledScripts.remove(id)
         actionStatus.title = "Running \(command.name)…"
         launcher.dismiss(restoreFocus: false)
         Task {
             let message: String
             do {
                 let result = try await scriptRunner.run(command, argument: argument)
-                if result.succeeded {
+                if isTerminating || cancelledScripts.contains(id) {
+                    message = "\(command.name): cancelled."
+                } else if result.succeeded {
                     if command.resultMode == .openURL {
                         let url = try result.outputURL()
                         guard NSWorkspace.shared.open(url) else { throw ScriptRunError.invalidURL }
@@ -142,6 +213,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                 }
             } catch { message = "\(command.name): \(error.localizedDescription)" }
             settingsModel.activeScripts[id] = nil
+            cancelledScripts.remove(id)
             settingsModel.recentRuns.insert(message, at: 0)
             settingsModel.recentRuns = Array(settingsModel.recentRuns.prefix(10))
             actionStatus.title = String(message.prefix(180))
@@ -164,16 +236,23 @@ final class AppController: NSObject, NSApplicationDelegate {
     }
 
     private func applyConfiguration(_ configuration: Configuration) {
+        let remapChanged = settingsModel.configuration.capsLockToF19Enabled != configuration.capsLockToF19Enabled
         settingsModel.configuration = configuration
         let roots = configuration.applicationRoots.map(Configuration.fileURL)
         if roots != catalog.roots || catalog.entries.isEmpty { catalog.roots = roots; catalog.refresh() }
         updateEntries()
+        if remapChanged || !didReconcileKeyboard {
+            didReconcileKeyboard = true
+            reconcileKeyboard()
+        }
     }
 
     private func loadConfiguration() {
         Task {
             do {
-                applyConfiguration(try await configStore.load())
+                let config = try await configStore.load()
+                didLoadConfiguration = true
+                applyConfiguration(config)
                 settingsModel.status = "Settings ready."
             } catch {
                 settingsModel.isReadOnly = true
@@ -236,8 +315,11 @@ final class AppController: NSObject, NSApplicationDelegate {
         settingsModel.isBusy = true
         Task {
             do {
-                applyConfiguration(try await configStore.restoreBackup())
+                let config = try await configStore.restoreBackup()
                 settingsModel.isReadOnly = false
+                didLoadConfiguration = true
+                didReconcileKeyboard = false
+                applyConfiguration(config)
                 settingsModel.status = "Backup restored. The previous file was preserved."
             } catch { settingsModel.status = "Recovery failed: \(error.localizedDescription)" }
             settingsModel.isBusy = false

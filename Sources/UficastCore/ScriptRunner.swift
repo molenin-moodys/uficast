@@ -88,21 +88,26 @@ private final class NativeRun: @unchecked Sendable {
     func cancel() { uf_process_cancel(process) }
 
     func execute(_ command: ScriptCommand, argument: String?) async throws -> ScriptResult {
+        let script = Configuration.fileURL(command.path)
+        let interpreter = command.interpreter.map { Configuration.fileURL($0).path }
+        var arguments = interpreter != nil ? [script.path] : []
+        if let argument { arguments.append(argument) }
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        environment.merge(command.environment) { _, override in override }
+        let directory = command.workingDirectory.map { Configuration.fileURL($0).path } ?? script.deletingLastPathComponent().path
+        return try await execute(executable: interpreter ?? script.path, arguments: arguments,
+                                 environment: environment, directory: directory, timeout: command.timeoutSeconds)
+    }
+
+    func execute(executable: String, arguments: [String], environment: [String: String],
+                 directory: String, timeout: Double) async throws -> ScriptResult {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .utility).async { [self] in
-                let script = Configuration.fileURL(command.path)
-                let interpreter = command.interpreter.map { Configuration.fileURL($0).path }
-                let executable = interpreter ?? script.path
-                var arguments = [executable]
-                if interpreter != nil { arguments.append(script.path) }
-                if let argument { arguments.append(argument) }
-                var environment = ProcessInfo.processInfo.environment
-                environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-                environment.merge(command.environment) { _, override in override }
-                let directory = command.workingDirectory.map { Configuration.fileURL($0).path } ?? script.deletingLastPathComponent().path
+                let arguments = [executable] + arguments
                 let code = Self.withCStringArray(arguments) { argv in
                     Self.withCStringArray(environment.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }) { env in
-                        uf_process_run(process, executable, argv, env, directory, command.timeoutSeconds, 1024 * 1024)
+                        uf_process_run(process, executable, argv, env, directory, timeout, 1024 * 1024)
                     }
                 }
                 guard code == 0 else { continuation.resume(throwing: ScriptRunError.system(code)); return }
@@ -131,5 +136,22 @@ private final class NativeRun: @unchecked Sendable {
         defer { pointers.forEach { free($0) } }
         guard !pointers.dropLast().contains(where: { $0 == nil }) else { return ENOMEM }
         return pointers.withUnsafeMutableBufferPointer { body($0.baseAddress!) }
+    }
+}
+
+
+/// Fixed executable/argv utility calls reuse the same bounded native worker.
+public enum LocalProcess {
+    public static func run(executable: String, arguments: [String], timeout: Double = 5) async throws -> ScriptResult {
+        try Task.checkCancellation()
+        guard executable.hasPrefix("/"), !executable.contains("\0"),
+              !arguments.contains(where: { $0.contains("\0") }), timeout.isFinite, timeout > 0 else {
+            throw ConfigError.invalid("Invalid utility process parameters.")
+        }
+        let session = try NativeRun()
+        return try await withTaskCancellationHandler {
+            try await session.execute(executable: executable, arguments: arguments,
+                                      environment: ProcessInfo.processInfo.environment, directory: "/", timeout: timeout)
+        } onCancel: { session.cancel() }
     }
 }

@@ -5,3 +5,5 @@ dist/
 *.xcuserstate
 local/
 *.log
+__pycache__/
+uficast-config*.json
