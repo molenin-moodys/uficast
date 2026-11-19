@@ -153,6 +153,7 @@ Stage 6l owner-requested calendar work is recorded below; the earlier daily-use 
 - Owner explicitly requested merging and pushing the experiment. Verified origin HEAD points to main at 7ebcf04, fetched origin and confirmed local/remote main had no divergence. The working tree was clean.
 - Fast-forward merged codex/day0-calendar-experiment into main through 72d765c, retaining all four experiment commits without conflicts or rewriting history. Reviewed the changed-file list and diff whitespace; no build output, personal configuration, Day-O resources or private screenshots are included.
 - Updated README and continuity documents to reflect approved integration. Existing release/signature, 51-core-test and native menu/clock evidence applies to the unchanged implementation; no redundant build/test or app restart was needed for this merge/documentation-only step. Manual acceptance gaps remain open.
+- Integration checkpoint **9d0f615** was successfully pushed to origin/main; local HEAD and origin/main matched afterward. Publication used existing gh HTTPS credentials via command-scoped settings, without changing the configured remote/global Git settings. The source experiment branch is retained.
 
 **Exact next step:** continue owner-led daily use on main: compare the running status menu with Day-O, check month navigation/Today, seconds and preference persistence. If automatic system sleep recurs while caffeine is on, record the time and inspect the system sleep reason. Do not mark these manual checks complete from merge approval.
 
