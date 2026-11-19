@@ -348,7 +348,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     }
 
     /// The display of the focused app's front window, else the one under the pointer.
-    private static func targetScreen(for application: NSRunningApplication?) -> NSScreen? {
+    static func targetScreen(for application: NSRunningApplication?) -> NSScreen? {
         let screens = NSScreen.screens
         guard let primary = screens.first else { return NSScreen.main }
         let window = application.flatMap { frontWindowBounds(pid: $0.processIdentifier) }

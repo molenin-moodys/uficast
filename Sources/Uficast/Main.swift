@@ -48,6 +48,19 @@ struct UficastMain {
             } catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
             return
         }
+        if CommandLine.arguments.contains("--verify-ai-text") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try AITextVerification.run()
+                print("PASS: AI text rich-text round trip, pasteboards and result panel controls.")
+            } catch {
+                FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
+            return
+        }
         if CommandLine.arguments.contains("--verify-keyboard-shortcuts") {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)
