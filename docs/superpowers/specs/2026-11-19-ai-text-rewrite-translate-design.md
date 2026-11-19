@@ -1,6 +1,6 @@
 # AI text rewrite and translation
 
-Status: draft, awaiting owner approval. Date: November 19, 2026.
+Status: approved by the owner on November 19, 2026. Spike done (see the end).
 
 ## Intent
 
@@ -129,3 +129,14 @@ With the owner's approval, run the default command once on a neutral sentence (o
 - Esc during "Working…" and while the result is shown, in both entry points.
 - Command errors: wrong model name, missing CLI.
 - A Codex command, if the owner installs Codex.
+
+## Spike result (November 19, 2026, owner-approved, two Haiku calls)
+
+Prompt: a rewrite instruction plus one English sentence with errors and two span markers, sent on stdin through `/bin/zsh -lc` from an empty folder.
+
+| Variant | Time | stdout | Markers |
+| --- | --- | --- | --- |
+| `claude -p --model claude-haiku-5-5 --tools "" --strict-mcp-config --disable-slash-commands --no-session-persistence` | 5.14 s | only the rewritten sentence | kept |
+| the same plus `--setting-sources project,local` | 2.78 s | only the rewritten sentence | kept |
+
+Both passed the go limit (≤ 10 s, clean stdout); stderr was empty. The model ID `claude-haiku-5-5` was accepted, and the OAuth login worked without user settings. Two files under `~/.claude` changed during the spike (a plugin timer log and a plugin store file); neither contains the sample text. **Default command chosen:** the second variant, because it is faster and keeps the owner's user hooks and plugins out of the prompt. Two calls are not a latency distribution; the 10 s limit is still checked in daily use.
