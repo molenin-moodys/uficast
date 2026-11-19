@@ -6,7 +6,8 @@ let package = Package(
     platforms: [.macOS(.v26)],
     products: [.executable(name: "Uficast", targets: ["Uficast"])],
     targets: [
-        .target(name: "UficastCore"),
+        .target(name: "UficastProcess"),
+        .target(name: "UficastCore", dependencies: ["UficastProcess"]),
         .executableTarget(name: "Uficast", dependencies: ["UficastCore"]),
         .testTarget(name: "UficastCoreTests", dependencies: ["UficastCore"]),
     ]

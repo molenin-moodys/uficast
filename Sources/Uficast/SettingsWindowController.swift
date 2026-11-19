@@ -13,6 +13,8 @@ final class SettingsModel: ObservableObject {
     @Published var shortcutStatus = ""
     @Published var isBusy = true
     @Published var isReadOnly = false
+    @Published var scriptDraft: ScriptCommand?
+    @Published var saveRevision = 0
     var onSave: ((Configuration) -> Void)?
     var onRefresh: (() -> Void)?
     var onRetryShortcut: (() -> Void)?
@@ -20,6 +22,9 @@ final class SettingsModel: ObservableObject {
     var onImport: (() -> Void)?
     var onExport: (() -> Void)?
     var onRestore: (() -> Void)?
+    @Published var recentRuns: [String] = []
+    @Published var activeScripts: [String: String] = [:]
+    var onCancelScript: ((String) -> Void)?
 
     var entries: [LauncherEntry] {
         configuration.entries(catalog: catalogEntries).filter {
@@ -84,6 +89,11 @@ final class SettingsWindowController: NSWindowController {
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
     }
+
+    func renderPreview(to url: URL) throws {
+        guard let view = window?.contentView else { return }
+        try ViewPreview.write(view, to: url)
+    }
 }
 
 private struct SettingsView: View {
@@ -111,8 +121,10 @@ private struct SettingsView: View {
             }.padding(12)
         }
         .onAppear { loadDrafts() }
+        .background(Color(nsColor: .windowBackgroundColor))
         .onChange(of: model.selectedID) { _, _ in alias = model.selected?.alias ?? "" }
         .onChange(of: model.configuration) { _, _ in loadDrafts() }
+        .sheet(item: $model.scriptDraft) { draft in ScriptEditor(model: model, script: draft) }
     }
 
     private func sectionButton(_ title: String, icon: String) -> some View {
@@ -133,8 +145,10 @@ private struct SettingsView: View {
                 Picker("Type", selection: $model.filter) {
                     ForEach(["All", "Apps", "Scripts"], id: \.self) { Text($0) }
                 }.pickerStyle(.segmented).labelsHidden().frame(width: 250)
-                Button { model.onAddApp?() } label: { Image(systemName: "plus") }
-                    .help("Add an application outside the indexed folders")
+                Menu {
+                    Button("Add Script…") { model.scriptDraft = ScriptCommand(name: "New Script", path: "", interpreter: "/bin/zsh") }
+                    Button("Add Application…") { model.onAddApp?() }
+                } label: { Image(systemName: "plus") }
                     .disabled(model.isBusy || model.isReadOnly)
             }.padding(16)
             Divider()
@@ -168,6 +182,15 @@ private struct SettingsView: View {
                         .onSubmit { model.saveAlias(alias, for: selected) }
                     Button("Apply") { model.saveAlias(alias, for: selected) }
                         .disabled(model.isBusy || model.isReadOnly)
+                    if selected.kind == .script {
+                        Button("Edit…") { model.scriptDraft = model.configuration.scripts.first { $0.entry.id == selected.id } }
+                            .disabled(model.isBusy || model.isReadOnly)
+                        Button("Delete", role: .destructive) {
+                            var config = model.configuration
+                            config.scripts.removeAll { $0.entry.id == selected.id }
+                            model.onSave?(config)
+                        }.disabled(model.isBusy || model.isReadOnly)
+                    }
                 }.padding(16)
             }
         }
@@ -210,6 +233,18 @@ private struct SettingsView: View {
                     Button("Export…") { model.onExport?() }
                     Button("Restore Backup") { model.onRestore?() }
                 }.disabled(model.isBusy)
+                Divider()
+                Text("Recent Runs").font(.title2.bold())
+                ForEach(model.activeScripts.keys.sorted(), id: \.self) { id in
+                    HStack {
+                        Text("Running: \(model.activeScripts[id] ?? "Script")")
+                        Button("Cancel") { model.onCancelScript?(id) }
+                    }
+                }
+                if model.recentRuns.isEmpty { Text("No runs yet.").foregroundStyle(.secondary) }
+                ForEach(Array(model.recentRuns.enumerated()), id: \.offset) { _, run in
+                    Text(run).font(.caption).textSelection(.enabled)
+                }
             }.padding(28).frame(maxWidth: .infinity, alignment: .leading)
         }
     }

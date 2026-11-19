@@ -2,7 +2,7 @@
 
 A personal, native macOS launcher for applications and local scripts, inspired by the small subset of Raycast its owner uses.
 
-**Status:** native app catalog and fuzzy search implemented; persistent settings/aliases are implemented; scripts are next. Global shortcut delivery and desktop UI acceptance remain pending manual verification.
+**Status:** native app catalog and fuzzy search implemented; persistent settings/aliases and argument scripts are implemented; Caps Lock/login lifecycle is next. Global shortcut delivery and desktop UI acceptance remain pending manual verification.
 
 ## Agreed scope
 
@@ -53,3 +53,26 @@ Application discovery uses `/Applications`, `/System/Applications` and `~/Applic
 Open **Settings… → Commands**, select an app, enter an alias and click **Apply**. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General contains application roots, refresh, import/export and backup recovery.
 
 Private JSON lives in `~/Library/Application Support/Uficast/config.json`, with `config.backup.json`. Saves are atomic. Corrupt/unsupported files are preserved and editing is disabled; explicit backup recovery preserves the replaced file as `config.recovered-<id>.json`. A future schema cannot be overwritten by this older app. Export/import preserves machine-specific paths; locate missing scripts/apps on the new Mac.
+
+## Script commands
+
+In Commands, use **+ → Add Script…**. Choose a local script, set its interpreter (for example `/bin/zsh`, `/bin/bash`, `/usr/bin/osascript`, or `/usr/bin/python3`) and an alias. An empty interpreter runs an executable file using its shebang. Selection offers **Edit…** and **Delete**; deleting a command leaves its source file intact.
+
+For the `k` workflow, configure [browser-search.py](examples/browser-search.py), interpreter `/usr/bin/python3`, alias `k`, one required argument, placeholder `log_stream`, and **Open stdout URL in browser**. In the launcher: `k` → Tab → Cmd+V → Enter. This example generates an encoded example.com URL; it does not contain a real Kibana endpoint. [Shell](examples/echo-argument.sh) and [AppleScript](examples/echo-argument.applescript) examples are also included.
+
+Default result handling runs for side effects and ignores stdout (the script can call `/usr/bin/open` itself). URL mode opens exactly one valid HTTP(S) URL only after exit code zero. Arguments are passed as one argv value; `.zshrc` is not sourced. PATH includes Homebrew and standard system directories; per-command environment overrides are supported. The default working directory is the script folder and the default timeout is 30 seconds.
+
+General → Recent Runs shows active commands, Cancel controls and the ten most recent outcomes in memory. Each command can run once concurrently; different commands can overlap. Output capture is bounded to 1 MiB per stream while both pipes continue draining. Normal quit cancels managed process groups; deliberately detached daemons and force-quit/crash cleanup are outside that guarantee. AppleScript controlling other applications may need **Automation** consent; scripts depending on Accessibility are unsupported under the no-Accessibility requirement.
+
+## Development previews
+
+After a build, these commands render fixture views offscreen without registering shortcuts or modifying user configuration:
+
+```sh
+mkdir -p .build/previews
+dist/Uficast.app/Contents/MacOS/Uficast --preview-launcher .build/previews/launcher.png
+dist/Uficast.app/Contents/MacOS/Uficast --preview-launcher .build/previews/argument.png --argument
+dist/Uficast.app/Contents/MacOS/Uficast --preview-settings .build/previews/settings.png
+```
+
+Previews verify layout; desktop keyboard delivery, focus, paste and browser behavior require the manual checklist.

@@ -90,7 +90,7 @@ The implemented schemaVersion 1 currently contains applicationRoots, application
 
 ## Script execution
 
-- Use `Process` with an executable URL and an argument array. Shell: interpreter, script path, then optional argument. AppleScript: `/usr/bin/osascript`, script path, then optional argument, consumed by `on run argv`. Executable/shebang scripts: file URL and optional argument.
+- Implemented deviation: use a small C `posix_spawn` worker wrapped by the Swift ScriptRunner actor so process groups and descendant cleanup are explicit. All execution still uses an executable and an argument array; no shell interpolation. Shell: interpreter, script path, then optional argument. AppleScript: `/usr/bin/osascript`, script path, then optional argument, consumed by `on run argv`. Executable/shebang scripts: file URL and optional argument.
 - Never interpolate the user's input into `sh -c`, `eval`, or AppleScript source. Empty optional/no-argument commands receive no extra argv element.
 - Default working directory to the script's parent directory. Use an explicit, configurable PATH including `/opt/homebrew/bin`, `/usr/local/bin`, and standard system directories; don't silently source `.zshrc`. Allow per-command environment overrides without writing values into diagnostics.
 - Drain stdout and stderr concurrently, even when output is discarded. Bound captured output (initial default: 1 MiB per stream) while continuing to drain or terminating with a clear reason; avoid pipe deadlock.
@@ -126,3 +126,5 @@ TN2450 is archival documentation. Its reboot/device-service lifetime and privile
 - [macOS input-source settings](https://support.apple.com/en-sa/guide/mac-help/-mchl84525d76/mac): built-in switching options.
 
 Stage 3 uses an actor ConfigStore plus a main-actor ObservableObject for a SwiftUI-hosted Settings window. Store tests inject a temporary directory and never write personal configuration. The optional Testing/Foundation cross-import module is absent from this CLT installation; test.sh disables cross-import overlays only in that incomplete setup.
+
+The native worker polls both output streams, checks cancellation/deadlines between bounded reads, and leaves the leader waitable (waitid with WNOWAIT) until group cleanup finishes. This prevents signaling a reused PID. A final managed-group cleanup also handles children that close their streams and outlive a successful shell. Scripts intentionally starting detached daemons must manage that lifecycle themselves. Crash/force-quit cleanup is not guaranteed; normal app quit waits for runner cancellation. Development-only --preview-launcher/--preview-settings render deterministic views offscreen without constructing AppController, registering shortcuts or modifying personal configuration.

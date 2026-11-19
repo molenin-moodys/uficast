@@ -11,6 +11,7 @@ final class AppController: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let statusLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let configStore = ConfigStore()
+    private let scriptRunner = ScriptRunner()
     private let settingsModel = SettingsModel()
     private lazy var settings = SettingsWindowController(model: settingsModel)
 
@@ -39,6 +40,8 @@ final class AppController: NSObject, NSApplicationDelegate {
         }
         launcher.beforeShow = { [weak self] in self?.catalog.refreshIfStale() }
         launcher.onSelect = { [weak self] entry in self?.launch(entry) }
+        launcher.onArgumentSelection = { [weak self] entry in self?.selectArgumentCommand(entry) }
+        launcher.onArgumentSubmit = { [weak self] id, argument in self?.runScript(id: id, argument: argument) }
         settingsModel.onSave = { [weak self] in self?.saveConfiguration($0) }
         settingsModel.onRefresh = { [weak self] in self?.catalog.refresh() }
         settingsModel.onRetryShortcut = { [weak self] in self?.hotkey.start() }
@@ -46,6 +49,9 @@ final class AppController: NSObject, NSApplicationDelegate {
         settingsModel.onImport = { [weak self] in self?.importConfiguration() }
         settingsModel.onExport = { [weak self] in self?.exportConfiguration() }
         settingsModel.onRestore = { [weak self] in self?.restoreConfiguration() }
+        settingsModel.onCancelScript = { [weak self] id in
+            Task { await self?.scriptRunner.cancel(id) }
+        }
         loadConfiguration()
         NSWorkspace.shared.notificationCenter.addObserver(
             self, selector: #selector(retryShortcut), name: NSWorkspace.didWakeNotification, object: nil
@@ -55,13 +61,28 @@ final class AppController: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) { hotkey.stop() }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !settingsModel.activeScripts.isEmpty else { return .terminateNow }
+        Task {
+            await scriptRunner.cancelAll()
+            await scriptRunner.waitUntilIdle()
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
+
     @objc private func openLauncher() { launcher.show() }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func retryShortcut() { hotkey.start() }
     @objc private func refreshCatalog() { catalog.refresh() }
 
     private func launch(_ entry: LauncherEntry) {
-        guard entry.kind == .application else { return }
+        if entry.kind == .script {
+            guard let command = settingsModel.configuration.scripts.first(where: { $0.entry.id == entry.id && $0.isEnabled }) else { return }
+            if command.requiresArgument { launcher.enterArgument(command) }
+            else { runScript(id: command.id, argument: nil) }
+            return
+        }
         launcher.dismiss(restoreFocus: false)
         Task { @MainActor in
             do {
@@ -74,6 +95,56 @@ final class AppController: NSObject, NSApplicationDelegate {
             } catch {
                 actionStatus.title = "Could not open \(entry.name): \(error.localizedDescription)"
             }
+        }
+    }
+
+    private func selectArgumentCommand(_ entry: LauncherEntry) {
+        guard let command = settingsModel.configuration.scripts.first(where: { $0.entry.id == entry.id && $0.isEnabled }),
+              command.requiresArgument else { return }
+        launcher.enterArgument(command)
+    }
+
+    private func runScript(id: String, argument: String?) {
+        guard let command = settingsModel.configuration.scripts.first(where: { $0.id == id && $0.isEnabled }) else {
+            launcher.showInputError("This command is no longer enabled."); return
+        }
+        guard settingsModel.activeScripts[id] == nil else {
+            launcher.showInputError("This command is already running."); return
+        }
+        guard command.requiresArgument == (argument != nil) else {
+            launcher.showInputError("The command's argument settings changed. Select it again."); return
+        }
+        settingsModel.activeScripts[id] = command.name
+        actionStatus.title = "Running \(command.name)…"
+        launcher.dismiss(restoreFocus: false)
+        Task {
+            let message: String
+            do {
+                let result = try await scriptRunner.run(command, argument: argument)
+                if result.succeeded {
+                    if command.resultMode == .openURL {
+                        let url = try result.outputURL()
+                        guard NSWorkspace.shared.open(url) else { throw ScriptRunError.invalidURL }
+                    }
+                    var usage = launcher.usage[command.entry.id] ?? UsageRecord()
+                    usage.count += 1
+                    usage.lastUsed = .now
+                    launcher.usage[command.entry.id] = usage
+                    message = "\(command.name): completed."
+                } else {
+                    let reason = switch result.termination {
+                    case .timedOut: "timed out"
+                    case .cancelled: "cancelled"
+                    case .exited: "exit \(result.exitCode)"
+                    }
+                    let detail = String(String(decoding: result.stderr, as: UTF8.self).prefix(512))
+                    message = "\(command.name): \(reason)\(detail.isEmpty ? "" : " — " + detail)"
+                }
+            } catch { message = "\(command.name): \(error.localizedDescription)" }
+            settingsModel.activeScripts[id] = nil
+            settingsModel.recentRuns.insert(message, at: 0)
+            settingsModel.recentRuns = Array(settingsModel.recentRuns.prefix(10))
+            actionStatus.title = String(message.prefix(180))
         }
     }
 
@@ -122,6 +193,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                 try await configStore.save(configuration)
                 applyConfiguration(configuration)
                 settingsModel.status = "Saved."
+                settingsModel.saveRevision += 1
             } catch { settingsModel.status = error.localizedDescription }
             settingsModel.isBusy = false
         }

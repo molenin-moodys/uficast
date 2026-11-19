@@ -7,16 +7,26 @@ private final class LauncherPanel: NSPanel {
 }
 
 @MainActor
-final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDelegate, NSTableViewDataSource, NSTableViewDelegate {
+final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDelegate, NSTextViewDelegate, NSTableViewDataSource, NSTableViewDelegate {
     private let panel: LauncherPanel
     private let field = NSTextField()
     private let table = NSTableView()
     private let emptyLabel = NSTextField(labelWithString: "Discovering applications…")
     private let icons = IconStore()
+    private let hint = NSTextField(labelWithString: "↑↓ Select  ·  ↩ Open  ·  Tab Argument  ·  Esc Close")
+    private let token = NSButton()
+    private let argumentScroll = NSScrollView()
+    private let argumentInput = NSTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 38))
+    private let placeholder = ClickThroughLabel(labelWithString: "")
+    private var argumentCommand: ScriptCommand?
+    private var previousQuery = ""
+    private var isDismissing = false
     private var index = SearchIndex()
     private var results: [LauncherEntry] = []
     var usage: [String: UsageRecord] = [:]
     var onSelect: ((LauncherEntry) -> Void)?
+    var onArgumentSelection: ((LauncherEntry) -> Void)?
+    var onArgumentSubmit: ((String, String) -> Void)?
     var beforeShow: (() -> Void)?
     private var previousApplication: NSRunningApplication?
     private var localMonitor: Any?
@@ -37,7 +47,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         panel.hasShadow = true
         panel.title = "Uficast Launcher"
         let background = NSVisualEffectView()
-        background.material = .hudWindow
+        background.material = .popover
         background.state = .active
         background.wantsLayer = true
         background.layer?.cornerRadius = 18
@@ -70,10 +80,41 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         scroll.documentView = table
         icons.onLoad = { [weak self] in self?.table.reloadData() }
         emptyLabel.textColor = .secondaryLabelColor
-        let hint = NSTextField(labelWithString: "↑↓ Select  ·  ↩ Open  ·  ⌘ Space Toggle  ·  Esc Close")
+        token.target = self
+        token.action = #selector(returnToSearch)
+        token.bezelStyle = .regularSquare
+        token.isBordered = false
+        token.font = .systemFont(ofSize: 25, weight: .regular)
+        token.contentTintColor = .labelColor
+        token.isHidden = true
+        argumentScroll.documentView = argumentInput
+        argumentScroll.drawsBackground = true
+        argumentScroll.backgroundColor = .controlBackgroundColor
+        argumentScroll.wantsLayer = true
+        argumentScroll.layer?.cornerRadius = 8
+        argumentScroll.isHidden = true
+        argumentInput.isRichText = false
+        argumentInput.importsGraphics = false
+        argumentInput.allowsUndo = true
+        argumentInput.font = .systemFont(ofSize: 25)
+        argumentInput.textColor = .labelColor
+        argumentInput.drawsBackground = false
+        argumentInput.textContainerInset = NSSize(width: 6, height: 2)
+        argumentInput.isVerticallyResizable = true
+        argumentInput.isHorizontallyResizable = false
+        argumentInput.autoresizingMask = [.width]
+        argumentInput.textContainer?.widthTracksTextView = true
+        argumentInput.isAutomaticQuoteSubstitutionEnabled = false
+        argumentInput.isAutomaticDashSubstitutionEnabled = false
+        argumentInput.isAutomaticTextReplacementEnabled = false
+        argumentInput.isAutomaticSpellingCorrectionEnabled = false
+        argumentInput.delegate = self
+        placeholder.font = .systemFont(ofSize: 25)
+        placeholder.textColor = .placeholderTextColor
+        placeholder.isHidden = true
         hint.font = .systemFont(ofSize: 12)
         hint.textColor = .secondaryLabelColor
-        for view in [field, line, scroll, emptyLabel, hint] {
+        for view in [field, line, scroll, emptyLabel, hint, token, argumentScroll, placeholder] {
             view.translatesAutoresizingMaskIntoConstraints = false
             background.addSubview(view)
         }
@@ -93,6 +134,16 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
             emptyLabel.centerYAnchor.constraint(equalTo: scroll.centerYAnchor),
             hint.leadingAnchor.constraint(equalTo: field.leadingAnchor),
             hint.bottomAnchor.constraint(equalTo: background.bottomAnchor, constant: -16),
+            token.leadingAnchor.constraint(equalTo: field.leadingAnchor),
+            token.centerYAnchor.constraint(equalTo: field.centerYAnchor),
+            token.widthAnchor.constraint(lessThanOrEqualToConstant: 220),
+            argumentScroll.leadingAnchor.constraint(equalTo: token.trailingAnchor, constant: 12),
+            argumentScroll.trailingAnchor.constraint(equalTo: field.trailingAnchor),
+            argumentScroll.topAnchor.constraint(equalTo: field.topAnchor),
+            argumentScroll.heightAnchor.constraint(equalTo: field.heightAnchor),
+            placeholder.leadingAnchor.constraint(equalTo: argumentScroll.leadingAnchor, constant: 6),
+            placeholder.trailingAnchor.constraint(lessThanOrEqualTo: argumentScroll.trailingAnchor, constant: -6),
+            placeholder.centerYAnchor.constraint(equalTo: argumentScroll.centerYAnchor),
         ])
     }
 
@@ -102,9 +153,21 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         if results.isEmpty && refreshing { emptyLabel.stringValue = "Discovering applications…" }
     }
 
-    private func reloadResults() {
-        let previousID = results.indices.contains(table.selectedRow) ? results[table.selectedRow].id : nil
-        results = index.search(field.stringValue, usage: usage)
+    func renderPreview(to url: URL, argumentMode: Bool) throws {
+        let command = ScriptCommand(name: "Kibana", alias: "k", path: "/tmp/kibana-example.py",
+                                    requiresArgument: true, argumentPlaceholder: "log_stream")
+        field.stringValue = "k"
+        setEntries([command.entry,
+                    LauncherEntry(id: "fixture-kitty", name: "kitty", fileURL: URL(fileURLWithPath: "/tmp/kitty.app")),
+                    LauncherEntry(id: "fixture-keyboard", name: "Keyboard", fileURL: URL(fileURLWithPath: "/tmp/Keyboard.app"))])
+        if argumentMode { enterArgument(command) }
+        guard let view = panel.contentView else { return }
+        try ViewPreview.write(view, to: url)
+    }
+
+    private func reloadResults(preserveSelection: Bool = true) {
+        let previousID = preserveSelection && results.indices.contains(table.selectedRow) ? results[table.selectedRow].id : nil
+        results = argumentCommand.map { [$0.entry] } ?? index.search(field.stringValue, usage: usage)
         table.reloadData()
         emptyLabel.isHidden = !results.isEmpty
         emptyLabel.stringValue = "No matching applications or commands"
@@ -114,7 +177,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         }
     }
 
-    func controlTextDidChange(_ notification: Notification) { reloadResults() }
+    func controlTextDidChange(_ notification: Notification) { reloadResults(preserveSelection: false) }
 
     func numberOfRows(in tableView: NSTableView) -> Int { results.count }
 
@@ -128,6 +191,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? { RoundedResultRow() }
 
     @objc private func activateSelected() {
+        if argumentCommand != nil { submitArgument(); return }
         guard results.indices.contains(table.selectedRow) else { return }
         onSelect?(results[table.selectedRow])
     }
@@ -147,14 +211,16 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
                                          y: frame.minY + frame.height * 0.65 - panel.frame.height / 2))
         }
         field.stringValue = ""
-        reloadResults()
+        reloadResults(preserveSelection: false)
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)
         startMonitors()
     }
 
     func dismiss(restoreFocus: Bool = true) {
-        guard panel.isVisible else { return }
+        guard panel.isVisible, !isDismissing else { return }
+        isDismissing = true
+        defer { isDismissing = false }
         stopMonitors()
         panel.orderOut(nil)
         if restoreFocus, let previousApplication, !previousApplication.isTerminated,
@@ -162,6 +228,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
             previousApplication.activate()
         }
         previousApplication = nil
+        clearArgument()
     }
 
     func windowDidResignKey(_ notification: Notification) { dismiss(restoreFocus: false) }
@@ -183,6 +250,76 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
             table.scrollRowToVisible(row)
             return true
         }
+        if commandSelector == #selector(NSResponder.insertTab(_:)) {
+            if results.indices.contains(table.selectedRow) { onArgumentSelection?(results[table.selectedRow]) }
+            return true
+        }
+        return false
+    }
+
+    func enterArgument(_ command: ScriptCommand) {
+        previousQuery = field.stringValue
+        argumentCommand = command
+        token.title = command.alias ?? command.name
+        placeholder.stringValue = command.argumentPlaceholder
+        argumentInput.string = ""
+        argumentInput.undoManager?.removeAllActions()
+        argumentInput.setAccessibilityLabel("Argument for \(command.name): \(command.argumentPlaceholder)")
+        field.isHidden = true
+        token.isHidden = false
+        argumentScroll.isHidden = false
+        placeholder.isHidden = false
+        hint.stringValue = "Paste one argument  ·  ↩ Run  ·  Esc Back"
+        hint.textColor = .secondaryLabelColor
+        reloadResults()
+        panel.makeFirstResponder(argumentInput)
+    }
+
+    func showInputError(_ message: String) {
+        hint.stringValue = message
+        hint.textColor = .systemRed
+    }
+
+    @objc private func returnToSearch() {
+        clearArgument()
+        field.stringValue = previousQuery
+        reloadResults()
+        panel.makeFirstResponder(field)
+        if let editor = field.currentEditor() { editor.selectedRange = NSRange(location: field.stringValue.utf16.count, length: 0) }
+    }
+
+    private func clearArgument() {
+        argumentCommand = nil
+        argumentInput.string = ""
+        argumentInput.undoManager?.removeAllActions()
+        field.isHidden = false
+        token.isHidden = true
+        argumentScroll.isHidden = true
+        placeholder.isHidden = true
+        hint.stringValue = "↑↓ Select  ·  ↩ Open  ·  Tab Argument  ·  Esc Close"
+        hint.textColor = .secondaryLabelColor
+    }
+
+    private func submitArgument() {
+        guard let command = argumentCommand else { return }
+        let value = argumentInput.string
+        guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            showInputError("Enter an argument before running."); return
+        }
+        guard !value.contains("\0") else { showInputError("The argument contains a null character."); return }
+        onArgumentSubmit?(command.id, value)
+    }
+
+    func textDidChange(_ notification: Notification) { placeholder.isHidden = !argumentInput.string.isEmpty }
+
+    func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+            returnToSearch(); return true
+        }
+        if commandSelector == #selector(NSResponder.deleteBackward(_:)), textView.string.isEmpty {
+            returnToSearch(); return true
+        }
+        if commandSelector == #selector(NSResponder.insertNewline(_:)) { submitArgument(); return true }
         if commandSelector == #selector(NSResponder.insertTab(_:)) { return true }
         return false
     }
@@ -206,6 +343,10 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         localMonitor = nil
         globalMonitor = nil
     }
+}
+
+private final class ClickThroughLabel: NSTextField {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 

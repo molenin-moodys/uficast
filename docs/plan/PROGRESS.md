@@ -12,8 +12,8 @@ The owner requested autonomous implementation while context permits. Native scaf
 | 1 — Native app and global shortcut | Implemented; manual acceptance pending | SwiftPM/AppKit app, Carbon registration, menu/Edit actions, panel and settings scaffold. Real shortcut delivery/focus still pending. |
 | 2 — Application catalog/search | Implemented; desktop acceptance pending | Catalog fixtures and ranking tests pass; actual app activation and UI still require desktop checks. |
 | 3 — Settings/persistence/aliases | Implemented; desktop acceptance pending | 11 tests pass; release builds. Manual UI/restart flow remains pending. |
-| 4 — Script runner | Not started | Depends on persistence/settings. |
-| 5 — Inline argument/URL workflow | Not started | Depends on runner/panel. |
+| 4 — Script runner | Implemented; app-controlled Automation checks pending | Native process-group runner, editor, run/cancel/history, shell and AppleScript fixtures pass. |
+| 5 — Inline argument/URL workflow | Implemented; desktop workflow pending | Native NSTextView input and explicit URL mode; 22 tests pass and offscreen previews inspected. |
 | 6 — Caps Lock/login lifecycle | Not started | Depends on lifecycle/settings. |
 | 7 — Daily-use validation/handoff | Not started | Requires actual desktop acceptance. |
 
@@ -51,9 +51,20 @@ The owner requested autonomous implementation while context permits. Native scaf
 - All 11 tests passed after final Stage 3 changes; latest debug search p95 9.85 ms. Release build and strict signature verification passed. UI interaction/restart testing is still pending.
 - Catalog root-change notifications are now debounced. Paths are preserved on import; missing files are not silently remapped.
 
+## Stages 4–5 validation
+
+- Script CRUD/editor supports interpreter/path, alias/enabled state, one required argument, placeholder, result mode, timeout, working directory and JSON environment overrides. Delete removes the config record, not the source file.
+- Runner uses a small C posix_spawn worker, not Foundation Process: each run owns a process group, stdin is /dev/null, pipes are polled/drained concurrently with 1 MiB capture per stream, cancellation/deadline sends TERM then KILL, and the child leader stays waitable until cleanup to prevent PID reuse. Deliberately detached daemons are outside the cleanup contract.
+- 22 tests passed: unchanged Unicode/quotes/metacharacters/newlines as one argv element, zero args, cwd/environment, missing/non-executable files, concurrent large pipes, nonzero exit, uncooperative shell+child timeout, exited leader with child-held pipes, cancellation, duplicate protection, argument rejection before spawn, plain AppleScript echo and strict URL outputs.
+- Latest debug search p95 10.38 ms. Release build/strict signature check passed; clang static analysis (-Wall/-Wextra) reported no issues in the C worker. Source scan finds no AX/CGEvent keyboard-tap or grant APIs.
+- Inline argument mode is wired to Tab/Enter, ordinary paste/edit/undo, Escape/empty Backspace and one unchanged string. NSTextView avoids single-line field newline normalization. Async failures appear in bounded in-memory recent runs; stdout/URLs/arguments/environment are not persisted. Normal quit cancels managed runs and waits for cleanup.
+- Search query changes now select the top-ranked match rather than retaining an older matching selection that could hide an exact alias.
+- Offscreen native launcher, argument and Settings PNGs were rendered and visually inspected under .build/previews. Fixed token sizing and hosted control/background rendering. These are deterministic fixture previews with no hotkey registration or grants, and do not establish real keyboard/paste/focus/browser behavior.
+- Read-only hidutil property --get UserKeyMapping returned (null). No mapping was applied.
+
 ## Next action
 
-Implement Stage 4 script editor and robust asynchronous runner, then Stage 5 inline one-argument workflow. No Accessibility/Input Monitoring, automatic keyboard mapping, system shortcut changes, or login-item changes.
+Implement Stage 6 Caps Lock → F19 ownership/recovery with fixture-only write tests, explicit Settings toggle and system-shortcut guidance, plus optional SMAppService start-at-login. Never request Accessibility/Input Monitoring or alter actual mappings/login settings merely to validate source.
 
 ## Remaining evidence gaps
 
