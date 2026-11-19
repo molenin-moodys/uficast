@@ -195,7 +195,7 @@ Validate legacy config/defaults/round trip/format limits, native light/dark prev
 
 Make the launcher shortcut configurable in General with Cmd+Space as the default, absent-field compatibility and conflict checks against app hotkeys in both directions. Probe a new combination before saving it. Open the launcher on the display of the focused app's front window, falling back to the pointer. As an owner-chosen experiment, draw the clock text and icons as one explicit-contrast image so it may stay readable on an inactive display. Design: `docs/superpowers/specs/2026-11-19-launcher-hotkey-display-clock-design.md`.
 
-Validate with core tests (legacy decode, round trip, validation, conflicts, display geometry), native recorder/clock checks, light/dark previews and a release build. Physical shortcut delivery, two-display placement and inactive-display readability require the owner's observation; revert the clock change if it does not help.
+Validate with core tests (legacy decode, round trip, validation, conflicts, display geometry), native recorder/clock checks, light/dark previews and a release build. Physical shortcut delivery and two-display placement require the owner's observation. The owner confirmed inactive-display clock readability on November 19, 2026.
 
 ## Stage 7 — Daily-use verification and source-build handoff
 

@@ -23,7 +23,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 | 6j — Window keyboard conventions | Implemented | Native menu/Esc-priority checks pass; desktop Cmd+P and Cmd+, opened Settings. Broader physical focus/minimize/hide acceptance remains pending. |
 | 6k — Remembered caffeine / transient errors | Implemented | 50 core tests pass with fake power restoration; native feedback check confirms hide clears retained errors and rejects late completion. |
 | 6l — Day-O calendar | Integrated into main by owner request | 51 core tests and native clock/menu-mode checks pass; compact NSDatePicker previews inspected. Real menu navigation, side-by-side seconds and preference persistence acceptance pending. |
-| 6m — Launcher shortcut, focus display, clock contrast | Implemented; owner checks pending | 57 core tests, six native checks and light/dark previews pass. Physical shortcut delivery, two-display placement and inactive-display readability are not yet observed. |
+| 6m — Launcher shortcut, focus display, clock contrast | Implemented; clock owner-confirmed | 57 core tests, six native checks and light/dark previews pass. Owner confirmed the clock is readable on an inactive display. Physical shortcut delivery and two-display placement are not yet observed. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -191,7 +191,12 @@ Checks actually performed (all with `SDKROOT=…MacOSX26.5.sdk`):
 - Offscreen previews inspected: status clock light/dark (black on light, white on dark, zzz/cup, calendar and text aligned) and General in light, which shows the new Launcher Shortcut row. The Reset button (shown only with a custom shortcut) was not rendered.
 - Not performed: pressing a real recorded shortcut, relaunch persistence, the availability probe against a real conflict, placement on two displays, the clock on an actual inactive display, and the open-menu highlight look. The owner's running copy in the local output folder was not replaced; it requires a normal Quit first.
 
-**Exact next step:** owner quits Uficast and installs the Stage 6m build (`SDKROOT=…MacOSX26.5.sdk scripts/build.sh`), then runs the new Launcher/two-display/inactive-display items in `docs/MANUAL_TESTS.md`. If the clock is still dimmed, revert only the clock-contrast part. Decide whether `build.sh`/`test.sh` should adapt to the new toolchain. The caffeine idle check (screen stays on while active; stop/expiry restores idle behavior) and other daily-use gaps remain open.
+Owner-installed build and result (November 19, 2026):
+
+- The owner quit Uficast normally; the build was then rebuilt into the owner's local output folder with `SDKROOT=…MacOSX26.5.sdk scripts/build.sh`, the strict signature check passed and the app was reopened.
+- **Owner confirmed: the clock is readable on an inactive display.** The clock-contrast change is kept. Light/dark bar variants and the open-menu highlight were not reported separately.
+
+**Exact next step:** owner runs the remaining Launcher shortcut and two-display placement items in `docs/MANUAL_TESTS.md`. Decide whether `build.sh`/`test.sh` should adapt to the new toolchain. The caffeine idle check (screen stays on while active; stop/expiry restores idle behavior) and other daily-use gaps remain open.
 
 
 ### Earlier cursor report checkpoint
