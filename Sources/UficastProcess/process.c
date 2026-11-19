@@ -71,9 +71,31 @@ static int drain(int *fd, struct Capture *capture, size_t limit) {
     return 0;
 }
 
+/* Writes the next bounded chunk of stdin; closes the pipe when done or when the
+   child stops reading (EPIPE). F_SETNOSIGPIPE turns SIGPIPE into that error. */
+static void feed(int *fd, const uint8_t *input, size_t size, size_t *written) {
+    for (int iteration = 0; iteration < 4 && *fd >= 0; ++iteration) {
+        if (*written >= size) { close_fd(fd); return; }
+        size_t chunk = size - *written < 16384 ? size - *written : 16384;
+        ssize_t count = write(*fd, input + *written, chunk);
+        if (count > 0) *written += (size_t)count;
+        else if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return;
+        else if (count < 0 && errno == EINTR) continue;
+        else { close_fd(fd); return; }
+    }
+    if (*fd >= 0 && *written >= size) close_fd(fd);
+}
+
 int uf_process_run(UFProcess *p, const char *executable, char *const argv[],
                    char *const environment[], const char *directory, double timeout, size_t limit) {
-    int out[2] = {-1, -1}, err[2] = {-1, -1};
+    return uf_process_run_input(p, executable, argv, environment, directory, timeout, limit, NULL, 0);
+}
+
+int uf_process_run_input(UFProcess *p, const char *executable, char *const argv[],
+                         char *const environment[], const char *directory, double timeout, size_t limit,
+                         const uint8_t *input, size_t input_size) {
+    int out[2] = {-1, -1}, err[2] = {-1, -1}, in[2] = {-1, -1};
+    size_t written = 0;
     posix_spawn_file_actions_t actions;
     posix_spawnattr_t attributes;
     int error = 0;
@@ -82,12 +104,18 @@ int uf_process_run(UFProcess *p, const char *executable, char *const argv[],
     if (atomic_load(&p->cancelled)) { p->reason = UF_PROCESS_CANCELLED; return 0; }
     p->out.data = malloc(limit); p->err.data = malloc(limit);
     if (!p->out.data || !p->err.data) return ENOMEM;
-    if (create_pipe(out) || create_pipe(err)) { error = errno; goto close_pipes; }
+    if (create_pipe(out) || create_pipe(err) || (input && create_pipe(in))) { error = errno; goto close_pipes; }
     if ((error = posix_spawn_file_actions_init(&actions))) goto close_pipes;
     if ((error = posix_spawnattr_init(&attributes))) goto destroy_actions;
 
     #define CHECK(call) do { error = (call); if (error) goto destroy_attributes; } while (0)
-    CHECK(posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0));
+    if (input) {
+        CHECK(posix_spawn_file_actions_adddup2(&actions, in[0], STDIN_FILENO));
+        CHECK(posix_spawn_file_actions_addclose(&actions, in[0]));
+        CHECK(posix_spawn_file_actions_addclose(&actions, in[1]));
+    } else {
+        CHECK(posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0));
+    }
     CHECK(posix_spawn_file_actions_adddup2(&actions, out[1], STDOUT_FILENO));
     CHECK(posix_spawn_file_actions_adddup2(&actions, err[1], STDERR_FILENO));
     CHECK(posix_spawn_file_actions_addclose(&actions, out[0]));
@@ -112,10 +140,12 @@ destroy_attributes:
 destroy_actions:
     posix_spawn_file_actions_destroy(&actions);
     if (error) goto close_pipes;
-    close_fd(&out[1]); close_fd(&err[1]);
-    if (fcntl(out[0], F_SETFL, O_NONBLOCK) < 0 || fcntl(err[0], F_SETFL, O_NONBLOCK) < 0) {
+    close_fd(&out[1]); close_fd(&err[1]); close_fd(&in[0]);
+    if (fcntl(out[0], F_SETFL, O_NONBLOCK) < 0 || fcntl(err[0], F_SETFL, O_NONBLOCK) < 0
+        || (in[1] >= 0 && (fcntl(in[1], F_SETFL, O_NONBLOCK) < 0 || fcntl(in[1], F_SETNOSIGPIPE, 1) < 0))) {
         error = errno; kill(-pid, SIGKILL); goto reap;
     }
+    if (in[1] >= 0 && input_size == 0) close_fd(&in[1]);
     double deadline = now() + timeout, stopped_at = 0;
     bool exited = false, sent_kill = false;
     while (!exited || out[0] >= 0 || err[0] >= 0) {
@@ -123,6 +153,7 @@ destroy_actions:
         if (!stopped_at && (atomic_load(&p->cancelled) || current >= deadline || error)) {
             p->reason = atomic_load(&p->cancelled) ? UF_PROCESS_CANCELLED : UF_PROCESS_TIMED_OUT;
             stopped_at = current;
+            close_fd(&in[1]);
             kill(-pid, SIGTERM);
         }
         if (stopped_at && !sent_kill && current - stopped_at >= 0.2) {
@@ -134,11 +165,14 @@ destroy_actions:
             if (err[0] >= 0) p->err.truncated = true;
             close_fd(&out[0]); close_fd(&err[0]);
         }
-        struct pollfd fds[2] = {{out[0], POLLIN, 0}, {err[0], POLLIN, 0}};
-        int ready = poll(fds, 2, 25);
+        /* A negative descriptor is ignored by poll, so a finished stdin costs nothing. */
+        struct pollfd fds[3] = {{out[0], POLLIN, 0}, {err[0], POLLIN, 0}, {in[1], POLLOUT, 0}};
+        int ready = poll(fds, 3, 25);
         if (ready < 0 && errno != EINTR) { error = errno; }
         if (fds[0].revents) { int result = drain(&out[0], &p->out, limit); if (result) error = result; }
         if (fds[1].revents) { int result = drain(&err[0], &p->err, limit); if (result) error = result; }
+        if (fds[2].revents) feed(&in[1], input, input_size, &written);
+        if (exited) close_fd(&in[1]);
         if (!exited) {
             siginfo_t info = {0};
             /* Hold the leader as a zombie until pipes close. Its PID cannot be
@@ -158,5 +192,6 @@ reap: {
     }
 close_pipes:
     close_fd(&out[0]); close_fd(&out[1]); close_fd(&err[0]); close_fd(&err[1]);
+    close_fd(&in[0]); close_fd(&in[1]);
     return error;
 }

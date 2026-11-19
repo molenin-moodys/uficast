@@ -13,6 +13,11 @@ void uf_process_cancel(UFProcess *process);
 /* Blocking worker API. Other accessors are used only after it returns. */
 int uf_process_run(UFProcess *process, const char *executable, char *const argv[],
                    char *const environment[], const char *directory, double timeout, size_t limit);
+/* As above, but writes `input` to the child's stdin (NULL keeps /dev/null). Writing
+   stops quietly if the child closes stdin early; it never raises SIGPIPE here. */
+int uf_process_run_input(UFProcess *process, const char *executable, char *const argv[],
+                         char *const environment[], const char *directory, double timeout, size_t limit,
+                         const uint8_t *input, size_t input_size);
 const uint8_t *uf_process_stdout(const UFProcess *process);
 const uint8_t *uf_process_stderr(const UFProcess *process);
 size_t uf_process_stdout_size(const UFProcess *process);
