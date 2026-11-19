@@ -276,9 +276,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         settingsModel.activeScripts[id] = command.name
         cancelledScripts.remove(id)
         actionStatus.title = "Running \(command.name)…"
-        launcher.dismiss(restoreFocus: false)
+        let presentation = launcher.beginScriptRun(command)
         Task {
             let message: String
+            var failure: String?
             do {
                 let result = try await scriptRunner.run(command, argument: argument)
                 if isTerminating || cancelledScripts.contains(id) {
@@ -294,17 +295,16 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
                     launcher.usage[command.entry.id] = usage
                     message = "\(command.name): completed."
                 } else {
-                    let reason = switch result.termination {
-                    case .timedOut: "timed out"
-                    case .cancelled: "cancelled"
-                    case .exited: "exit \(result.exitCode)"
-                    }
-                    let detail = String(String(decoding: result.stderr, as: UTF8.self).prefix(512))
-                    message = "\(command.name): \(reason)\(detail.isEmpty ? "" : " — " + detail)"
+                    message = "\(command.name): \(result.failureDescription ?? "Failed")"
+                    if result.termination != .cancelled { failure = message }
                 }
-            } catch { message = "\(command.name): \(error.localizedDescription)" }
+            } catch {
+                message = "\(command.name): \(error.localizedDescription)"
+                failure = message
+            }
             settingsModel.activeScripts[id] = nil
             cancelledScripts.remove(id)
+            if !isTerminating { launcher.finishScriptRun(presentation, command: command, argument: argument, error: failure) }
             settingsModel.recentRuns.insert(message, at: 0)
             settingsModel.recentRuns = Array(settingsModel.recentRuns.prefix(10))
             actionStatus.title = String(message.prefix(180))

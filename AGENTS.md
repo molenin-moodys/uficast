@@ -16,3 +16,5 @@
 - App Hotkey cells record on double-click; Escape cancels without saving, and × clears an assigned shortcut. Built-in caffeine/cafe and decaffeine/decafe commands use the shared Keep Awake service; preserve user-alias precedence.
 
 - Script folders are connected through Commands. Discovery reads metadata only and never executes or copies scripts; preserve existing customizations and unavailable roots. Keep private script contents/URLs and personal folder paths out of repository fixtures and screenshots.
+
+- Alias cells/inspector edit on double-click; Enter saves, Escape discards, and × removes. Script execution keeps its current launcher view while running and offers failure text/Edit Input on failure. Never retry automatically or let a late result overwrite newer input/reopen a dismissed panel.

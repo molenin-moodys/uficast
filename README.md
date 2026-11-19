@@ -33,6 +33,10 @@ These are captures of the actual app views rendered with a fixed demonstration d
 
 ![Dark launcher with a generic Search Example command and release notes argument](docs/screenshots/argument.png)
 
+**Script failure** — the original input remains available for correction.
+
+![Launcher showing a generic input error and Edit Input button](docs/screenshots/error.png)
+
 ## Planning documents
 
 1. [Requirements and interaction details](docs/plan/REQUIREMENTS.md)
@@ -68,7 +72,7 @@ Application discovery uses `/Applications`, `/System/Applications` and `~/Applic
 
 ## Settings and aliases
 
-Open **Settings… → Commands**, select an app, enter an alias and click **Apply**. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General starts with **Start Uficast at login** and also contains Keep Awake, Caps Lock, application roots, refresh, import/export and backup recovery.
+In **Settings… → Commands**, double-click an **Alias** cell (or the alias in the inspector), type a value and press **Enter** to save. **Escape** cancels without saving; click **×** to remove an assigned alias. Invalid or duplicate aliases keep the draft open and show an error. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General starts with **Start Uficast at login** and also contains Keep Awake, Caps Lock, application roots, refresh, import/export and backup recovery.
 
 In **Settings → Commands**, double-click an application’s **Hotkey** cell (the current shortcut or **Add Hotkey**) to open its inline recorder. A single click only selects the row. **Escape** closes recording without saving and keeps the previous shortcut. Click the **×** beside an assigned shortcut to remove it. You can also select an application and click **Record Hotkey** under **Show / Hide**. Press a combination containing Command, Control or Option; Escape cancels and Delete clears it. Enabled app shortcuts must be unique, and Cmd+Space is reserved for the launcher. The table shows assigned shortcuts and registration errors. If another app claims a chord, release it there first. Script-specific global hotkeys remain deferred.
 
@@ -89,6 +93,8 @@ For individual commands, use **+ → Add Script…**. Choose a local script, set
 For the `k` workflow, configure [browser-search.py](examples/browser-search.py), interpreter `/usr/bin/python3`, alias `k`, one required argument, placeholder `log_stream`, and **Open stdout URL in browser**. In the launcher: `k` → Tab → Cmd+V → Enter. This example generates an encoded example.com URL; it does not contain a real Kibana endpoint. [Shell](examples/echo-argument.sh) and [AppleScript](examples/echo-argument.applescript) examples are also included.
 
 Default result handling runs for side effects and ignores stdout (the script can call `/usr/bin/open` itself). URL mode opens exactly one valid HTTP(S) URL only after exit code zero. Arguments are passed as one argv value; `.zshrc` is not sourced. PATH includes Homebrew and standard system directories; per-command environment overrides are supported. The default working directory is the script folder and the default timeout is 30 seconds.
+
+While a script runs, the launcher stays open with a running status. Success closes it; failure shows the exit/timeout error in the lower section, preferring stderr and falling back to stdout. **Edit Input** restores the exact submitted argument for correction; only an explicit Enter retries. The latest failure and argument stay in memory only. Dismissing the launcher or moving to another command prevents a late result from reopening it or overwriting the new input; reopening can show the last failure and its Edit Input action.
 
 General → Recent Runs shows active commands, Cancel controls and the ten most recent outcomes in memory. Each command can run once concurrently; different commands can overlap. Output capture is bounded to 1 MiB per stream while both pipes continue draining. Normal quit cancels managed process groups; deliberately detached daemons and force-quit/crash cleanup are outside that guarantee. AppleScript controlling other applications may need **Automation** consent; scripts depending on Accessibility are unsupported under the no-Accessibility requirement.
 
@@ -140,3 +146,5 @@ dist/Uficast.app/Contents/MacOS/Uficast --verify-native-icons
 This renders 50 AppKit launcher cells offscreen and verifies that background icon loading delivers real bitmaps without moving rows or the scroll position. It registers no hotkeys and changes no personal configuration. Development previews also support `--dark`, Settings `--general`, and `--preview-script-editor <output.png>`.
 
 The native `--verify-shortcut-recorder` development check exercises double-click entry, Escape without saving, valid capture, explicit clear and focus/window/cell cleanup using in-memory Settings fixtures. It does not register global shortcuts or load personal configuration.
+
+The native `--verify-alias-editor` and `--verify-script-feedback` checks cover transactional alias edits and failure/retry presentation with public in-memory fixtures. Argument previews accept `--empty-argument` and `--failure` in addition to `--argument` / `--dark`.

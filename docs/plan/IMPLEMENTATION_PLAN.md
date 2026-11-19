@@ -169,6 +169,14 @@ Add caffeine / decaffeine entries and cafe / decafe abbreviations to launcher se
 
 Connect a folder from Commands, reference its direct script files, and infer interpreter/title/one text argument from known suffixes, shebang and Raycast comment headers. Keep existing per-command customizations, deduplicate by canonical file path, preserve unavailable roots, and disconnect without deleting source files. Add explicit Refresh Scripts and startup refresh. Test discovery without execution, legacy configuration, removed/unavailable folders, unsupported metadata and manual duplicates. Verify the actual add-folder workflow without running private scripts; screenshots must retain only public fixtures.
 
+## Stage 6h — Inline aliases (owner addition)
+
+Edit aliases in the table/inspector by double-click; Enter commits, Escape cancels and × removes. Validate before closing so duplicate/invalid drafts remain editable. Check app/script edits, exact save counts and lifecycle cancellation with native fixture field-editor events. Replace the old inspector Apply flow.
+
+## Stage 6i — Argument appearance and script errors (owner addition)
+
+Remove the opaque white input surface, align placeholder/text insets and inspect empty/filled light/dark previews. Keep the launcher open during execution, close on success, and show a bounded failure footer with Edit Input. Preserve the exact argument, retry only on Enter, prefer stderr with stdout fallback, and reject stale completion updates after dismissal/navigation. Test native presentation plus real generic subprocess failures; do not run private scripts for verification.
+
 ## Stage 7 — Daily-use verification and source-build handoff
 
 Tasks:

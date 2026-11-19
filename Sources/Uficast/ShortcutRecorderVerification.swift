@@ -58,11 +58,11 @@ enum ShortcutRecorderVerification {
 
         try click(2)
         try key(45, flags: [.control, .option], text: "n")
-        try check(saves.count == 1 && saves[0].applications["preview-terminal"]?.hotkey?.keyCode == 45 && ends == 2,
+        try check(saves.count == 1 && saves[0].applications["app:preview-terminal"]?.hotkey?.keyCode == 45 && ends == 2,
                   "A valid shortcut was not committed exactly once to the correct app.")
         try click(2)
         try key(51)
-        try check(saves.count == 2 && saves[1].applications["preview-terminal"]?.hotkey == nil && ends == 3,
+        try check(saves.count == 2 && saves[1].applications["app:preview-terminal"]?.hotkey == nil && ends == 3,
                   "Delete did not explicitly clear the shortcut.")
         try click(2)
         window.makeFirstResponder(nil)

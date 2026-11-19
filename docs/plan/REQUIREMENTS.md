@@ -66,7 +66,7 @@ These choices let implementation proceed without another questionnaire. They may
 - Cmd+V, Cmd+A, Cmd+C, Cmd+X, undo/redo, cursor navigation, and input methods work normally.
 - Submit the entire field as one argument. Preserve spaces, quotation marks, Unicode, and pasted newlines. Enter submits; do not split or evaluate pasted content as shell source.
 - A required argument must contain a non-whitespace character, but validation must not trim the value passed to the process.
-- An accepted execution closes the panel. Errors remain discoverable through a short menu bar status/recent-run view; immediate validation errors stay in the field. Do not reopen the panel unexpectedly after an asynchronous failure.
+- The panel stays open while a script executes and closes on success. Failure appears in its lower section with exit/timeout and stderr (stdout fallback); Edit Input restores the submitted argument without running it. Enter explicitly retries. If the owner dismissed/navigated away, completion must not reopen or overwrite the new view. The last failure/input may be offered on deliberate reopen, in memory only. Immediate validation errors stay in the field.
 
 ## Settings reference
 
@@ -75,7 +75,7 @@ Use a dedicated settings window with two useful sections: **General** and **Comm
 - Top search field; `All`, `Apps`, and `Scripts` filters; a `+` control for adding a script or an application outside indexed roots.
 - Table/list columns: real app icon and Name, Type, Alias, Hotkey, Enabled. Group scripts and applications where it improves scanning; use alternating/rounded selected rows and native typography/materials.
 - Double-click an application’s Hotkey cell to open an inline recording field; a single click selects the row. An assigned shortcut has a visible × control to remove it in both the cell and inspector. Escape closes the field without saving, preserving the prior shortcut (or unassigned state). Focus loss also cancels; Delete explicitly clears.
-- Select an item to edit its alias and enabled status. Script details include name, path, interpreter, argument toggle/placeholder, result handling, timeout, working directory, and optional environment overrides.
+- Double-click an Alias cell (or inspector alias) to edit. Enter saves, Escape cancels, and × removes an assignment. Focus/window/cell loss cancels unfinished edits; invalid/duplicate aliases retain the draft and show an error. Select an item to edit its enabled status. Script details include name, path, interpreter, argument toggle/placeholder, result handling, timeout, working directory, and optional environment overrides.
 - Commands includes Add Folder, Refresh Scripts and a connected-folders disclosure with disconnect controls. Existing command customizations survive scans; disabling hides a managed script. Refresh on startup and explicit request; direct children only.
 - Discovered applications are automatically listed. Disabling hides an app from launcher search without uninstalling or deleting it.
 - General prominently starts with launch-at-login, then launcher shortcut status, Keep Awake, Caps Lock → F19, application roots, configuration and recent runs.

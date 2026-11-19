@@ -6,11 +6,11 @@ import UficastCore
 enum ViewPreview {
     /// Public documentation fixtures only: never discover apps or load user config.
     static let applications: [LauncherEntry] = [
-        LauncherEntry(id: "preview-calculator", name: "Calculator", fileURL: URL(fileURLWithPath: "/System/Applications/Calculator.app"), alias: "calc"),
-        LauncherEntry(id: "preview-calendar", name: "Calendar", fileURL: URL(fileURLWithPath: "/System/Applications/Calendar.app"), alias: "cal"),
-        LauncherEntry(id: "preview-notes", name: "Notes", fileURL: URL(fileURLWithPath: "/System/Applications/Notes.app"), alias: "notes"),
-        LauncherEntry(id: "preview-safari", name: "Safari", fileURL: URL(fileURLWithPath: "/Applications/Safari.app"), alias: "web"),
-        LauncherEntry(id: "preview-terminal", name: "Terminal", fileURL: URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"), alias: "term"),
+        LauncherEntry(id: "app:preview-calculator", name: "Calculator", fileURL: URL(fileURLWithPath: "/System/Applications/Calculator.app"), alias: "calc"),
+        LauncherEntry(id: "app:preview-calendar", name: "Calendar", fileURL: URL(fileURLWithPath: "/System/Applications/Calendar.app"), alias: "cal"),
+        LauncherEntry(id: "app:preview-notes", name: "Notes", fileURL: URL(fileURLWithPath: "/System/Applications/Notes.app"), alias: "notes"),
+        LauncherEntry(id: "app:preview-safari", name: "Safari", fileURL: URL(fileURLWithPath: "/Applications/Safari.app"), alias: "web"),
+        LauncherEntry(id: "app:preview-terminal", name: "Terminal", fileURL: URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"), alias: "term"),
     ]
 
     static var command: ScriptCommand {
@@ -29,9 +29,9 @@ enum ViewPreview {
         for entry in applications {
             model.configuration.applications[entry.id] = AppOverride(alias: entry.alias)
         }
-        model.configuration.applications["preview-terminal"]?.hotkey = GlobalShortcut(
+        model.configuration.applications["app:preview-terminal"]?.hotkey = GlobalShortcut(
             keyCode: 17, modifiers: GlobalShortcut.control | GlobalShortcut.option, keyLabel: "T")
-        model.selectedID = "preview-terminal"
+        model.selectedID = "app:preview-terminal"
         return model
     }
 

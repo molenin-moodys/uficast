@@ -6,6 +6,32 @@ import UficastCore
 struct UficastMain {
     @MainActor
     static func main() {
+        if CommandLine.arguments.contains("--verify-script-feedback") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try LauncherPanelController().verifyScriptRunFeedback()
+                print("PASS: script failure feedback, exact argument restoration, explicit retry and stale-result handling.")
+            } catch {
+                FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
+            return
+        }
+        if CommandLine.arguments.contains("--verify-alias-editor") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try AliasEditorVerification.run()
+                print("PASS: inline alias editing, Escape, validation, save, removal and draft cleanup.")
+            } catch {
+                FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
+            return
+        }
         if CommandLine.arguments.contains("--verify-shortcut-recorder") {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)
@@ -44,7 +70,8 @@ struct UficastMain {
             let path = URL(fileURLWithPath: CommandLine.arguments[flag + 1])
             do {
                 if CommandLine.arguments[flag] == "--preview-launcher" {
-                    try LauncherPanelController().renderPreview(to: path, argumentMode: CommandLine.arguments.contains("--argument"))
+                    try LauncherPanelController().renderPreview(to: path, argumentMode: CommandLine.arguments.contains("--argument"),
+                        emptyArgument: CommandLine.arguments.contains("--empty-argument"), failure: CommandLine.arguments.contains("--failure"))
                 } else {
                     let model = ViewPreview.settingsModel()
                     if CommandLine.arguments.contains("--general") { model.section = "General" }

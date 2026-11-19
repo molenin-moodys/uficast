@@ -60,7 +60,9 @@ final class SettingsModel: ObservableObject {
         configuration.entries(catalog: catalogEntries).first { $0.id == selectedID }
     }
 
-    func saveAlias(_ value: String, for entry: LauncherEntry) {
+    @discardableResult
+    func saveAlias(_ value: String, for entry: LauncherEntry) -> Bool {
+        guard !isBusy, !isReadOnly, let onSave else { return false }
         let alias = value.isEmpty ? nil : value
         var updated = configuration
         if entry.kind == .application {
@@ -70,7 +72,10 @@ final class SettingsModel: ObservableObject {
         } else if let index = updated.scripts.firstIndex(where: { $0.entry.id == entry.id }) {
             updated.scripts[index].alias = alias
         }
-        onSave?(updated)
+        do { _ = try updated.validated() }
+        catch { status = error.localizedDescription; return false }
+        onSave(updated)
+        return true
     }
 
     func setEnabled(_ enabled: Bool, for entry: LauncherEntry) {
@@ -136,7 +141,6 @@ final class SettingsWindowController: NSWindowController {
 private struct SettingsView: View {
     @ObservedObject var model: SettingsModel
     @StateObject private var icons = IconStore()
-    @State private var alias = ""
     @State private var roots = ""
 
     var body: some View {
@@ -159,7 +163,6 @@ private struct SettingsView: View {
         }
         .onAppear { loadDrafts() }
         .background(Color(nsColor: .windowBackgroundColor))
-        .onChange(of: model.selectedID) { _, _ in alias = model.selected?.alias ?? "" }
         .onChange(of: model.configuration) { _, _ in loadDrafts() }
         .sheet(item: $model.scriptDraft) { draft in ScriptEditor(model: model, script: draft) }
     }
@@ -227,7 +230,10 @@ private struct SettingsView: View {
                 }.width(min: 230, ideal: 340)
                 TableColumn("Type") { Text($0.kind == .application ? "Application" : "Script").foregroundStyle(.secondary) }
                     .width(min: 90, ideal: 110)
-                TableColumn("Alias") { Text($0.alias ?? "Add Alias").foregroundStyle($0.alias == nil ? .tertiary : .primary) }
+                TableColumn("Alias") { entry in
+                    AliasEditor(entry: entry, onCommit: { model.saveAlias($0, for: entry) })
+                        .frame(height: 24).disabled(model.isBusy || model.isReadOnly)
+                }
                     .width(min: 100, ideal: 150)
                 TableColumn("Hotkey") { entry in
                     if entry.kind == .application {
@@ -249,10 +255,8 @@ private struct SettingsView: View {
                     Text(selected.name).fontWeight(.medium).lineLimit(1)
                     Spacer()
                     Text("Alias").foregroundStyle(.secondary)
-                    TextField("Add Alias", text: $alias).frame(width: 150).textFieldStyle(.roundedBorder)
-                        .onSubmit { model.saveAlias(alias, for: selected) }
-                    Button("Apply") { model.saveAlias(alias, for: selected) }
-                        .disabled(model.isBusy || model.isReadOnly)
+                    AliasEditor(entry: selected, onCommit: { model.saveAlias($0, for: selected) })
+                        .frame(width: 150, height: 24).disabled(model.isBusy || model.isReadOnly)
                     if selected.kind == .script {
                         Button("Edit…") { model.scriptDraft = model.configuration.scripts.first { $0.entry.id == selected.id } }
                             .disabled(model.isBusy || model.isReadOnly)
@@ -383,7 +387,6 @@ private struct SettingsView: View {
     }
 
     private func loadDrafts() {
-        alias = model.selected?.alias ?? ""
         roots = model.configuration.applicationRoots.joined(separator: "\n")
     }
 }

@@ -11,3 +11,4 @@ mkdir -p docs/screenshots
 "$binary" --preview-launcher docs/screenshots/launcher.png
 "$binary" --preview-launcher docs/screenshots/argument.png --argument --dark
 "$binary" --preview-settings docs/screenshots/commands.png
+"$binary" --preview-launcher docs/screenshots/error.png --argument --failure

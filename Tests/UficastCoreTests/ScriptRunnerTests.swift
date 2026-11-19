@@ -111,7 +111,15 @@ private struct ScriptFixture {
     let result = try await ScriptRunner().run(fixture.command)
     #expect(result.exitCode == 7)
     #expect(String(decoding: result.stderr, as: UTF8.self) == "failed")
+    #expect(result.failureDescription == "Exit code 7 — failed")
     #expect(throws: ScriptRunError.self) { try result.outputURL() }
+}
+
+@Test func failedScriptShowsStdoutWhenStderrIsEmpty() async throws {
+    let fixture = try ScriptFixture("printf 'Unknown input prefix. Expected demo-*.'; exit 2")
+    defer { fixture.remove() }
+    let result = try await ScriptRunner().run(fixture.command)
+    #expect(result.failureDescription == "Exit code 2 — Unknown input prefix. Expected demo-*.")
 }
 
 @Test func appleScriptReceivesArgumentWithoutAutomationOrAccessibility() async throws {

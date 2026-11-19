@@ -15,10 +15,17 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     private let icons = IconStore()
     private let hint = NSTextField(labelWithString: "↑↓ Select  ·  ↩ Open  ·  Tab Argument  ·  Esc Close")
     private let token = NSButton()
-    private let argumentScroll = NSScrollView()
+    private let argumentScroll = ArgumentScrollView()
     private let argumentInput = NSTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 38))
     private let placeholder = ClickThroughLabel(labelWithString: "")
     private let settingsButton = NSButton()
+    private let failureBox = NSStackView()
+    private let failureLabel = NSTextField(wrappingLabelWithString: "")
+    private let editInputButton = NSButton(title: "Edit Input", target: nil, action: nil)
+    private var failureHeight: NSLayoutConstraint!
+    private var activeRunID: UUID?
+    private var latestRunID: UUID?
+    private var lastFailure: (command: ScriptCommand, argument: String?, message: String)?
     private var argumentCommand: ScriptCommand?
     private var previousQuery = ""
     private var isDismissing = false
@@ -89,10 +96,11 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         token.contentTintColor = .labelColor
         token.isHidden = true
         argumentScroll.documentView = argumentInput
-        argumentScroll.drawsBackground = true
-        argumentScroll.backgroundColor = .controlBackgroundColor
+        argumentScroll.drawsBackground = false
+        argumentScroll.contentView.drawsBackground = false
         argumentScroll.wantsLayer = true
         argumentScroll.layer?.cornerRadius = 8
+        argumentScroll.layer?.masksToBounds = true
         argumentScroll.isHidden = true
         argumentInput.isRichText = false
         argumentInput.importsGraphics = false
@@ -100,7 +108,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         argumentInput.font = .systemFont(ofSize: 25)
         argumentInput.textColor = .labelColor
         argumentInput.drawsBackground = false
-        argumentInput.textContainerInset = NSSize(width: 6, height: 2)
+        argumentInput.textContainerInset = NSSize(width: 10, height: 3)
+        argumentInput.textContainer?.lineFragmentPadding = 0
         argumentInput.isVerticallyResizable = true
         argumentInput.isHorizontallyResizable = false
         argumentInput.autoresizingMask = [.width]
@@ -124,7 +133,23 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         settingsButton.action = #selector(openSettingsFromLauncher)
         settingsButton.toolTip = "Open Settings (⌘,)"
         settingsButton.setAccessibilityLabel("Open Settings")
-        for view in [field, line, scroll, emptyLabel, hint, token, argumentScroll, placeholder, settingsButton] {
+        failureBox.orientation = .vertical
+        failureBox.alignment = .leading
+        failureBox.spacing = 8
+        failureBox.detachesHiddenViews = true
+        failureLabel.font = .systemFont(ofSize: 12)
+        failureLabel.textColor = .systemRed
+        failureLabel.maximumNumberOfLines = 3
+        failureLabel.lineBreakMode = .byTruncatingTail
+        failureLabel.isSelectable = true
+        editInputButton.target = self
+        editInputButton.action = #selector(editFailedInput)
+        failureBox.addArrangedSubview(failureLabel)
+        failureBox.addArrangedSubview(editInputButton)
+        failureLabel.isHidden = true
+        editInputButton.isHidden = true
+        failureBox.isHidden = true
+        for view in [field, line, scroll, emptyLabel, hint, token, argumentScroll, placeholder, settingsButton, failureBox] {
             view.translatesAutoresizingMaskIntoConstraints = false
             background.addSubview(view)
         }
@@ -139,7 +164,11 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
             scroll.leadingAnchor.constraint(equalTo: background.leadingAnchor, constant: 12),
             scroll.trailingAnchor.constraint(equalTo: background.trailingAnchor, constant: -12),
             scroll.topAnchor.constraint(equalTo: line.bottomAnchor, constant: 12),
-            scroll.bottomAnchor.constraint(equalTo: hint.topAnchor, constant: -12),
+            scroll.bottomAnchor.constraint(equalTo: failureBox.topAnchor, constant: -12),
+            failureBox.leadingAnchor.constraint(equalTo: field.leadingAnchor),
+            failureBox.trailingAnchor.constraint(equalTo: field.trailingAnchor),
+            failureBox.bottomAnchor.constraint(equalTo: hint.topAnchor),
+            failureLabel.widthAnchor.constraint(equalTo: failureBox.widthAnchor),
             emptyLabel.centerXAnchor.constraint(equalTo: scroll.centerXAnchor),
             emptyLabel.centerYAnchor.constraint(equalTo: scroll.centerYAnchor),
             hint.leadingAnchor.constraint(equalTo: field.leadingAnchor),
@@ -156,10 +185,12 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
             argumentScroll.trailingAnchor.constraint(equalTo: field.trailingAnchor),
             argumentScroll.topAnchor.constraint(equalTo: field.topAnchor),
             argumentScroll.heightAnchor.constraint(equalTo: field.heightAnchor),
-            placeholder.leadingAnchor.constraint(equalTo: argumentScroll.leadingAnchor, constant: 6),
+            placeholder.leadingAnchor.constraint(equalTo: argumentScroll.leadingAnchor, constant: 10),
             placeholder.trailingAnchor.constraint(lessThanOrEqualTo: argumentScroll.trailingAnchor, constant: -6),
             placeholder.centerYAnchor.constraint(equalTo: argumentScroll.centerYAnchor),
         ])
+        failureHeight = failureBox.heightAnchor.constraint(equalToConstant: 0)
+        failureHeight.isActive = true
     }
 
     @objc private func openSettingsFromLauncher() { onOpenSettings?() }
@@ -170,16 +201,60 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         if results.isEmpty && refreshing { emptyLabel.stringValue = "Discovering applications…" }
     }
 
-    func renderPreview(to url: URL, argumentMode: Bool) throws {
+    func renderPreview(to url: URL, argumentMode: Bool, emptyArgument: Bool = false, failure: Bool = false) throws {
         field.stringValue = ""
         setEntries(ViewPreview.applications)
         if argumentMode {
             enterArgument(ViewPreview.command)
-            argumentInput.string = "release notes"
-            placeholder.isHidden = true
+            if !emptyArgument {
+                argumentInput.string = "release notes"
+                placeholder.isHidden = true
+            }
+        }
+        if failure {
+            let id = beginScriptRun(ViewPreview.command)
+            finishScriptRun(id, command: ViewPreview.command, argument: argumentInput.string,
+                error: "Search Example: Exit code 1 — Unknown input prefix. Expected demo-*.\nCorrect the value and try again.")
         }
         guard let view = panel.contentView else { return }
         try ViewPreview.write(view, to: url)
+    }
+
+    func verifyScriptRunFeedback() throws {
+        let command = ViewPreview.command
+        let input = "  Unicode Привет 'quoted'\nsecond line  "
+        var submissions: [String] = []
+        onArgumentSubmit = { _, value in submissions.append(value) }
+        func check(_ condition: Bool, _ message: String) throws {
+            if !condition { throw ConfigError.invalid(message) }
+        }
+        enterArgument(command)
+        argumentInput.string = input
+        let first = beginScriptRun(command)
+        submitArgument()
+        try check(submissions.isEmpty, "A running script was submitted twice.")
+        finishScriptRun(first, command: command, argument: input, error: "Exit code 2 — Invalid input")
+        try check(!failureBox.isHidden && !editInputButton.isHidden && argumentInput.isEditable
+                  && argumentInput.string == input && failureLabel.stringValue.contains("Invalid input"),
+                  "Failure did not preserve the input and display error/edit controls.")
+        editInputButton.performClick(nil)
+        try check(submissions.isEmpty && argumentInput.string == input, "Edit Input ran a script or changed its argument.")
+        submitArgument()
+        try check(submissions == [input], "Explicit retry did not submit the unchanged argument once.")
+        let old = beginScriptRun(command)
+        returnToSearch()
+        finishScriptRun(old, command: command, argument: input, error: "Late failure")
+        try check(argumentCommand == nil && field.isHidden == false && failureBox.isHidden && !panel.isVisible,
+                  "A late failure reopened or overwrote a newer search.")
+        enterArgument(command)
+        let current = beginScriptRun(command)
+        finishScriptRun(old, command: command, argument: input, error: "Stale failure")
+        try check(activeRunID == current && failureBox.isHidden, "An older run replaced current feedback.")
+        finishScriptRun(current, command: command, argument: input, error: nil)
+        try check(activeRunID == nil && failureBox.isHidden && lastFailure == nil, "Success retained an error.")
+        let noInput = beginScriptRun(command)
+        finishScriptRun(noInput, command: command, argument: nil, error: "Missing executable")
+        try check(!failureBox.isHidden && editInputButton.isHidden, "A command with no argument offered input editing.")
     }
 
     /// Offscreen regression check: asynchronous icon completion must update the
@@ -221,7 +296,13 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         }
     }
 
-    func controlTextDidChange(_ notification: Notification) { reloadResults(preserveSelection: false) }
+    func controlTextDidChange(_ notification: Notification) {
+        activeRunID = nil
+        hideFailure()
+        hint.stringValue = "↑↓ Select  ·  ↩ Open  ·  Tab Argument  ·  Esc Close"
+        hint.textColor = .secondaryLabelColor
+        reloadResults(preserveSelection: false)
+    }
 
     func numberOfRows(in tableView: NSTableView) -> Int { results.count }
 
@@ -235,6 +316,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? { RoundedResultRow() }
 
     @objc private func activateSelected() {
+        guard activeRunID == nil else { showInputError("This script is still running."); return }
         if argumentCommand != nil { submitArgument(); return }
         guard results.indices.contains(table.selectedRow) else { return }
         onSelect?(results[table.selectedRow])
@@ -256,6 +338,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         }
         field.stringValue = ""
         reloadResults(preserveSelection: false)
+        if let lastFailure { displayFailure(lastFailure) }
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)
         startMonitors()
@@ -302,6 +385,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     }
 
     func enterArgument(_ command: ScriptCommand) {
+        activeRunID = nil
+        argumentInput.isEditable = true
+        hideFailure()
         previousQuery = field.stringValue
         argumentCommand = command
         token.title = command.alias ?? command.name
@@ -324,6 +410,59 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         hint.textColor = .systemRed
     }
 
+    func beginScriptRun(_ command: ScriptCommand) -> UUID {
+        let id = UUID()
+        activeRunID = id
+        latestRunID = id
+        lastFailure = nil
+        hideFailure()
+        argumentInput.isEditable = false
+        hint.stringValue = "Running \(command.name)…  ·  Esc Back"
+        hint.textColor = .secondaryLabelColor
+        return id
+    }
+
+    func finishScriptRun(_ id: UUID, command: ScriptCommand, argument: String?, error: String?) {
+        if latestRunID == id, let error { lastFailure = (command, argument, String(error.prefix(700))) }
+        // A late result must never reopen or replace a newer search/input.
+        guard activeRunID == id else { return }
+        activeRunID = nil
+        argumentInput.isEditable = true
+        if let lastFailure, error != nil { displayFailure(lastFailure) }
+        else {
+            hideFailure()
+            if panel.isVisible { dismiss(restoreFocus: false) }
+        }
+    }
+
+    private func displayFailure(_ failure: (command: ScriptCommand, argument: String?, message: String)) {
+        failureLabel.stringValue = failure.message
+        failureLabel.toolTip = failure.message
+        failureLabel.isHidden = false
+        editInputButton.isHidden = failure.argument == nil
+        failureBox.isHidden = false
+        failureHeight.constant = failure.argument == nil ? 56 : 90
+        hint.stringValue = failure.argument == nil ? "Choose a command  ·  Esc Close" : "Edit the argument, then ↩ Retry  ·  Esc Back"
+        hint.textColor = .secondaryLabelColor
+    }
+
+    private func hideFailure() {
+        failureLabel.isHidden = true
+        editInputButton.isHidden = true
+        failureBox.isHidden = true
+        failureHeight.constant = 0
+    }
+
+    @objc private func editFailedInput() {
+        guard let failure = lastFailure, let argument = failure.argument else { return }
+        enterArgument(failure.command)
+        argumentInput.string = argument
+        placeholder.isHidden = !argument.isEmpty
+        displayFailure(failure)
+        panel.makeFirstResponder(argumentInput)
+        argumentInput.setSelectedRange(NSRange(location: 0, length: argument.utf16.count))
+    }
+
     @objc private func returnToSearch() {
         clearArgument()
         field.stringValue = previousQuery
@@ -333,6 +472,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     }
 
     private func clearArgument() {
+        activeRunID = nil
+        argumentInput.isEditable = true
+        hideFailure()
         argumentCommand = nil
         argumentInput.string = ""
         argumentInput.undoManager?.removeAllActions()
@@ -345,6 +487,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     }
 
     private func submitArgument() {
+        guard activeRunID == nil else { showInputError("This script is still running."); return }
         guard let command = argumentCommand else { return }
         let value = argumentInput.string
         guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -456,5 +599,19 @@ private final class EntryRow: NSTableCellView {
         alias.stringValue = entry.alias ?? ""
         kind.stringValue = entry.kind.title
         setAccessibilityLabel("\(entry.name), \(kind.stringValue)")
+    }
+}
+
+/// A subtle field surface resolved in the current appearance, without the
+/// opaque control/clip-view background that clashes with the popover material.
+private final class ArgumentScrollView: NSScrollView {
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.labelColor.withAlphaComponent(0.07).setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: 8, yRadius: 8).fill()
+        super.draw(dirtyRect)
+    }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
     }
 }

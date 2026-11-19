@@ -33,6 +33,18 @@ public struct ScriptResult: Sendable {
     public var stderrTruncated: Bool
     public var succeeded: Bool { termination == .exited && exitCode == 0 }
 
+    public var failureDescription: String? {
+        guard !succeeded else { return nil }
+        let reason = switch termination {
+        case .exited: "Exit code \(exitCode)"
+        case .timedOut: "Timed out"
+        case .cancelled: "Cancelled"
+        }
+        let error = String(decoding: stderr, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        let output = error.isEmpty ? String(decoding: stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines) : error
+        return reason + (output.isEmpty ? "" : " — " + String(output.prefix(512)))
+    }
+
     public func outputURL() throws -> URL {
         guard succeeded else { throw ScriptRunError.invalidURL }
         guard !stdoutTruncated else { throw ScriptRunError.truncatedURL }
