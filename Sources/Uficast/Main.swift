@@ -54,7 +54,7 @@ struct UficastMain {
             application.finishLaunching()
             do {
                 try AITextVerification.run()
-                print("PASS: AI text rich-text round trip, pasteboards and result panel controls.")
+                print("PASS: AI text rich-text round trip, pasteboards, panel controls and clipboard/Service flows (cancel, retry, deadline, fallback).")
             } catch {
                 FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
                 exit(1)

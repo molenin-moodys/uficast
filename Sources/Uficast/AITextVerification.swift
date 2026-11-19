@@ -8,6 +8,7 @@ enum AITextVerification {
     static func run() throws {
         try richTextRoundTrip()
         try panelControls()
+        try coordinatorFlows()
     }
 
     private static func require(_ condition: Bool, _ message: String) throws {
@@ -98,4 +99,166 @@ enum AITextVerification {
         panel.performCancel()
         try require(cancels == 1, "Esc cancels once")
     }
+
+    /// Scripted runner: answers in order after a delay; cancel makes a pending run throw.
+    private actor FakeRunner: AITextRunning {
+        private var answers: [Result<String, AITextError>]
+        private let delay: Duration
+        private var generation = 0
+        private(set) var calls = 0
+        private(set) var cancels = 0
+        init(_ answers: [Result<String, AITextError>], delay: Duration = .milliseconds(50)) {
+            self.answers = answers
+            self.delay = delay
+        }
+        func run(command: String, prompt: String, timeout: Double) async throws -> String {
+            calls += 1
+            let started = generation
+            let answer = answers.isEmpty ? .success("ok") : answers.removeFirst()
+            try? await Task.sleep(for: delay)
+            guard generation == started else { throw AITextError.cancelled }
+            return try answer.get()
+        }
+        func cancel() { cancels += 1; generation += 1 }
+    }
+
+    private static func spin(_ seconds: Double = 2, until condition: () -> Bool) {
+        let deadline = Date().addingTimeInterval(seconds)
+        while !condition(), Date() < deadline { RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.01)) }
+    }
+
+    /// Fires `action` from inside the coordinator's nested service loop once `ready` holds.
+    private static func whenReady(_ ready: @escaping @MainActor () -> Bool, _ action: @escaping @MainActor () -> Void) -> Timer {
+        Timer.scheduledTimer(withTimeInterval: 0.02, repeats: true) { timer in
+            let fired = MainActor.assumeIsolated { () -> Bool in
+                guard ready() else { return false }
+                action()
+                return true
+            }
+            if fired { timer.invalidate() }
+        }
+    }
+
+    private static func make(_ runner: FakeRunner, deadline: TimeInterval = 5) -> (AITextCoordinator, AITextPanelController, NSPasteboard) {
+        let panel = AITextPanelController()
+        panel.presentsWindow = false
+        let general = privatePasteboard()
+        return (AITextCoordinator(panel: panel, runner: runner, general: general, serviceDeadline: deadline, timeout: 5), panel, general)
+    }
+
+    private static func coordinatorFlows() throws {
+        let replace = "↩ Replace  ·  Esc Cancel", copy = "↩ Copy  ·  Esc Cancel"
+        do { // Empty clipboard and an image-only clipboard never run the command.
+            let runner = FakeRunner([])
+            let (coordinator, panel, general) = make(runner)
+            general.clearContents()
+            coordinator.runFromClipboard(.rewrite)
+            try require(panel.shownText == "Copy text first." && panel.hint == "Esc Close", "Empty clipboard message")
+            general.clearContents()
+            let pixel = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 1, pixelsHigh: 1, bitsPerSample: 8, samplesPerPixel: 4,
+                                         hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)
+            general.setData(pixel?.tiffRepresentation ?? Data(), forType: .tiff)
+            coordinator.runFromClipboard(.translate)
+            try require(panel.shownText == "Copy text first.", "Image-only clipboard message")
+            spin(0.2) { false }
+            try require(Task.awaitValue { await runner.calls } == 0, "No command may run without text")
+        }
+        do { // Clipboard rewrite: Enter copies the result.
+            let (coordinator, panel, general) = make(FakeRunner([.success("We were here.")]))
+            general.clearContents()
+            general.setString("we was here", forType: .string)
+            coordinator.runFromClipboard(.rewrite)
+            spin { panel.hint == copy }
+            try require(panel.shownText == "We were here.", "Clipboard result shown")
+            panel.performConfirm()
+            try require(general.string(forType: .string) == "We were here." && !panel.isVisible, "Enter copies and closes")
+        }
+        do { // Esc while working cancels; the late result neither shows nor writes.
+            let runner = FakeRunner([.success("late")], delay: .milliseconds(300))
+            let (coordinator, panel, general) = make(runner)
+            general.clearContents()
+            general.setString("source", forType: .string)
+            coordinator.runFromClipboard(.rewrite)
+            panel.performCancel()
+            spin(0.6) { false }
+            try require(Task.awaitValue { await runner.cancels } >= 1, "Esc cancels the command")
+            try require(!panel.isVisible && general.string(forType: .string) == "source", "Late result ignored")
+        }
+        do { // Failure, then an explicit retry.
+            let runner = FakeRunner([.failure(.failed("Boom")), .success("second")])
+            let (coordinator, panel, general) = make(runner)
+            general.clearContents()
+            general.setString("text", forType: .string)
+            coordinator.runFromClipboard(.translate)
+            spin { panel.hint == "↩ Retry  ·  Esc Close" }
+            try require(panel.shownText == "Boom", "Failure text shown")
+            panel.performConfirm()
+            spin { panel.hint == copy }
+            try require(panel.shownText == "second" && Task.awaitValue { await runner.calls } == 2, "Retry runs again")
+        }
+        do { // Service with a rich source: Enter replaces with formatting and copies.
+            let (coordinator, panel, general) = make(FakeRunner([.success("Kindly <s1>review</s1> the <s2>file</s2>")]))
+            let service = privatePasteboard()
+            defer { service.releaseGlobally() }
+            RichTextBridge.write(sample(), rich: true, to: service)
+            let timer = whenReady({ panel.hint == replace }) { panel.performConfirm() }
+            var message: NSString = ""
+            coordinator.rewriteText(service, userData: "", error: &message)
+            timer.invalidate()
+            guard let replaced = RichTextBridge.read(service) else { throw ConfigError.invalid("Service got no result") }
+            try require(replaced.string == "Kindly review the file" && isBold(replaced, word: "review"), "Replacement keeps bold")
+            try require(general.string(forType: .string) == "Kindly review the file", "Replacement also copied")
+        }
+        do { // Service cancel leaves the selection unchanged.
+            let (coordinator, panel, _) = make(FakeRunner([.success("never")], delay: .milliseconds(300)))
+            let service = privatePasteboard()
+            defer { service.releaseGlobally() }
+            RichTextBridge.write(NSAttributedString(string: "hello"), rich: false, to: service)
+            let timer = whenReady({ panel.hint == "Working…  ·  Esc Cancel" }) { panel.performCancel() }
+            var message: NSString = ""
+            coordinator.translateText(service, userData: "", error: &message)
+            timer.invalidate()
+            try require(service.string(forType: .string) == "hello", "Cancelled service must not write")
+        }
+        do { // Deadline with a result shown: return without writing, switch to copy mode.
+            let (coordinator, panel, general) = make(FakeRunner([.success("Done.")]), deadline: 0.5)
+            let service = privatePasteboard()
+            defer { service.releaseGlobally() }
+            general.clearContents()
+            RichTextBridge.write(NSAttributedString(string: "done"), rich: false, to: service)
+            let start = Date()
+            var message: NSString = ""
+            coordinator.rewriteText(service, userData: "", error: &message)
+            try require(Date().timeIntervalSince(start) < 1, "Service must return at its deadline")
+            try require(service.string(forType: .string) == "done", "Deadline must not write")
+            try require(panel.hint == copy && panel.note == "Time ran out for replacing.", "Deadline switches to copy mode")
+            panel.performConfirm()
+            try require(general.string(forType: .string) == "Done." && service.string(forType: .string) == "done", "Later Enter only copies")
+        }
+        do { // Broken markers fall back to the base style with a note.
+            let (coordinator, panel, general) = make(FakeRunner([.success("Kindly <s3>review</s3>")]))
+            let service = privatePasteboard()
+            defer { service.releaseGlobally() }
+            RichTextBridge.write(sample(), rich: true, to: service)
+            var note = ""
+            let timer = whenReady({ panel.hint == replace }) { note = panel.note; panel.performConfirm() }
+            var message: NSString = ""
+            coordinator.rewriteText(service, userData: "", error: &message)
+            timer.invalidate()
+            try require(note == "Formatting could not be kept.", "Fallback note")
+            try require(service.string(forType: .string) == "Kindly review" && general.string(forType: .string) == "Kindly review",
+                        "Fallback writes text without markers")
+        }
+    }
 }
+
+private extension Task where Failure == Never {
+    /// Reads an actor value from the verification's synchronous main-thread code.
+    @MainActor static func awaitValue(_ body: @escaping @Sendable () async -> Success) -> Success {
+        var value: Success?
+        Task<Void, Never> { @MainActor in value = await body() }
+        while value == nil { RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.01)) }
+        return value!
+    }
+}
+

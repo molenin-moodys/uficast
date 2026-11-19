@@ -47,6 +47,7 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
     var hint: String { hintLabel.stringValue }
     var note: String { noteLabel.stringValue }
     var title: String { titleLabel.stringValue }
+    var shownText: String { textView.string }
 
     override init() {
         panel = AITextPanel(contentRect: NSRect(x: 0, y: 0, width: 720, height: 340),
