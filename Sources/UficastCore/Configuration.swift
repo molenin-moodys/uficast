@@ -30,11 +30,12 @@ public struct ScriptCommand: Codable, Equatable, Identifiable, Sendable {
     public var timeoutSeconds: Double
     public var workingDirectory: String?
     public var environment: [String: String]
+    public var sourceDirectory: String?
 
     public init(id: String = UUID().uuidString, name: String, alias: String? = nil, isEnabled: Bool = true,
                 path: String, interpreter: String? = nil, requiresArgument: Bool = false,
                 argumentPlaceholder: String = "Argument", resultMode: ResultMode = .discard,
-                timeoutSeconds: Double = 30, workingDirectory: String? = nil, environment: [String: String] = [:]) {
+                timeoutSeconds: Double = 30, workingDirectory: String? = nil, environment: [String: String] = [:], sourceDirectory: String? = nil) {
         self.id = id
         self.name = name
         self.alias = alias
@@ -47,6 +48,7 @@ public struct ScriptCommand: Codable, Equatable, Identifiable, Sendable {
         self.timeoutSeconds = timeoutSeconds
         self.workingDirectory = workingDirectory
         self.environment = environment
+        self.sourceDirectory = sourceDirectory
     }
 
     public var entry: LauncherEntry {
@@ -61,11 +63,12 @@ public struct Configuration: Codable, Equatable, Sendable {
     public var applicationRoots: [String] = ["/Applications", "/System/Applications", "~/Applications"]
     public var applications: [String: AppOverride] = [:]
     public var scripts: [ScriptCommand] = []
+    public var scriptDirectories: [String] = []
     public var capsLockToF19Enabled = false
 
     public init() {}
 
-    private enum CodingKeys: String, CodingKey { case schemaVersion, applicationRoots, applications, scripts, capsLockToF19Enabled }
+    private enum CodingKeys: String, CodingKey { case schemaVersion, applicationRoots, applications, scripts, scriptDirectories, capsLockToF19Enabled }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -73,6 +76,7 @@ public struct Configuration: Codable, Equatable, Sendable {
         applicationRoots = try values.decode([String].self, forKey: .applicationRoots)
         applications = try values.decode([String: AppOverride].self, forKey: .applications)
         scripts = try values.decode([ScriptCommand].self, forKey: .scripts)
+        scriptDirectories = try values.decodeIfPresent([String].self, forKey: .scriptDirectories) ?? []
         capsLockToF19Enabled = try values.decodeIfPresent(Bool.self, forKey: .capsLockToF19Enabled) ?? false
     }
 
@@ -114,6 +118,7 @@ public struct Configuration: Codable, Equatable, Sendable {
             }
         }
         for path in applicationRoots { try checkPath(path) }
+        for path in scriptDirectories { try checkPath(path) }
         var shortcuts: Set<UInt64> = [GlobalShortcut.launcher.signature]
         for (id, app) in applications {
             guard id.hasPrefix("app:") || id.hasPrefix("app-path:") else { throw ConfigError.invalid("Invalid application identity.") }
@@ -132,6 +137,7 @@ public struct Configuration: Codable, Equatable, Sendable {
             guard !script.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw ConfigError.invalid("A script needs a name.") }
             try checkAlias(script.alias, enabled: script.isEnabled)
             try checkPath(script.path)
+            if let directory = script.sourceDirectory { try checkPath(directory) }
             if let interpreter = script.interpreter { try checkPath(interpreter) }
             if let directory = script.workingDirectory { try checkPath(directory) }
             guard script.timeoutSeconds.isFinite, script.timeoutSeconds > 0, script.timeoutSeconds <= 86400 else {

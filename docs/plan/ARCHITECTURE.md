@@ -85,7 +85,8 @@ Conceptual configuration fields:
 schemaVersion
 applicationRoots
 applications: stableID -> alias?, isEnabled, lastKnownName?, fallbackPath?, hotkey?
-scripts: id, name, alias?, enabled, fileURL, interpreter?,
+scriptDirectories: local folder paths
+scripts: id, name, alias?, enabled, fileURL, interpreter?, sourceDirectory?,
          requiresArgument, argumentPlaceholder, resultMode,
          workingDirectory?, environmentOverrides, timeoutSeconds
 capsLockToF19Enabled
@@ -162,3 +163,9 @@ KeepAwakeService owns at most one IOPM assertion. The native backend uses IOPMAs
 ## Built-in launcher commands
 
 BuiltInCommand defines stable builtin:caffeine / builtin:decaffeine identities, cafe / decafe abbreviations and cup / zzz symbols. AppController appends them to the launcher catalog without storing them as scripts or app overrides. They route directly to the shared KeepAwakeService enable/disable path; caffeine renews indefinite mode and decaffeine releases the app-owned assertion. There is no shell process or external app URL open. A busy operation is reported in the launcher. Fuzzy/layout search remains shared; an explicit user alias outranks a conflicting built-in abbreviation without invalidating existing configuration. Built-ins are currently launcher entries, not editable Commands records.
+
+## Script folders
+
+Configuration schema 1 adds default-empty scriptDirectories and optional ScriptCommand.sourceDirectory, preserving legacy decoding. ScriptFolderCatalog runs off the UI actor, enumerates direct non-hidden regular files, resolves symlinks, deduplicates canonical paths and reads at most 32 KiB of each candidate's header. Supported suffixes are sh/bash/zsh/py/applescript/scpt plus extensionless shebang files. Only initial comment-header Raycast title/argument1 data is parsed. One required text argument is supported; malformed or unsupported declarations produce notices. No discovery path executes scripts or copies their contents into the repository/configuration.
+
+New commands receive path-derived IDs and inferred interpreters; existing commands keep all edited options and IDs. Manual entries win duplicate-file matches. Refresh prunes removed files only for successfully enumerated roots, retains commands from unavailable roots, and disconnect removes only managed records. Files are never deleted. Editing a managed path detaches it with a new identity so reindexing the original file cannot collide. Settings exposes folder add/refresh/disconnect; refresh occurs after connecting/importing directories, on successful configuration recovery and at startup. There is no recursive traversal or live folder watcher in this increment; script contents are always read from the original path at execution.

@@ -165,6 +165,10 @@ Double-click an application's Hotkey cell to record inline. Escape cancels witho
 
 Add caffeine / decaffeine entries and cafe / decafe abbreviations to launcher search. Show a cup while active and zzz in decaf mode, including startup and the decaffeine result icon. Use the existing native power service for indefinite enable and disable; do not spawn scripts. Cover exact/short/fuzzy/wrong-layout searches and user-alias precedence. Keep real power acceptance separate from fixture tests.
 
+## Stage 6g — Script-folder UX (owner addition)
+
+Connect a folder from Commands, reference its direct script files, and infer interpreter/title/one text argument from known suffixes, shebang and Raycast comment headers. Keep existing per-command customizations, deduplicate by canonical file path, preserve unavailable roots, and disconnect without deleting source files. Add explicit Refresh Scripts and startup refresh. Test discovery without execution, legacy configuration, removed/unavailable folders, unsupported metadata and manual duplicates. Verify the actual add-folder workflow without running private scripts; screenshots must retain only public fixtures.
+
 ## Stage 7 — Daily-use verification and source-build handoff
 
 Tasks:

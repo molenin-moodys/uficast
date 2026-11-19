@@ -56,7 +56,13 @@ struct ScriptEditor: View {
         do {
             script.environment = try JSONDecoder().decode([String: String].self, from: Data(environment.utf8))
             var config = model.configuration
-            if let index = config.scripts.firstIndex(where: { $0.id == script.id }) { config.scripts[index] = script }
+            if let index = config.scripts.firstIndex(where: { $0.id == script.id }) {
+                if script.sourceDirectory != nil, script.path != config.scripts[index].path {
+                    script.sourceDirectory = nil
+                    script.id = UUID().uuidString
+                }
+                config.scripts[index] = script
+            }
             else { config.scripts.append(script) }
             _ = try config.validated()
             error = ""

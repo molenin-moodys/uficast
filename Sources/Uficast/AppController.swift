@@ -72,6 +72,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         settingsModel.onRefresh = { [weak self] in self?.catalog.refresh() }
         settingsModel.onRetryShortcut = { [weak self] in self?.hotkey.start() }
         settingsModel.onAddApp = { [weak self] in self?.addApplication() }
+        settingsModel.onAddScriptFolder = { [weak self] in self?.addScriptFolder() }
+        settingsModel.onRefreshScripts = { [weak self] in self?.refreshScriptFolders() }
         settingsModel.onImport = { [weak self] in self?.importConfiguration() }
         settingsModel.onExport = { [weak self] in self?.exportConfiguration() }
         settingsModel.onRestore = { [weak self] in self?.restoreConfiguration() }
@@ -367,11 +369,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
                 applyConfiguration(Configuration())
             }
             settingsModel.isBusy = false
+            if !settingsModel.configuration.scriptDirectories.isEmpty { refreshScriptFolders() }
         }
     }
 
     private func saveConfiguration(_ configuration: Configuration) {
         guard !settingsModel.isBusy, !settingsModel.isReadOnly else { return }
+        let foldersChanged = settingsModel.configuration.scriptDirectories != configuration.scriptDirectories
         settingsModel.isBusy = true
         settingsModel.status = "Saving…"
         Task {
@@ -381,6 +385,43 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
                 settingsModel.status = "Saved."
                 settingsModel.saveRevision += 1
             } catch { settingsModel.status = error.localizedDescription }
+            settingsModel.isBusy = false
+            if foldersChanged && settingsModel.configuration == configuration { refreshScriptFolders() }
+        }
+    }
+
+    private func addScriptFolder() {
+        guard !settingsModel.isBusy, !settingsModel.isReadOnly else { return }
+        let picker = NSOpenPanel()
+        picker.title = "Add Script Folder"
+        picker.prompt = "Add Folder"
+        picker.message = "Connect shell, Python or AppleScript files from this folder. Raycast titles and one text argument are imported. Files are not copied or run."
+        picker.canChooseFiles = false
+        picker.canChooseDirectories = true
+        guard picker.runModal() == .OK, let url = picker.url else { return }
+        var config = settingsModel.configuration
+        let path = url.resolvingSymlinksInPath().standardizedFileURL.path
+        if !config.scriptDirectories.contains(path) { config.scriptDirectories.append(path) }
+        refreshScriptFolders(configuration: config)
+    }
+
+    private func refreshScriptFolders(configuration: Configuration? = nil) {
+        guard !settingsModel.isBusy, !settingsModel.isReadOnly, !isTerminating else { return }
+        let config = configuration ?? settingsModel.configuration
+        settingsModel.isBusy = true
+        settingsModel.status = "Reading script folders…"
+        Task {
+            let result = await Task.detached(priority: .utility) { ScriptFolderCatalog.refresh(config) }.value
+            guard !isTerminating else { return }
+            do {
+                if result.configuration != settingsModel.configuration {
+                    try await configStore.save(result.configuration)
+                    applyConfiguration(result.configuration)
+                    settingsModel.saveRevision += 1
+                }
+                let summary = "Scripts refreshed: \(result.found) found."
+                settingsModel.status = result.notices.isEmpty ? summary : summary + " " + String(result.notices.joined(separator: " ").prefix(600))
+            } catch { settingsModel.status = "Could not refresh scripts: \(error.localizedDescription)" }
             settingsModel.isBusy = false
         }
     }
@@ -421,15 +462,18 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         guard !settingsModel.isBusy else { return }
         settingsModel.isBusy = true
         Task {
+            var restored = false
             do {
                 let config = try await configStore.restoreBackup()
                 settingsModel.isReadOnly = false
                 didLoadConfiguration = true
                 didReconcileKeyboard = false
                 applyConfiguration(config)
+                restored = true
                 settingsModel.status = "Backup restored. The previous file was preserved."
             } catch { settingsModel.status = "Recovery failed: \(error.localizedDescription)" }
             settingsModel.isBusy = false
+            if restored, !settingsModel.configuration.scriptDirectories.isEmpty { refreshScriptFolders() }
         }
     }
 

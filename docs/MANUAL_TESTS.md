@@ -36,3 +36,11 @@ Follow [requirements](plan/REQUIREMENTS.md). Caps Lock remapping, login items, o
 - Search caffeine/cafe and decaffeine/decafe; verify Command labels and cup icons. Try cfn/dcfn and Russian physical-key input сфау/вусфау.
 - During an owner-initiated power test, run cafe and confirm the menu/Settings state changes to indefinite Keep Awake; repeat without creating extra assertions. Run decafe and confirm that assertion is released. Do not execute a found result just to test search.
 - If a user app/script alias is cafe, it remains the preferred alias match; caffeine remains available by full name.
+
+## Script folders
+
+- In Commands, Add Folder (or + → Add Script Folder) opens a directory-only picker. Cancel makes no changes. Connect a fixture directory containing a shell script with a Raycast title and one text argument; it appears immediately and opens argument mode with the expected placeholder. Adding never executes it.
+- Refresh after adding/removing files; verify no duplicate commands and retained aliases/enabled/editor options. Restart to verify saved folder discovery. Hidden files and subfolders are skipped.
+- An unavailable root reports status and retains records; reconnect/refresh recovers it. Unsupported argument declarations show notices without silently creating a no-argument command.
+- Disable a managed script to hide it. Disconnect a folder: its managed commands disappear, manual entries remain and every source file stays intact. Editing a managed path detaches that command.
+- Never include private scripts, internal URLs, home paths or real configuration in repository fixtures/screenshots. Test actual private script execution/browser behavior only during an owner-initiated run.

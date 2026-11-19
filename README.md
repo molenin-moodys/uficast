@@ -8,6 +8,7 @@ A lightweight, native macOS launcher for applications and local scripts. Built w
 
 - **Cmd+Space launcher** with application icons, fuzzy search and aliases that rank first.
 - **Wrong-layout search** for U.S./Russian keyboards: type `сркщьу` to find Chrome without changing layouts.
+- **Script folders** to discover local shell, Python and AppleScript commands, including Raycast title/argument headers.
 - **Local scripts** using shell, AppleScript or another configured interpreter. Pass one unchanged text argument and optionally open a generated URL.
 - **Per-app shortcuts** to show, hide or launch an application.
 - **Keep Awake** with timed or indefinite sessions, plus optional start at login.
@@ -75,7 +76,15 @@ Private JSON lives in `~/Library/Application Support/Uficast/config.json`, with 
 
 ## Script commands
 
-In Commands, use **+ → Add Script…**. Choose a local script, set its interpreter (for example `/bin/zsh`, `/bin/bash`, `/usr/bin/osascript`, or `/usr/bin/python3`) and an alias. An empty interpreter runs an executable file using its shebang. Selection offers **Edit…** and **Delete**; deleting a command leaves its source file intact.
+In **Settings → Commands**, click **Add Folder…** (also available under **+ → Add Script Folder…**) and choose your scripts directory. Uficast connects the existing files without copying or running them. Use **Refresh Scripts** after adding/removing files; folders are also read on launch. Discovery reads the folder's direct children, skipping hidden files and subfolders.
+
+Supported files: `.sh`, `.bash`, `.zsh`, `.py`, `.applescript`, `.scpt`, and extensionless files with a shebang. The importer prefers the shebang, recognizes standard `/usr/bin/env bash`, `sh`, `zsh` and `python3` forms, and otherwise uses the extension. Executable scripts can retain their own shebang invocation.
+
+Raycast `@raycast.title` and one required text `@raycast.argument1` with its placeholder are read from the comment header. Multiple, optional or non-text argument declarations are reported as unsupported. The default result is **Run for side effects**, suitable for scripts that call `open` themselves. Importing never executes the header or script body.
+
+Existing commands retain their IDs, aliases, enabled state and edited options; the same file is not duplicated. Unavailable folders retain their commands and show a status message. Removed files disappear after refresh. Expand **Connected folders** and click × to disconnect a folder and its managed commands; files remain untouched. Disable a folder-managed command to hide it. Changing its path in the editor detaches that command from folder management.
+
+For individual commands, use **+ → Add Script…**. Choose a local script, set its interpreter (for example `/bin/zsh`, `/bin/bash`, `/usr/bin/osascript`, or `/usr/bin/python3`) and an alias. An empty interpreter runs an executable file using its shebang. Selection offers **Edit…** and **Delete**; deleting a command leaves its source file intact.
 
 For the `k` workflow, configure [browser-search.py](examples/browser-search.py), interpreter `/usr/bin/python3`, alias `k`, one required argument, placeholder `log_stream`, and **Open stdout URL in browser**. In the launcher: `k` → Tab → Cmd+V → Enter. This example generates an encoded example.com URL; it does not contain a real Kibana endpoint. [Shell](examples/echo-argument.sh) and [AppleScript](examples/echo-argument.applescript) examples are also included.
 

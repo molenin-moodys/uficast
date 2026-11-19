@@ -18,6 +18,7 @@ Recorded on November 18, 2026; updated the same day to ordinary Cmd+Space with n
 | Startup | A visible Start Uficast at login checkbox in General. |
 | Wrong-layout search | Find application names and aliases typed using U.S. or Russian physical-key layouts; never transform script arguments. |
 | Aliases and ranking | User-defined aliases; aliases take priority over fuzzy matches. |
+| Script folders | Add a folder through Settings; discover referenced script files and import Raycast title/one required text-argument headers without executing or copying files. |
 | Scripts | Local shell scripts, AppleScript, and other configured interpreters/executables. |
 | Argument input | One text argument, including standard Cmd+V paste, then Enter. |
 | Reference workflow | `k` → Tab → input for Kibana's `log_stream` → Enter → script → browser URL. |
@@ -75,6 +76,7 @@ Use a dedicated settings window with two useful sections: **General** and **Comm
 - Table/list columns: real app icon and Name, Type, Alias, Hotkey, Enabled. Group scripts and applications where it improves scanning; use alternating/rounded selected rows and native typography/materials.
 - Double-click an application’s Hotkey cell to open an inline recording field; a single click selects the row. An assigned shortcut has a visible × control to remove it in both the cell and inspector. Escape closes the field without saving, preserving the prior shortcut (or unassigned state). Focus loss also cancels; Delete explicitly clears.
 - Select an item to edit its alias and enabled status. Script details include name, path, interpreter, argument toggle/placeholder, result handling, timeout, working directory, and optional environment overrides.
+- Commands includes Add Folder, Refresh Scripts and a connected-folders disclosure with disconnect controls. Existing command customizations survive scans; disabling hides a managed script. Refresh on startup and explicit request; direct children only.
 - Discovered applications are automatically listed. Disabling hides an app from launcher search without uninstalling or deleting it.
 - General prominently starts with launch-at-login, then launcher shortcut status, Keep Awake, Caps Lock → F19, application roots, configuration and recent runs.
 - Do not add empty AI, account, cloud-sync, organizations, or other unrelated sections from Raycast.
@@ -85,7 +87,7 @@ Use a dedicated settings window with two useful sections: **General** and **Comm
 - Optional `openURL` mode: on exit code zero, stdout must contain one absolute HTTP(S) URL after removing surrounding whitespace. Open it with the default browser using `NSWorkspace`. Do not open output on failure, on timeout, or when output is malformed/multiple URLs.
 - Keep stderr separate from stdout. Present exit status and useful failure text without freezing the launcher.
 - A command is an explicitly selected local file/executable, not arbitrary shell source entered into the launcher.
-- Existing Raycast scripts have not been supplied. Use generic examples; migrate the owner's real Kibana command when available. A full Raycast metadata importer is not required for v1.
+- Existing Raycast scripts have not been supplied. Use generic examples; migrate the owner's real Kibana command when available. The folder importer recognizes title and one required text argument; broader Raycast metadata/import compatibility remains outside v1.
 
 ## Deferred features
 

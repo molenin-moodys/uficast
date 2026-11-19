@@ -4,7 +4,7 @@ Last updated: November 18, 2026 (America/Los_Angeles).
 
 ## Current state
 
-Requested personal-use features through Stage 6f are implemented. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. The current polish changes inactive Keep Awake icons to zzz; screenshots use only neutral standard-app fixtures.
+Requested personal-use features through Stage 6g are implemented. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. The current increment adds script-folder discovery and UX; screenshots use only neutral standard-app fixtures.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
@@ -17,6 +17,7 @@ Requested personal-use features through Stage 6f are implemented. Mandatory: ord
 | 6d — Wrong-layout search | Implemented | Both U.S./Russian directions, alias ordering, mixed input and ё/й fixtures pass. |
 | 6e — Inline hotkey editing/removal | Implemented | Native fixture checks pass; actual Settings double-click and Escape observed without saving an assignment. Assigned shortcuts have × controls in the cell and inspector. |
 | 6f — Built-in caffeine commands | Implemented | caffeine/cafe and decaffeine/decafe reuse Keep Awake; fuzzy, layout and alias-precedence fixtures pass. Both abbreviations found in the actual launcher. |
+| 6g — Script folders | Implemented | 47 core tests pass; actual directory picker connected the owner-supplied folder and imported seven scripts. Title/interpreter/text argument verified without execution. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -75,6 +76,15 @@ The README checkpoint **2db8863** is pushed. The canonical `dist/Uficast.app` ha
 - Owner requested a sleep zzz icon in decaf mode. The status item now uses SF Symbol `zzz` both at initial startup and whenever Keep Awake is inactive; active sessions keep the filled cup. Inactive accessibility text explicitly says Keep Awake off. The decaffeine launcher command also uses zzz.
 - `scripts/build.sh` passed release compilation and strict signature verification. The canonical app was normally quit before replacing its bundle and successfully reopened. Its AX tree recognized the decaffeine symbol as Snooze. The menu bar appearance itself was not separately captured, and no power session was toggled for verification.
 - No power logic or configuration changed. Existing 42-test results are from the preceding feature checkpoint; the suite was not rerun for this symbol-only edit. README, requirements, architecture and the plan were updated.
+
+## Script-folder increment
+
+- Owner requested adding a scripts folder directly in UX after supplying a local shell-script path. Commands now offers Add Folder and Refresh Scripts, also + → Add Script Folder. Connected folders can be disconnected with × without deleting source files. Folder-managed commands can be disabled and edited; individual Delete is disabled while managed.
+- Configuration schema 1 gains default-empty scriptDirectories and optional ScriptCommand.sourceDirectory. Existing configurations decode unchanged. Scans run off the UI actor, read direct non-hidden regular files, canonicalize/deduplicate paths, and read at most 32 KiB of headers. No imported script is executed or copied. Scripts remain linked to original paths.
+- First import recognizes known shell/Python/AppleScript extensions and shebangs, Raycast title and one required text argument/placeholder. Unsupported argument declarations produce notices. Existing IDs, aliases, enabled state and edited options are retained; manual file references are not duplicated. Unavailable roots retain commands; missing files are pruned only from successfully read roots. Changing a managed path detaches it with a new ID. Refresh runs on startup, explicit request and directory changes through import/recovery; no live watcher or recursive scan is claimed.
+- **47 core tests passed**, including five new folder/metadata/lifecycle/compatibility fixtures. Tests establish discovery has no script side effects. Current warm-search p95: **19.39 ms** over 2,000 synthetic apps. The existing native inline-recorder check also passed with the new folder controls in Settings.
+- Isolated and canonical release builds and strict signature verification passed. Canonical app was normally quit before rebuilding, then reopened. Desktop Add Folder opened a directory-only native picker; the owner-supplied parent folder was connected and the UI reported seven found scripts. Scripts filter showed the imported commands. Inspecting the supplied command showed the imported title, /bin/bash interpreter, required text argument, expected placeholder and side-effect result mode. The editor was cancelled without changes; no imported script/browser action ran. Personal paths, source contents and internal URLs are absent from repository fixtures/docs/screenshots.
+- README, architecture, requirements, stages and manual checklist document direct-child discovery, refresh behavior, metadata limits and disconnect semantics. The Commands screenshot is regenerated from the same public standard-app fixture dataset; actual personal Settings are never used for README captures.
 
 Next product work is the remaining owner-led daily-use acceptance above; do not mark it complete from automated/preview results. No new feature implementation is implied by this handoff.
 

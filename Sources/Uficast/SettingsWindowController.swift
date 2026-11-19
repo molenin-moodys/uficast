@@ -20,6 +20,8 @@ final class SettingsModel: ObservableObject {
     var onRefresh: (() -> Void)?
     var onRetryShortcut: (() -> Void)?
     var onAddApp: (() -> Void)?
+    var onAddScriptFolder: (() -> Void)?
+    var onRefreshScripts: (() -> Void)?
     var onImport: (() -> Void)?
     var onExport: (() -> Void)?
     var onRestore: (() -> Void)?
@@ -88,6 +90,13 @@ final class SettingsModel: ObservableObject {
         var app = applicationOverride(entry)
         app.hotkey = shortcut
         config.applications[entry.id] = app
+        onSave?(config)
+    }
+
+    func removeScriptFolder(_ path: String) {
+        var config = configuration
+        config.scriptDirectories.removeAll { $0 == path }
+        config.scripts.removeAll { $0.sourceDirectory == path }
         onSave?(config)
     }
 
@@ -174,11 +183,38 @@ private struct SettingsView: View {
                     ForEach(["All", "Apps", "Scripts"], id: \.self) { Text($0) }
                 }.pickerStyle(.segmented).labelsHidden().frame(width: 250)
                 Menu {
+                    Button("Add Script Folder…") { model.onAddScriptFolder?() }
                     Button("Add Script…") { model.scriptDraft = ScriptCommand(name: "New Script", path: "", interpreter: "/bin/zsh") }
                     Button("Add Application…") { model.onAddApp?() }
                 } label: { Image(systemName: "plus") }
                     .disabled(model.isBusy || model.isReadOnly)
             }.padding(16)
+            Divider()
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Label("Script Folders", systemImage: "folder")
+                    Text("\(model.configuration.scriptDirectories.count)").foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Add Folder…") { model.onAddScriptFolder?() }
+                    Button("Refresh Scripts") { model.onRefreshScripts?() }
+                        .disabled(model.configuration.scriptDirectories.isEmpty)
+                }
+                if !model.configuration.scriptDirectories.isEmpty {
+                    DisclosureGroup("Connected folders") {
+                        ForEach(model.configuration.scriptDirectories, id: \.self) { path in
+                            HStack {
+                                Text(path).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+                                Spacer()
+                                Button { model.removeScriptFolder(path) } label: { Image(systemName: "xmark.circle.fill") }
+                                    .buttonStyle(.borderless)
+                                    .help("Disconnect folder and remove its commands. Script files are kept.")
+                                    .accessibilityLabel("Disconnect script folder \(path)")
+                            }.font(.caption)
+                        }
+                    }
+                }
+            }.padding(.horizontal, 16).padding(.vertical, 10)
+                .disabled(model.isBusy || model.isReadOnly)
             Divider()
             Table(model.entries, selection: $model.selectedID) {
                 TableColumn("Name") { entry in
@@ -224,8 +260,12 @@ private struct SettingsView: View {
                             var config = model.configuration
                             config.scripts.removeAll { $0.entry.id == selected.id }
                             model.onSave?(config)
-                        }.disabled(model.isBusy || model.isReadOnly)
+                        }.disabled(model.isBusy || model.isReadOnly || selectedScriptIsFolderManaged)
                     }
+                }
+                if selectedScriptIsFolderManaged {
+                    Text("Connected folder script. Disable to hide it; disconnect the folder to remove its commands. Files stay in place.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 if selected.kind == .application {
                     HStack {
@@ -238,6 +278,10 @@ private struct SettingsView: View {
                 }.padding(16)
             }
         }
+    }
+
+    private var selectedScriptIsFolderManaged: Bool {
+        model.configuration.scripts.contains { $0.entry.id == model.selectedID && $0.sourceDirectory != nil }
     }
 
     private func shortcutControl(for entry: LauncherEntry, inline: Bool = false) -> some View {

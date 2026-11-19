@@ -14,3 +14,5 @@
 - Accepted additions: per-application show/hide hotkeys, built-in Keep Awake, singleton opening, real app icons, startup checkbox, and U.S./Russian wrong-layout search. Convert search queries only; never script arguments.
 
 - App Hotkey cells record on double-click; Escape cancels without saving, and × clears an assigned shortcut. Built-in caffeine/cafe and decaffeine/decafe commands use the shared Keep Awake service; preserve user-alias precedence.
+
+- Script folders are connected through Commands. Discovery reads metadata only and never executes or copies scripts; preserve existing customizations and unavailable roots. Keep private script contents/URLs and personal folder paths out of repository fixtures and screenshots.
