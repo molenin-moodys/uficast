@@ -76,6 +76,11 @@ Owner added a built-in Caffeine / Keep Awake feature. Implement Stage 6b with na
 
 ## Remaining evidence gaps
 
+### Cursor report checkpoint (November 18)
+
+- Owner reported a stationary cursor and suspects ChatGPT's pointer. Computer Use inventory did not list Uficast; direct inspection of the ChatGPT app was unavailable. The cursor's source and disappearance remain unverified. Ended the Computer Use check without interacting with other apps or changing system settings.
+- Preserved the existing uncommitted implementation work. No app code changed or build/tests ran for this report. Next project step remains Stage 6b, beginning with review of the existing working-tree changes before further implementation.
+
 Actual GUI launch and delivery of Cmd+Space, repeat/release behavior, Spotlight/Raycast coexistence, standard editing/focus, fullscreen/two monitors, sleep/wake/Secure Input; Automation consent/signing behavior; owner's real Kibana script/environment; F19 remapping and perceived switching latency. Use generic scripts and fixture mappings until actual tests are authorized through normal user actions.
 
 At every checkpoint update actual checks/results, stage states, and the next concrete action, then commit relevant files. Use Git history for the latest checkpoint hash.
