@@ -26,7 +26,7 @@ Recorded on November 18, 2026; updated the same day to ordinary Cmd+Space with n
 | Keyboard | Two input sources already configured in macOS. Eliminate the current Caps Lock switching delay; Caps Lock → F19 plus a system shortcut is sufficient. Support multiple keyboards and reconnection; diagnose conflicting macOS Modifier Keys profiles. |
 | Built-in commands | `caffeine` / `cafe` enables indefinite Keep Awake; `decaffeine` / `decafe` disables it. Fuzzy and wrong-layout search apply. |
 | Keep Awake (added November 18) | Built-in Caffeine-style prevention of idle Mac sleep; native app-owned power assertion. |
-| Menu bar calendar experiment | The clock is the single Uficast menu-bar button. Use Day-O’s standard native calendar appearance, month browsing and Today; configurable date/time format and Show Icon. Upper menu bar only, no Dock addition. |
+| Menu bar calendar | The clock is the single Uficast menu-bar button. Use Day-O’s standard native calendar appearance, month browsing and Today; configurable date/time format and Show Icon. Upper menu bar only, no Dock addition. |
 | Deferred | Kasa/Shortcuts integration. |
 | Continuity | English plan in the repository, committed to Git; implementation can span sessions. |
 
@@ -118,9 +118,9 @@ Shortcuts/Kasa, clipboard history, snippets, file search, window management, cal
 - Provide standard menu commands: Cmd+W close window/panel, Cmd+F search (Commands in Settings), Cmd+H hide, Option+Cmd+H hide others, Cmd+M minimize Settings and Cmd+Q quit. Preserve normal text editing, undo/redo and focus navigation. No additional global keyboard registrations or input observation.
 - Follow Apple's documented conventions where applicable; a launcher has no document printing/opening/tab system to assign those commands to.
 
-## Day-O calendar experiment (owner addition)
+## Day-O calendar (owner addition)
 
-- Work on `codex/day0-calendar-experiment`, branched from `7ebcf04` after the adjacent chat completed. The owner's screenshots are visual references. The owner explicitly clarified that the upper menu bar is intended and that the clock itself is Uficast's one button.
+- Developed on `codex/day0-calendar-experiment`, branched from `7ebcf04` after the adjacent chat completed; the owner authorized integration into main on November 18, 2026. The owner's screenshots are visual references. The owner explicitly clarified that the upper menu bar is intended and that the clock itself is Uficast's one button.
 - Match Day-O using AppKit's standard `NSDatePicker` in `clockAndCalendar` mode, rather than a custom date grid. Preserve native compact sizing, previous/next month controls, Today, selected-date appearance and light/dark behavior. Reset to today on each menu opening. No event/account integration.
 - Center the native calendar with equal outer side margins as in Day-O. Omit keyboard-shortcut hints from the status menu to keep it narrow; the existing application-menu shortcuts remain active. Diagnostics, refresh and shortcut retry are in Settings. Keep Awake uses its existing service through a submenu. Add the Date & Time settings entry shown in the reference.
 - General offers Date & Time Format and Show Icon. The calendar icon includes the current day. A zzz/cup indicator for the current Keep Awake state appears to its left in the same button; it stays visible when Show Icon hides the calendar. Implementation defaults: clock enabled, icon shown, format `EEE HH:mm:ss`, Monday-first Gregorian calendar with English labels; users may disable the clock to restore the cup/zzz button. Settings persist in the existing versioned configuration, with legacy files decoding defaults.

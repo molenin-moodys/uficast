@@ -21,4 +21,4 @@
 
 - Local Settings shortcuts: Cmd+, and owner-requested Cmd+P; Esc cancels an inline edit first, otherwise closes Settings. Remember caffeine mode/deadline locally across normal exits. Hiding the launcher clears its error/input and invalidates late completion; never show that stale error on reopen.
 
-- Calendar experiment: `codex/day0-calendar-experiment` uses the clock as the single upper-menu-bar Uficast button. Match Day-O with native NSDatePicker, compact menus centered against the actual menu window, format/Show Icon settings and seconds aligned to system boundaries. Keep a zzz/cup state indicator left of the optional calendar within the same button. No Dock addition. Keep experimental work out of main until accepted.
+- Calendar work was developed on `codex/day0-calendar-experiment` and the owner authorized merging it into main. Uficast uses the clock as the single upper-menu-bar Uficast button. Match Day-O with native NSDatePicker, compact menus centered against the actual menu window, format/Show Icon settings and seconds aligned to system boundaries. Keep a zzz/cup state indicator left of the optional calendar within the same button. No Dock addition.

@@ -184,7 +184,7 @@ Owner steering supersedes closing the launcher on accepted execution: scripts ke
 
 AppMenu builds standard application/File/Edit/Window menus and a hidden-but-active Cmd+P Settings alias while preserving visible Cmd+,. Cmd+F focuses launcher search or requests Commands search focus through SwiftUI FocusState. Cmd+W uses native performClose; the launcher routes it through dismiss for cleanup. SettingsWindow handles only window-local Esc events: attached sheets keep native dispatch, active inline edits cancel first, otherwise Settings closes. Native view key equivalents continue to handle recorded chords before menus. Menu actions do not register more global shortcuts. References: [Apple shortcuts](https://support.apple.com/en-us/102650), [Cocoa key-equivalent routing](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/EventOverview/HandlingKeyEvents/HandlingKeyEvents.html).
 
-## Experimental menu-bar calendar
+## Menu-bar calendar
 
 MenuBarClockController updates the existing NSStatusItem, never creating a second permanent button. Clock enabled/Show Icon/format live in schema-1 menuBarClock with default decoding for older files. Turning off the clock restores the existing cup/zzz state. The clock's tooltip and menu still expose Keep Awake; power behavior does not change.
 

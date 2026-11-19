@@ -4,7 +4,7 @@ A lightweight, native macOS launcher for applications and local scripts. Built w
 
 **Status:** personal-use feature implementation is available. Automated checks and selected desktop flows pass; remaining hands-on acceptance is tracked in [PROGRESS](docs/plan/PROGRESS.md).
 
-**Calendar experiment:** this branch adds a Day-O-style clock and native calendar to the single Uficast menu-bar button.
+Uficast includes a Day-O-style clock and native calendar in its single menu-bar button.
 
 ## Features
 
@@ -156,7 +156,7 @@ Use the menu bar **Keep Awake** toggle or choose **30 Minutes**, **1 Hour**, or 
 
 The last caffeine/decaf mode is remembered locally and restored on relaunch. Timed sessions resume their remaining time; an already expired session stays off. A fresh installation starts off. Quit releases the process-owned assertion while preserving the remembered mode for the next launch. The display may dim or sleep; explicit Sleep, closing the lid, low battery and other macOS sleep reasons still apply. This is the behavior of Apple's [idle-system-sleep assertion](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep).
 
-## Menu-bar calendar (experiment)
+## Menu-bar calendar
 
 The clock is Uficast's one menu-bar button. Click it for a compact native calendar, use its arrows to browse months and the dot to return to today. Each opening starts at today. The menu also offers Open Launcher, Settings, macOS Date & Time, Keep Awake and Quit.
 

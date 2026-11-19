@@ -4,7 +4,7 @@ Last updated: November 18, 2026 (America/Los_Angeles).
 
 ## Current state
 
-Requested personal-use features through Stage 6k are implemented; Stage 6l is implemented on the separate calendar experiment branch with manual acceptance pending. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. Window-shortcut/power checkpoint 7ebcf04 is pushed to origin/main. The current calendar increment is on codex/day0-calendar-experiment, branched from that clean checkpoint after the adjacent chat completed; main is unchanged.
+Requested personal-use features through Stage 6k are implemented; Stage 6l is integrated into main at the owner’s request, with remaining manual acceptance pending. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. Window-shortcut/power checkpoint 7ebcf04 is pushed to origin/main. The calendar increment was developed on codex/day0-calendar-experiment and has now been fast-forward merged into main through 72d765c at the owner’s explicit request.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
@@ -22,7 +22,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is im
 | 6i — Argument styling and failure correction | Implemented | Appearance previews checked; 48 core tests plus native feedback tests pass. Private-script failure/browser flow remains owner-led. |
 | 6j — Window keyboard conventions | Implemented | Native menu/Esc-priority checks pass; desktop Cmd+P and Cmd+, opened Settings. Broader physical focus/minimize/hide acceptance remains pending. |
 | 6k — Remembered caffeine / transient errors | Implemented | 50 core tests pass with fake power restoration; native feedback check confirms hide clears retained errors and rejects late completion. |
-| 6l — Day-O calendar experiment | Implemented on experiment branch | 51 core tests and native clock/menu-mode checks pass; compact NSDatePicker previews inspected. Real menu navigation, side-by-side seconds and preference persistence acceptance pending. |
+| 6l — Day-O calendar | Integrated into main by owner request | 51 core tests and native clock/menu-mode checks pass; compact NSDatePicker previews inspected. Real menu navigation, side-by-side seconds and preference persistence acceptance pending. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -146,9 +146,16 @@ Stage 6l owner-requested calendar work is recorded below; the earlier daily-use 
 
 - Owner reported that caffeine seemed not to work. Read-only pmset -g assertions showed a live Uficast-owned PreventUserIdleSystemSleep assertion named Uficast Keep Awake. General showed Keep Mac awake checked, Awake until stopped and Keep Awake enabled with no error. This establishes current activation/ownership, not a completed idle-sleep acceptance session.
 - Did not enable/disable a real assertion or change the owner's power mode. A temporary native fixture rendered both composite status icons; the cup/zzz and calendar were visible in both states. No app code change or rebuild was justified by these observations.
-- Asked the owner whether the issue is command/icon activation, actual system sleep, or disable/restoration. The current service intentionally allows display sleep and does not override explicit Sleep/lid policy; further diagnosis depends on the observed symptom.
+- Owner clarified that the Mac seemed to sleep despite activation, then said it might already be resolved. No power-mechanism fix was made or claimed. The current service intentionally allows display sleep and does not override explicit Sleep/lid policy. If automatic system sleep recurs, collect the approximate time and read the system sleep-reason log.
 
-**Exact next step:** owner tries the running clock menu against Day-O: browse previous/next months and Today, verify compact width and seconds beside the system clock, then try format/Show Icon and restart persistence. Record actual observations, fix any result on this branch, and merge only after owner acceptance. Other Stage 7 manual gaps remain open.
+### Main integration
+
+- Owner explicitly requested merging and pushing the experiment. Verified origin HEAD points to main at 7ebcf04, fetched origin and confirmed local/remote main had no divergence. The working tree was clean.
+- Fast-forward merged codex/day0-calendar-experiment into main through 72d765c, retaining all four experiment commits without conflicts or rewriting history. Reviewed the changed-file list and diff whitespace; no build output, personal configuration, Day-O resources or private screenshots are included.
+- Updated README and continuity documents to reflect approved integration. Existing release/signature, 51-core-test and native menu/clock evidence applies to the unchanged implementation; no redundant build/test or app restart was needed for this merge/documentation-only step. Manual acceptance gaps remain open.
+
+**Exact next step:** continue owner-led daily use on main: compare the running status menu with Day-O, check month navigation/Today, seconds and preference persistence. If automatic system sleep recurs while caffeine is on, record the time and inspect the system sleep reason. Do not mark these manual checks complete from merge approval.
+
 
 ### Earlier cursor report checkpoint
 

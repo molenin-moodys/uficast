@@ -185,11 +185,11 @@ Esc closes Settings after cancelling inline edits first. Keep sheet cancellation
 
 Persist local caffeine/decaf mode and optional expiry. Restore indefinite or remaining timed sessions, not expired ones; snapshot before releasing on quit and suppress initial/cleanup observer writes. Test with fake assertions and Codable fixtures, without changing actual power state merely to test. Clear launcher errors/input on every hide and reject late results before they can be remembered or shown on reopen.
 
-## Stage 6l — Day-O menu-bar calendar experiment (owner addition)
+## Stage 6l — Day-O menu-bar calendar (owner addition)
 
-Use the separately requested codex/day0-calendar-experiment branch after the adjacent chat completes. Make the clock Uficast's single status button; preserve Keep Awake through its menu. Use the standard compact AppKit NSDatePicker found in Day-O, with month browsing/Today and reset on opening. Add General format/Show Icon preferences with backward-compatible persistence. Keep diagnostics out of the root menu so it stays narrow. Verify horizontal centering inside an actual open NSMenu, including when command rows widen it. Keep a zzz/cup state indicator to the left of the calendar within the single button. Anchor seconds to system boundaries and resynchronize after wake/time changes.
+Developed on the separately requested codex/day0-calendar-experiment branch after the adjacent chat completed; the owner authorized integration into main on November 18, 2026. Make the clock Uficast's single status button; preserve Keep Awake through its menu. Use the standard compact AppKit NSDatePicker found in Day-O, with month browsing/Today and reset on opening. Add General format/Show Icon preferences with backward-compatible persistence. Keep diagnostics out of the root menu so it stays narrow. Verify horizontal centering inside an actual open NSMenu, including when command rows widen it. Keep a zzz/cup state indicator to the left of the calendar within the single button. Anchor seconds to system boundaries and resynchronize after wake/time changes.
 
-Validate legacy config/defaults/round trip/format limits, native light/dark previews, native menu-tracking tick phases, release build and signature. Record actual menu navigation and side-by-side timing separately; never claim unperformed physical checks. Keep this experiment out of main until the owner accepts it.
+Validate legacy config/defaults/round trip/format limits, native light/dark previews, native menu-tracking tick phases, release build and signature. Record actual menu navigation and side-by-side timing separately; never claim unperformed physical checks. Integration is approved; remaining manual checks still require observed evidence.
 
 ## Stage 7 — Daily-use verification and source-build handoff
 
