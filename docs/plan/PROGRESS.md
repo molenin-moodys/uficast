@@ -125,6 +125,15 @@ Stage 6l owner-requested calendar work is recorded below; the earlier daily-use 
 - Isolated and final canonical release builds and strict ad-hoc signature checks passed. The running app was normally quit before each canonical bundle replacement and reopened through the desktop tool. The final canonical app is running with the native calendar and aligned timer. Desktop tooling could inspect the launcher but could not access the status extra; do not mark actual native menu-arrow clicks, one-minute side-by-side timing, format/Show Icon persistence across restart, Date & Time navigation or wake behavior as passed. No private scripts, actual power toggles, login/hotkey/privacy changes or new test mappings were performed.
 - Requirements/architecture/implementation plan/README/manual checklist and AGENTS continuity updated in English. No private paths, Day-O resources, build outputs or personal screenshots added to Git.
 
+### Calendar margins and icon polish
+
+- Owner supplied actual Uficast/Day-O screenshots showing asymmetric calendar margins, requested omitting shortcut hints to reduce menu width, and requested Day-O's date icon. The Day-O reference has equal outer calendar margins.
+- Removed status-menu Settings/Quit key equivalents; the application's existing menu shortcuts are unchanged. NSDatePicker keeps its native size and now has flexible left/right margins so NSMenu width changes center it rather than leaving it pinned left.
+- With the owner's prior permission, inspected Day-O's vector icon and drawing constants read-only. Recreated the 22×18-point frame, three rounded bindings, 2-point image-side padding and 9-point bold date at y=3 using native vector drawing. No resource/binary was copied into the repository; Day-O remains untouched.
+- A temporary native public-fixture preview measured picker margins at widths 163 and 192 points: 12/12.5 and 26.5/27 points respectively (0.5-point backing alignment). The centered calendar and enlarged icon were rendered and visually inspected. The temporary preview script initially failed actor isolation, then ran successfully on MainActor; it is not added to the repository.
+- Isolated/canonical release builds and strict signature checks passed. --verify-menu-clock passed icon/fallback behavior, native calendar checks and tick phases **36, 4 and 7 ms**. No core model/search/runner behavior changed; the prior 51-test suite result remains the latest full run, not a newly repeated run.
+- After normal Quit, the canonical app was rebuilt and reopened through the desktop tool. Actual final menu margins/icon comparison remains owner-led because the tool cannot access the status extra. No private config, hotkeys/login/privacy settings, scripts or power mode were changed for verification.
+
 **Exact next step:** owner tries the running clock menu against Day-O: browse previous/next months and Today, verify compact width and seconds beside the system clock, then try format/Show Icon and restart persistence. Record actual observations, fix any result on this branch, and merge only after owner acceptance. Other Stage 7 manual gaps remain open.
 
 ### Earlier cursor report checkpoint

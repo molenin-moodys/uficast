@@ -23,6 +23,7 @@ final class MenuBarCalendarView: NSView {
         datePicker.drawsBackground = false
         datePicker.sizeToFit()
         datePicker.frame.origin = NSPoint(x: 12, y: 8)
+        datePicker.autoresizingMask = [.minXMargin, .maxXMargin]
         frame.size = NSSize(width: datePicker.frame.width + 24, height: datePicker.frame.height + 16)
         addSubview(datePicker)
         reset()
@@ -123,24 +124,24 @@ final class MenuBarClockController: NSObject, NSMenuDelegate {
     }
 
     private static func calendarIcon(day: Int) -> NSImage {
-        let image = NSImage(size: NSSize(width: 21, height: 20))
-        image.lockFocus()
-        NSColor.black.setStroke()
-        let outline = NSBezierPath(roundedRect: NSRect(x: 2, y: 2, width: 17, height: 15), xRadius: 2, yRadius: 2)
-        outline.lineWidth = 1.5
-        outline.stroke()
-        let top = NSBezierPath()
-        top.move(to: NSPoint(x: 2, y: 14)); top.line(to: NSPoint(x: 19, y: 14))
-        top.move(to: NSPoint(x: 6, y: 16)); top.line(to: NSPoint(x: 6, y: 19))
-        top.move(to: NSPoint(x: 15, y: 16)); top.line(to: NSPoint(x: 15, y: 19))
-        top.lineWidth = 1.5
-        top.stroke()
-        let style = NSMutableParagraphStyle()
-        style.alignment = .center
-        (String(day) as NSString).draw(in: NSRect(x: 2, y: 2, width: 17, height: 12), withAttributes: [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .bold), .foregroundColor: NSColor.black, .paragraphStyle: style
-        ])
-        image.unlockFocus()
+        // Match Day-O's 22×18 calendar geometry with 2 pt image-side padding.
+        // Its date is centered at y=3 in 9 pt bold system type; no header rule.
+        let image = NSImage(size: NSSize(width: 26, height: 18), flipped: true) { _ in
+            NSColor.black.setFill()
+            let frame = NSBezierPath(roundedRect: NSRect(x: 3, y: 1, width: 20, height: 15), xRadius: 2, yRadius: 2)
+            frame.append(NSBezierPath(roundedRect: NSRect(x: 4.5, y: 2.5, width: 17, height: 12), xRadius: 1, yRadius: 1))
+            frame.windingRule = .evenOdd
+            frame.fill()
+            for x in [7, 12, 17] {
+                NSBezierPath(ovalIn: NSRect(x: x, y: 0, width: 2, height: 2)).fill()
+            }
+            let style = NSMutableParagraphStyle()
+            style.alignment = .center
+            (String(day) as NSString).draw(in: NSRect(x: 2, y: 3, width: 22, height: 15), withAttributes: [
+                .font: NSFont.boldSystemFont(ofSize: 9), .foregroundColor: NSColor.black, .paragraphStyle: style
+            ])
+            return true
+        }
         image.isTemplate = true
         return image
     }

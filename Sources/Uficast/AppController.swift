@@ -33,7 +33,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         statusItem.button?.image = NSImage(systemSymbolName: "zzz", accessibilityDescription: "Uficast — Keep Awake off")
         let menu = NSMenu()
         menu.addItem(item("Open Launcher", #selector(openLauncher)))
-        menu.addItem(item("Settings…", #selector(openSettings), key: ","))
+        menu.addItem(item("Settings…", #selector(openSettings)))
         menu.addItem(item("Date & Time…", #selector(openDateTimeSettings)))
         let powerItem = NSMenuItem(title: "Keep Awake", action: nil, keyEquivalent: "")
         let powerMenu = NSMenu()
@@ -50,7 +50,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         powerItem.submenu = powerMenu
         menu.addItem(powerItem)
         menu.addItem(.separator())
-        menu.addItem(item("Quit Uficast", #selector(quit), key: "q"))
+        menu.addItem(item("Quit Uficast", #selector(quit)))
         statusItem.menu = menu
         menuBarClock = MenuBarClockController(statusItem: statusItem, menu: menu)
         hotkey.onToggle = { [weak self] in self?.launcher.toggle() }
