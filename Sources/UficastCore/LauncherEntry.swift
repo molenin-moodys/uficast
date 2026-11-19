@@ -1,7 +1,16 @@
 import Foundation
 
 public struct LauncherEntry: Identifiable, Hashable, Sendable {
-    public enum Kind: String, Codable, Sendable { case application, script }
+    public enum Kind: String, Codable, Sendable {
+        case application, script, builtIn
+        public var title: String {
+            switch self {
+            case .application: "Application"
+            case .script: "Script"
+            case .builtIn: "Command"
+            }
+        }
+    }
     public var id: String
     public var name: String
     public var kind: Kind

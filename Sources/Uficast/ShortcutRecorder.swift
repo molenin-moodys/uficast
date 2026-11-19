@@ -4,12 +4,15 @@ import UficastCore
 
 struct ShortcutRecorder: NSViewRepresentable {
     var shortcut: GlobalShortcut?
+    var requiresDoubleClick = false
     var onCapture: (GlobalShortcut?) -> Void
     var onBegin: () -> Void
     var onEnd: () -> Void
     func makeNSView(context: Context) -> ShortcutRecorderButton { ShortcutRecorderButton() }
     func updateNSView(_ view: ShortcutRecorderButton, context: Context) {
         view.shortcut = shortcut
+        view.requiresDoubleClick = requiresDoubleClick
+        view.isEnabled = context.environment.isEnabled
         view.onCapture = onCapture
         view.onBegin = onBegin
         view.onEnd = onEnd
@@ -20,6 +23,7 @@ struct ShortcutRecorder: NSViewRepresentable {
 
 final class ShortcutRecorderButton: NSButton {
     var shortcut: GlobalShortcut?
+    var requiresDoubleClick = false
     var onCapture: ((GlobalShortcut?) -> Void)?
     var onBegin: (() -> Void)?
     var onEnd: (() -> Void)?
@@ -35,12 +39,30 @@ final class ShortcutRecorderButton: NSButton {
         refreshTitle()
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    func refreshTitle() { if !recording { title = shortcut?.display ?? "Record Hotkey" } }
+    func refreshTitle() {
+        isBordered = recording || !requiresDoubleClick
+        toolTip = requiresDoubleClick
+            ? "Double-click to record a shortcut. Escape cancels; Delete clears."
+            : "Click, then press a shortcut. Escape cancels; Delete clears."
+        if !recording { title = shortcut?.display ?? (requiresDoubleClick ? "Add Hotkey" : "Record Hotkey") }
+        if !isEnabled { endRecording() }
+    }
+    override func mouseDown(with event: NSEvent) {
+        guard requiresDoubleClick else { super.mouseDown(with: event); return }
+        guard isEnabled else { return }
+        // Keep normal row selection on the first click; only the second click
+        // replaces the cell's label with the recording field.
+        if let table = enclosingScrollView?.documentView as? NSTableView {
+            let row = table.row(at: table.convert(event.locationInWindow, from: nil))
+            if row >= 0 { table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false) }
+        }
+        if event.clickCount == 2 { beginRecording() }
+    }
     @objc private func beginRecording() {
-        guard !recording else { return }
+        guard isEnabled, !recording, window?.makeFirstResponder(self) == true else { return }
         recording = true
         onBegin?()
-        window?.makeFirstResponder(self)
+        refreshTitle()
         title = "Press shortcut…"
     }
     func endRecording() {
@@ -50,6 +72,24 @@ final class ShortcutRecorderButton: NSButton {
         refreshTitle()
     }
     override func resignFirstResponder() -> Bool { endRecording(); return super.resignFirstResponder() }
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        if newWindow !== window {
+            endRecording()
+            NotificationCenter.default.removeObserver(self, name: NSWindow.didResignKeyNotification, object: window)
+            NotificationCenter.default.removeObserver(self, name: NSWindow.willCloseNotification, object: window)
+        }
+        super.viewWillMove(toWindow: newWindow)
+    }
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let window {
+            NotificationCenter.default.removeObserver(self, name: NSWindow.didResignKeyNotification, object: window)
+            NotificationCenter.default.removeObserver(self, name: NSWindow.willCloseNotification, object: window)
+            NotificationCenter.default.addObserver(self, selector: #selector(cancelRecording), name: NSWindow.didResignKeyNotification, object: window)
+            NotificationCenter.default.addObserver(self, selector: #selector(cancelRecording), name: NSWindow.willCloseNotification, object: window)
+        }
+    }
+    @objc private func cancelRecording() { endRecording() }
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard recording, window?.firstResponder === self else { return super.performKeyEquivalent(with: event) }
         capture(event)

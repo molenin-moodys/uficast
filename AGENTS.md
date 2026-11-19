@@ -12,3 +12,5 @@
 - Mandatory updated requirement: Uficast must not require or request Accessibility or Input Monitoring. The launcher uses ordinary Cmd+Space (either Command key) through RegisterEventHotKey. Do not restore the earlier side-specific event-tap design.
 
 - Accepted additions: per-application show/hide hotkeys, built-in Keep Awake, singleton opening, real app icons, startup checkbox, and U.S./Russian wrong-layout search. Convert search queries only; never script arguments.
+
+- App Hotkey cells record on double-click; Escape cancels without saving, and × clears an assigned shortcut. Built-in caffeine/cafe and decaffeine/decafe commands use the shared Keep Awake service; preserve user-alias precedence.

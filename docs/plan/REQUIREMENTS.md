@@ -23,6 +23,7 @@ Recorded on November 18, 2026; updated the same day to ordinary Cmd+Space with n
 | Reference workflow | `k` → Tab → input for Kibana's `log_stream` → Enter → script → browser URL. |
 | UI | As close to the supplied Raycast references as practical; English text. |
 | Keyboard | Two input sources already configured in macOS. Eliminate the current Caps Lock switching delay; Caps Lock → F19 plus a system shortcut is sufficient. Support multiple keyboards and reconnection; diagnose conflicting macOS Modifier Keys profiles. |
+| Built-in commands | `caffeine` / `cafe` enables indefinite Keep Awake; `decaffeine` / `decafe` disables it. Fuzzy and wrong-layout search apply. |
 | Keep Awake (added November 18) | Built-in Caffeine-style prevention of idle Mac sleep; native app-owned power assertion. |
 | Deferred | Kasa/Shortcuts integration. |
 | Continuity | English plan in the repository, committed to Git; implementation can span sessions. |
@@ -72,6 +73,7 @@ Use a dedicated settings window with two useful sections: **General** and **Comm
 
 - Top search field; `All`, `Apps`, and `Scripts` filters; a `+` control for adding a script or an application outside indexed roots.
 - Table/list columns: real app icon and Name, Type, Alias, Hotkey, Enabled. Group scripts and applications where it improves scanning; use alternating/rounded selected rows and native typography/materials.
+- Double-click an application’s Hotkey cell to open an inline recording field; a single click selects the row. An assigned shortcut has a visible × control to remove it in both the cell and inspector. Escape closes the field without saving, preserving the prior shortcut (or unassigned state). Focus loss also cancels; Delete explicitly clears.
 - Select an item to edit its alias and enabled status. Script details include name, path, interpreter, argument toggle/placeholder, result handling, timeout, working directory, and optional environment overrides.
 - Discovered applications are automatically listed. Disabling hides an app from launcher search without uninstalling or deleting it.
 - General prominently starts with launch-at-login, then launcher shortcut status, Keep Awake, Caps Lock → F19, application roots, configuration and recent runs.

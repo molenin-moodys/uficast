@@ -194,7 +194,9 @@ private struct SettingsView: View {
                 TableColumn("Alias") { Text($0.alias ?? "Add Alias").foregroundStyle($0.alias == nil ? .tertiary : .primary) }
                     .width(min: 100, ideal: 150)
                 TableColumn("Hotkey") { entry in
-                    Text(model.configuration.applications[entry.id]?.hotkey?.display ?? "—").foregroundStyle(.secondary)
+                    if entry.kind == .application {
+                        shortcutControl(for: entry, inline: true)
+                    } else { Text("—").foregroundStyle(.secondary) }
                 }.width(min: 110, ideal: 160)
                 TableColumn("Enabled") { entry in
                     Toggle("Enabled", isOn: Binding(get: { entry.isEnabled }, set: { model.setEnabled($0, for: entry) }))
@@ -228,10 +230,7 @@ private struct SettingsView: View {
                 if selected.kind == .application {
                     HStack {
                         Text("Show / Hide").foregroundStyle(.secondary)
-                        ShortcutRecorder(shortcut: model.configuration.applications[selected.id]?.hotkey,
-                            onCapture: { model.saveShortcut($0, for: selected) },
-                            onBegin: { model.onBeginShortcutRecording?() }, onEnd: { model.onEndShortcutRecording?() })
-                            .frame(width: 180).disabled(model.isBusy || model.isReadOnly)
+                        shortcutControl(for: selected).frame(width: 180)
                         Text("Brings the app forward; press again while active to hide.").font(.caption).foregroundStyle(.secondary)
                     }
                     if let error = model.hotkeyErrors[selected.id] { Text(error).font(.caption).foregroundStyle(.red) }
@@ -239,6 +238,25 @@ private struct SettingsView: View {
                 }.padding(16)
             }
         }
+    }
+
+    private func shortcutControl(for entry: LauncherEntry, inline: Bool = false) -> some View {
+        HStack(spacing: 4) {
+            ShortcutRecorder(shortcut: model.configuration.applications[entry.id]?.hotkey,
+                requiresDoubleClick: inline,
+                onCapture: { model.saveShortcut($0, for: entry) },
+                onBegin: { model.onBeginShortcutRecording?() },
+                onEnd: { model.onEndShortcutRecording?() })
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if model.configuration.applications[entry.id]?.hotkey != nil {
+                Button { model.saveShortcut(nil, for: entry) } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Remove hotkey")
+                .accessibilityLabel("Remove hotkey for \(entry.name)")
+            }
+        }.disabled(model.isBusy || model.isReadOnly)
     }
 
     private var general: some View {

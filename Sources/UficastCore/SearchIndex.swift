@@ -60,6 +60,11 @@ public struct SearchIndex: Sendable {
         if left.tier != right.tier { return left.tier < right.tier }
         if left.variant != right.variant { return left.variant < right.variant }
         if left.score != right.score { return left.score > right.score }
+        // Built-in abbreviations are defaults; an explicit user alias can
+        // override one without invalidating an existing configuration.
+        if left.tier <= 1, (left.indexed.entry.kind == .builtIn) != (right.indexed.entry.kind == .builtIn) {
+            return left.indexed.entry.kind != .builtIn
+        }
         if left.usage.count != right.usage.count { return left.usage.count > right.usage.count }
         if left.usage.lastUsed != right.usage.lastUsed { return left.usage.lastUsed > right.usage.lastUsed }
         if left.indexed.name != right.indexed.name { return left.indexed.name < right.indexed.name }

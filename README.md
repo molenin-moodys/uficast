@@ -69,7 +69,7 @@ Application discovery uses `/Applications`, `/System/Applications` and `~/Applic
 
 Open **Settings… → Commands**, select an app, enter an alias and click **Apply**. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General starts with **Start Uficast at login** and also contains Keep Awake, Caps Lock, application roots, refresh, import/export and backup recovery.
 
-Select an application and click **Record Hotkey** under **Show / Hide**. Press a combination containing Command, Control or Option; Escape cancels and Delete clears it. Enabled app shortcuts must be unique, and Cmd+Space is reserved for the launcher. The table shows assigned shortcuts and registration errors. If another app claims a chord, release it there first. Script-specific global hotkeys remain deferred.
+In **Settings → Commands**, double-click an application’s **Hotkey** cell (the current shortcut or **Add Hotkey**) to open its inline recorder. A single click only selects the row. **Escape** closes recording without saving and keeps the previous shortcut. Click the **×** beside an assigned shortcut to remove it. You can also select an application and click **Record Hotkey** under **Show / Hide**. Press a combination containing Command, Control or Option; Escape cancels and Delete clears it. Enabled app shortcuts must be unique, and Cmd+Space is reserved for the launcher. The table shows assigned shortcuts and registration errors. If another app claims a chord, release it there first. Script-specific global hotkeys remain deferred.
 
 Private JSON lives in `~/Library/Application Support/Uficast/config.json`, with `config.backup.json`. Saves are atomic. Corrupt/unsupported files are preserved and editing is disabled; explicit backup recovery preserves the replaced file as `config.recovered-<id>.json`. A future schema cannot be overwritten by this older app. Export/import preserves machine-specific paths; locate missing scripts/apps on the new Mac.
 
@@ -112,6 +112,8 @@ Assign **F19** to **Select the previous input source** under macOS **Input Sourc
 
 ## Keep Awake
 
+In the launcher, run **caffeine** (or **cafe**) to stay awake until stopped, and **decaffeine** (or **decafe**) to allow idle sleep again. Fuzzy input and U.S./Russian wrong-layout search apply to these commands too. An explicit user alias wins if it reuses a built-in abbreviation; full command names remain searchable. These commands use the same native assertion as the menu and Settings.
+
 Use the menu bar **Keep Awake** toggle or choose **30 Minutes**, **1 Hour**, or **Until Stopped**. General offers the same controls. A cup icon indicates an active session. A native, process-owned IOPM assertion prevents idle system sleep; no `caffeinate` child process or Accessibility permission is used.
 
 Sessions start off on each app launch, expire automatically when timed, and stop on Quit. The display may dim or sleep; explicit Sleep, closing the lid, low battery and other macOS sleep reasons still apply. This is the behavior of Apple's [idle-system-sleep assertion](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep).
@@ -127,3 +129,5 @@ dist/Uficast.app/Contents/MacOS/Uficast --verify-native-icons
 ```
 
 This renders 50 AppKit launcher cells offscreen and verifies that background icon loading delivers real bitmaps without moving rows or the scroll position. It registers no hotkeys and changes no personal configuration. Development previews also support `--dark`, Settings `--general`, and `--preview-script-editor <output.png>`.
+
+The native `--verify-shortcut-recorder` development check exercises double-click entry, Escape without saving, valid capture, explicit clear and focus/window/cell cleanup using in-memory Settings fixtures. It does not register global shortcuts or load personal configuration.

@@ -4,7 +4,7 @@ Last updated: November 18, 2026 (America/Los_Angeles).
 
 ## Current state
 
-Requested personal-use features through Stage 6d are implemented. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 was committed and pushed to origin/main. The subsequent README update uses screenshots containing only neutral standard-app fixtures.
+Requested personal-use features through Stage 6f are implemented. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. The current increment adds inline hotkey editing/removal and built-in caffeine commands; screenshots use only neutral standard-app fixtures.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
@@ -15,6 +15,8 @@ Requested personal-use features through Stage 6d are implemented. Mandatory: ord
 | 6b — Keep Awake | Implemented | Native power assertion with injected-backend tests; real idle-sleep session pending. |
 | 6c — Lifecycle, app shortcuts and icons | Implemented | Real startup/gear/singleton and launcher/Settings icon observations; core shortcut/lock fixtures pass. |
 | 6d — Wrong-layout search | Implemented | Both U.S./Russian directions, alias ordering, mixed input and ё/й fixtures pass. |
+| 6e — Inline hotkey editing/removal | Implemented | Native fixture checks pass; actual Settings double-click and Escape observed without saving an assignment. Assigned shortcuts have × controls in the cell and inspector. |
+| 6f — Built-in caffeine commands | Implemented | caffeine/cafe and decaffeine/decafe reuse Keep Awake; fuzzy, layout and alias-precedence fixtures pass. Both abbreviations found in the actual launcher. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -31,7 +33,7 @@ Requested personal-use features through Stage 6d are implemented. Mandatory: ord
 
 ## Actual verification
 
-- `scripts/test.sh`: **40 tests passed**, including wrong-layout search, shortcuts, configuration, singleton lock, remap ownership, keyboard profiles, power fixtures and real shell/AppleScript argument/process tests. Warm search over 2,000 synthetic apps: debug p95 **19.67 ms**, target below 30 ms.
+- `scripts/test.sh`: **42 tests passed**, including built-in caffeine command search, wrong-layout search, shortcuts, configuration, singleton lock, remap ownership, keyboard profiles, power fixtures and real shell/AppleScript argument/process tests. Warm search over 2,000 synthetic apps: debug p95 **19.92 ms**, target below 30 ms.
 - Current isolated release build (`UFICAST_OUTPUT_ROOT="$PWD/.build/release-check" scripts/build.sh`) and strict ad-hoc signature checks passed, including wrong-layout changes. The native 50-icon check also passed on that release.
 - Native `--verify-native-icons` passed for 50 actual catalog entries after the direct-completion fix. Checks loaded bitmap representations, row geometry and scroll origin, not AppKit's offscreen view-cache identity.
 - Desktop: canonical `dist/Uficast.app` launched with the panel immediately; gear opened Settings, real icons appeared in Settings and later in launcher. The latest icon fix was verified in the actual running canonical app. Opening a second copy exited and revealed the original process.
@@ -56,7 +58,17 @@ Requested personal-use features through Stage 6d are implemented. Mandatory: ord
 - Screenshot review exposed and fixed an empty-query regression in Settings: blank/whitespace search now retains all entries. The final Commands capture visibly includes all six fixture commands and their icons/aliases.
 - Current preview release build and strict signature check passed. A separate source-only snapshot (without Git metadata, caches or private configuration) also built successfully using the documented `scripts/build.sh`, including strict signature verification. All relative Markdown file/image links resolve; shell syntax and diff whitespace checks passed. Native screenshots verify layout, not physical input.
 
-The README/preview increment is ready for its commit/push; use Git history/status to verify delivery rather than relying on a predicted hash. The current running canonical `dist/Uficast.app` was not replaced while running; latest source was built into isolated `.build/readme-app` and `.build/clean-source-check/dist` paths. Rebuild/restart the canonical bundle when the owner wants to try the latest source.
+The README checkpoint **2db8863** is pushed. The canonical `dist/Uficast.app` has now been rebuilt after a normal Quit and reopened with the latest inline recorder, removal controls and built-in commands; no running executable was overwritten. The older source-only build evidence above applies to the README checkpoint, not a fresh snapshot of this increment.
+
+## Current increment: inline hotkeys and built-in commands
+
+- Double-click an application's Hotkey cell (assigned or Add Hotkey) to show the native recording field. A single click selects the row. Escape never invokes the save callback; a valid chord commits and Delete explicitly clears. A visible × removes an assignment from both the cell and Show / Hide inspector.
+- Recording releases Uficast's own registrations only while active, and restores them on Escape, capture, focus loss, window deactivation/close and cell removal. No global input observation or privacy grants were added. Existing duplicate/reserved validation stays in place.
+- `--verify-shortcut-recorder` passes against real hosted Settings cells using synthetic local responder events and in-memory public fixtures: single/double click, invalid bare key, Escape retaining assigned/unassigned values, exactly one capture, explicit clear and balanced lifecycle cleanup. It does not save personal config or register actual global shortcuts.
+- Desktop: double-clicking an actual Hotkey cell visibly showed Press shortcut…; Escape restored Add Hotkey. The canonical app was rebuilt again with × controls and commands; searches cafe and decafe visibly selected caffeine and decaffeine respectively. These results were inspected without executing a command or assigning/removing a personal hotkey.
+- BuiltInCommand appends stable command entries to launcher search, with cafe/decafe aliases and cup icons. Execution routes directly to the shared native power service: enable indefinitely / disable. Explicit user aliases override conflicting abbreviations. Built-ins are not stored as editable script/app records.
+- Current release build and strict signature verification passed; the native recorder check passed on that final bundle. **42 core tests passed**, including exact/abbreviated/fuzzy/wrong-layout built-in searches and alias precedence. Real power effects remain covered by the existing manual acceptance gap, not inferred from search.
+- README/requirements/architecture/stages/manual checklist updated. The Commands screenshot was regenerated from public fixtures and visually inspected: real standard-app icons and × controls appear in both places, with no personal data.
 
 Next product work is the remaining owner-led daily-use acceptance above; do not mark it complete from automated/preview results. No new feature implementation is implied by this handoff.
 

@@ -145,6 +145,7 @@ Suggested commit: `feat: add built-in keep-awake sessions`.
 
 - Show the launcher on first/open/reopen; add a Settings gear button.
 - Enforce one normal app process per user with a process-held lock and reveal notification.
+- Double-click an app Hotkey cell to record inline; Escape cancels with the previous value intact. Verify capture, clear and registration restoration on focus/window/cell lifecycle changes.
 - Persist and record per-app global shortcuts without Accessibility; validate duplicates/reserved chords and implement native activate/hide/launch behavior.
 - Show real icons in both lists, with bounded background loading and direct existing-cell updates to avoid reload jitter.
 - Put the startup checkbox at the top of General.
@@ -155,6 +156,14 @@ Validate lock exclusivity/release, configuration compatibility, hotkey conflicts
 ## Stage 6d — Wrong-layout search (owner addition)
 
 Expand search queries using standard U.S./Russian physical-key mappings in both directions. Preserve exact-alias priority, favor literal matches within each rank tier, and deduplicate results. Apply to launcher and Commands search only; arguments remain unchanged. Validate both directions, mixed input, alias precedence and ё/й mapping, plus the existing 2,000-app performance target.
+
+## Stage 6e — Inline app hotkeys and removal (owner addition)
+
+Double-click an application's Hotkey cell to record inline. Escape cancels without a save; retain the prior assigned/unassigned value. Single clicks select, valid chords save, and Delete or the adjacent × explicitly removes an assignment. Restore Uficast registrations on focus/window/cell lifecycle changes. Check with native fixture responder events and a real Settings double-click/Escape pass, without saving a test assignment to personal config.
+
+## Stage 6f — Built-in caffeine commands (owner addition)
+
+Add caffeine / decaffeine entries and cafe / decafe abbreviations to launcher search. Use the existing native power service for indefinite enable and disable; do not spawn scripts. Cover exact/short/fuzzy/wrong-layout searches and user-alias precedence. Keep real power acceptance separate from fixture tests.
 
 ## Stage 7 — Daily-use verification and source-build handoff
 

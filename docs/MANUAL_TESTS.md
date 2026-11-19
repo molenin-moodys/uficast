@@ -16,7 +16,7 @@ All items are pending unless a dated result is recorded in PROGRESS. No Accessib
 
 - Opening shows the launcher immediately; reopening while it is running reveals the same process. Click the footer gear to open Settings.
 - Observe icons loading in the launcher and Settings without changing selection/scroll or flashing placeholders repeatedly. The offscreen --verify-native-icons regression check covers loaded bitmaps with unchanged row geometry and scroll position.
-- In Commands, record an app shortcut, cancel recording with Escape, clear with Delete, and verify duplicate/reserved-chord errors. A background app comes forward, an active app hides, and a closed app launches.
+- In Commands, single-click an app Hotkey cell: it only selects. Double-click the current shortcut or Add Hotkey: an inline recording field opens. Press a bare letter then Escape: no configuration save occurs and the previous shortcut reappears. Repeat on an unassigned app; click outside/change section/close Settings while recording and verify global shortcuts are restored. Record a valid combination, remove with the adjacent × (also in Show / Hide), clear with Delete, and verify duplicate/reserved-chord errors. A background app comes forward, an active app hides, and a closed app launches.
 - General starts with the startup checkbox. Check actual Login Items authorization/status and a real relogin after enabling it at the intended stable bundle path.
 - For every physical keyboard used, leave macOS Modifier Keys Caps Lock → Caps Lock, enable the Uficast F19 mapping and assign F19 to the input-source shortcut. Test with two keyboards, reconnect and wake; ensure another tool's mappings survive. Quitting Uficast removes only its own mapping.
 - Keep Awake starts off. Test indefinite/timed enable, renewal, expiry and stop; confirm the actual power assertion belongs to Uficast. Display/lid/explicit sleep are governed by macOS. Never infer real idle-sleep acceptance from a fixture backend.
@@ -30,3 +30,9 @@ All items are pending unless a dated result is recorded in PROGRESS. No Accessib
 ## Later-stage acceptance
 
 Follow [requirements](plan/REQUIREMENTS.md). Caps Lock remapping, login items, opening URLs and real script execution require intentional user actions. Automated core tests use fixtures and temporary directories.
+
+## Built-in power commands
+
+- Search caffeine/cafe and decaffeine/decafe; verify Command labels and cup icons. Try cfn/dcfn and Russian physical-key input сфау/вусфау.
+- During an owner-initiated power test, run cafe and confirm the menu/Settings state changes to indefinite Keep Awake; repeat without creating extra assertions. Run decafe and confirm that assertion is released. Do not execute a found result just to test search.
+- If a user app/script alias is cafe, it remains the preferred alias match; caffeine remains available by full name.

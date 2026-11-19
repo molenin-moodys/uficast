@@ -158,7 +158,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
             do {
                 if enabled { try await keepAwake.enable(for: seconds) }
                 else { try await keepAwake.disable() }
-            } catch { settingsModel.status = error.localizedDescription }
+                actionStatus.title = enabled ? "Keep Awake enabled." : "Automatic idle sleep is allowed."
+            } catch {
+                settingsModel.status = error.localizedDescription
+                actionStatus.title = "Keep Awake failed: \(error.localizedDescription)"
+            }
             settingsModel.isKeepAwakeBusy = false
         }
     }
@@ -220,6 +224,16 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     }
 
     private func launch(_ entry: LauncherEntry) {
+        if entry.kind == .builtIn {
+            guard let command = BuiltInCommand(entryID: entry.id) else { return }
+            guard !settingsModel.isKeepAwakeBusy, !isTerminating else {
+                launcher.showInputError("Keep Awake is updating. Try again.")
+                return
+            }
+            launcher.dismiss()
+            changeKeepAwake(enabled: command.keepsAwake)
+            return
+        }
         if entry.kind == .script {
             guard let command = settingsModel.configuration.scripts.first(where: { $0.entry.id == entry.id && $0.isEnabled }) else { return }
             if command.requiresArgument { launcher.enterArgument(command) }
@@ -323,7 +337,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
 
     private func updateEntries() {
         settingsModel.catalogEntries = catalog.entries
-        launcher.setEntries(settingsModel.configuration.entries(catalog: catalog.entries), refreshing: catalog.isRefreshing)
+        launcher.setEntries(settingsModel.configuration.entries(catalog: catalog.entries) + BuiltInCommand.entries,
+                            refreshing: catalog.isRefreshing)
     }
 
     private func applyConfiguration(_ configuration: Configuration) {

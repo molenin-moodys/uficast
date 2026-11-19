@@ -6,6 +6,19 @@ import UficastCore
 struct UficastMain {
     @MainActor
     static func main() {
+        if CommandLine.arguments.contains("--verify-shortcut-recorder") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try ShortcutRecorderVerification.run()
+                print("PASS: inline double-click recording, Escape cancellation, capture, clear and focus cleanup.")
+            } catch {
+                FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
+            return
+        }
         if CommandLine.arguments.contains("--verify-native-icons") {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)

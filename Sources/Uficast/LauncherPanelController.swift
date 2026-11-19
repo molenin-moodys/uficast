@@ -444,13 +444,17 @@ private final class EntryRow: NSTableCellView {
 
     func configure(_ entry: LauncherEntry, icons: IconStore) {
         representedURL = entry.fileURL
-        icon.image = icons.icon(for: entry.fileURL) { [weak self] image in
-            guard let self, self.representedURL == entry.fileURL else { return }
-            self.icon.image = image ?? NSImage(systemSymbolName: "app", accessibilityDescription: nil)
+        if let command = BuiltInCommand(entryID: entry.id), entry.kind == .builtIn {
+            icon.image = NSImage(systemSymbolName: command.symbolName, accessibilityDescription: nil)
+        } else {
+            icon.image = icons.icon(for: entry.fileURL) { [weak self] image in
+                guard let self, self.representedURL == entry.fileURL else { return }
+                self.icon.image = image ?? NSImage(systemSymbolName: "app", accessibilityDescription: nil)
+            }
         }
         name.stringValue = entry.name
         alias.stringValue = entry.alias ?? ""
-        kind.stringValue = entry.kind == .application ? "Application" : "Script"
+        kind.stringValue = entry.kind.title
         setAccessibilityLabel("\(entry.name), \(kind.stringValue)")
     }
 }
