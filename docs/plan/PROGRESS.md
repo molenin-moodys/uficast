@@ -4,13 +4,13 @@ Last updated: November 18, 2026 (America/Los_Angeles).
 
 ## Current state
 
-The owner requested autonomous implementation while context permits. Stage 1 scaffold is implemented and release-built. **Mandatory steering: ordinary Cmd+Space, with no Accessibility or Input Monitoring requirement/request.** The earlier right-only event tap has been removed. Real desktop shortcut delivery remains pending manual acceptance; continue independent catalog/settings work without claiming that check passed.
+The owner requested autonomous implementation while context permits. Native scaffold, app catalog and ranked search are implemented and release-built. **Mandatory steering: ordinary Cmd+Space, with no Accessibility or Input Monitoring requirement/request.** The earlier right-only event tap has been removed. Real desktop shortcut delivery remains pending manual acceptance; continue independent catalog/settings work without claiming that check passed.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
 | 0 — Plan | Complete | Initial planning commit a5021c5; updated by subsequent steering. |
 | 1 — Native app and global shortcut | Implemented; manual acceptance pending | SwiftPM/AppKit app, Carbon registration, menu/Edit actions, panel and settings scaffold. Real shortcut delivery/focus still pending. |
-| 2 — Application catalog/search | Next | Can proceed with Stage 1 manual checks explicitly pending. |
+| 2 — Application catalog/search | Implemented; desktop acceptance pending | Catalog fixtures and ranking tests pass; actual app activation and UI still require desktop checks. |
 | 3 — Settings/persistence/aliases | Not started | Depends on models/catalog. |
 | 4 — Script runner | Not started | Depends on persistence/settings. |
 | 5 — Inline argument/URL workflow | Not started | Depends on runner/panel. |
@@ -34,9 +34,18 @@ The owner requested autonomous implementation while context permits. Stage 1 sca
 - No Accessibility/Input Monitoring grants, Spotlight/Raycast settings, keyboard mappings, or login items were changed by the agent.
 - Matching Spotlight/Raycast chords must be released by the owner. Carbon success alone cannot prove freedom from system shortcut interference.
 
+## Stage 2 validation
+
+- Seven tests pass: hotkey lifecycle, alias precedence even against heavy usage, rank tiers, fuzzy abbreviation, diacritic/case normalization, disabled entries, stable ties/limits, and catalog fixtures with duplicate bundles/nested helpers.
+- Debug warm search over 2,000 synthetic apps and four queries: p95 10.81 ms over 40 samples (target below 30 ms).
+- Release app builds and strict signature verification passes. Read-only --catalog-summary found 101 applications, zero unavailable default roots, discovery 0.240 seconds. No apps were launched by this command.
+- CatalogService discovers off the UI actor, retains existing results during refresh, watches root directory changes, and refreshes stale data on opening/manual request. Icons are loaded off the UI actor and transferred as Data.
+- Launcher now renders search results with icons/types/aliases, selection and Enter/double-click activation. NSWorkspace activation and focus behavior remain unverified manually.
+- CLT lacks the optional _Testing_Foundation Swift module despite shipping its binary. test.sh disables automatic cross-import overlays only for that incomplete CLT setup; generic Testing assertions pass.
+
 ## Next action
 
-Implement Stage 2: stable app records, asynchronous discovery, deterministic alias-first/fuzzy ranking, result rows and app launch. Leave desktop acceptance explicitly pending.
+Implement Stage 3: versioned configuration with atomic persistence/backup and validation, real Commands settings for aliases/enabled state, application roots, add-app and import/export. Preserve the no-Accessibility requirement and pending desktop checks.
 
 ## Remaining evidence gaps
 

@@ -1,9 +1,16 @@
 import AppKit
+import UficastCore
 
 @main
 struct UficastMain {
     @MainActor
     static func main() {
+        if CommandLine.arguments.contains("--catalog-summary") {
+            let start = ContinuousClock.now
+            let snapshot = ApplicationCatalog.discover(roots: ApplicationCatalog.defaultRoots)
+            print("Applications: \(snapshot.entries.count); unavailable roots: \(snapshot.unavailableRoots.count); discovery: \(start.duration(to: .now))")
+            return
+        }
         if CommandLine.arguments.contains("--diagnostics") {
             let values: [String: Any] = [
                 "bundleIdentifier": Bundle.main.bundleIdentifier ?? "unbundled",

@@ -1,9 +1,12 @@
 import AppKit
+import UficastCore
 
 @MainActor
 final class AppController: NSObject, NSApplicationDelegate {
     private let hotkey = HotkeyService()
     private let launcher = LauncherPanelController()
+    private let catalog = CatalogService()
+    private let actionStatus = NSMenuItem(title: "No recent errors", action: nil, keyEquivalent: "")
     private var statusItem: NSStatusItem!
     private let statusLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private var settingsWindow: NSWindow?
@@ -17,6 +20,8 @@ final class AppController: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(item("Open Launcher", #selector(openLauncher)))
         menu.addItem(item("Settings…", #selector(openSettings), key: ","))
+        menu.addItem(item("Refresh Applications", #selector(refreshCatalog)))
+        menu.addItem(actionStatus)
         menu.addItem(.separator())
         menu.addItem(statusLine)
         menu.addItem(item("Retry Shortcut", #selector(retryShortcut)))
@@ -26,6 +31,13 @@ final class AppController: NSObject, NSApplicationDelegate {
         hotkey.onToggle = { [weak self] in self?.launcher.toggle() }
         hotkey.onStatusChange = { [weak self] in self?.updateStatus() }
         hotkey.start()
+        catalog.onChange = { [weak self] in
+            guard let self else { return }
+            self.launcher.setEntries(self.catalog.entries, refreshing: self.catalog.isRefreshing)
+        }
+        launcher.beforeShow = { [weak self] in self?.catalog.refreshIfStale() }
+        launcher.onSelect = { [weak self] entry in self?.launch(entry) }
+        catalog.refresh()
         NSWorkspace.shared.notificationCenter.addObserver(
             self, selector: #selector(retryShortcut), name: NSWorkspace.didWakeNotification, object: nil
         )
@@ -37,6 +49,24 @@ final class AppController: NSObject, NSApplicationDelegate {
     @objc private func openLauncher() { launcher.show() }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func retryShortcut() { hotkey.start() }
+    @objc private func refreshCatalog() { catalog.refresh() }
+
+    private func launch(_ entry: LauncherEntry) {
+        guard entry.kind == .application else { return }
+        launcher.dismiss(restoreFocus: false)
+        Task { @MainActor in
+            do {
+                _ = try await NSWorkspace.shared.openApplication(at: entry.fileURL, configuration: .init())
+                var usage = launcher.usage[entry.id] ?? UsageRecord()
+                usage.count += 1
+                usage.lastUsed = .now
+                launcher.usage[entry.id] = usage
+                actionStatus.title = "Opened \(entry.name)"
+            } catch {
+                actionStatus.title = "Could not open \(entry.name): \(error.localizedDescription)"
+            }
+        }
+    }
 
     private func updateStatus() {
         statusLine.title = hotkey.status

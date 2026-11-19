@@ -2,7 +2,7 @@
 
 A personal, native macOS launcher for applications and local scripts, inspired by the small subset of Raycast its owner uses.
 
-**Status:** native app scaffold implemented; global shortcut delivery and desktop UI acceptance remain pending manual verification.
+**Status:** native app catalog and fuzzy search implemented; settings/aliases and scripts are next. Global shortcut delivery and desktop UI acceptance remain pending manual verification.
 
 ## Agreed scope
 
@@ -45,3 +45,5 @@ dist/Uficast.app/Contents/MacOS/Uficast --diagnostics
 ```
 
 See [manual verification](docs/MANUAL_TESTS.md). Pure tests and signing checks do not prove real desktop shortcut delivery.
+
+Application discovery uses `/Applications`, `/System/Applications` and `~/Applications`. Use **Refresh Applications** after installing an app; default root changes are also observed. Search supports fuzzy abbreviations, Up/Down selection and Enter to launch/activate. Usage ordering is currently in memory. `--catalog-summary` prints a read-only discovery count/timing without launching apps.

@@ -9,5 +9,10 @@ framework_dir="$(xcode-select -p)/Library/Developer/Frameworks"
 extra_flags=()
 if [ -d "$framework_dir/Testing.framework" ]; then
     extra_flags=(-Xswiftc -F -Xswiftc "$framework_dir" -Xlinker -rpath -Xlinker "$framework_dir")
+    if [ ! -d "$framework_dir/_Testing_Foundation.framework/Modules" ]; then
+        # Some CLT releases ship the overlay binary without its Swift module.
+        # Generic Testing assertions work without the optional Foundation overlay.
+        extra_flags+=(-Xswiftc -Xfrontend -Xswiftc -disable-cross-import-overlays)
+    fi
 fi
 swift test --disable-xctest --enable-swift-testing --cache-path "$PWD/.build/cache" "${extra_flags[@]}" "$@"
