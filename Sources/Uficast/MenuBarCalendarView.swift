@@ -78,8 +78,10 @@ final class MenuBarClockController: NSObject, NSMenuDelegate {
     private var keepAwakeActive = false
     private var timer: Timer?
     private var observers: [NSObjectProtocol] = []
-    private struct IconState: Equatable { let day: Int?; let awake: Bool }
-    private var lastIconState: IconState?
+    /// The clock text drawn inside the status image and the icon part's width; read by checks.
+    private(set) var displayedTitle = ""
+    private(set) var iconWidth: CGFloat = 0
+    static let titleFont = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
 
     init(statusItem: NSStatusItem, menu: NSMenu) {
         self.statusItem = statusItem
@@ -89,8 +91,8 @@ final class MenuBarClockController: NSObject, NSMenuDelegate {
         menu.insertItem(calendarItem, at: 0)
         menu.insertItem(.separator(), at: 1)
         menu.delegate = self
-        statusItem.button?.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
-        statusItem.button?.imagePosition = .imageLeading
+        statusItem.button?.title = ""
+        statusItem.button?.imagePosition = .imageOnly
         for name in [NSLocale.currentLocaleDidChangeNotification, NSNotification.Name.NSSystemTimeZoneDidChange,
                      NSNotification.Name.NSSystemClockDidChange, NSApplication.didChangeScreenParametersNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
@@ -134,33 +136,52 @@ final class MenuBarClockController: NSObject, NSMenuDelegate {
         formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = preferences.dateFormat
         let title = formatter.string(from: now)
-        button.title = preferences.isEnabled ? (title.isEmpty ? now.formatted(date: .abbreviated, time: .standard) : String(title.prefix(100))) : ""
+        displayedTitle = preferences.isEnabled ? (title.isEmpty ? now.formatted(date: .abbreviated, time: .standard) : String(title.prefix(100))) : ""
         let day = preferences.isEnabled && preferences.showsIcon ? Calendar(identifier: .gregorian).component(.day, from: now) : nil
-        let iconState = IconState(day: day, awake: keepAwakeActive)
-        if lastIconState != iconState {
-            button.image = Self.statusIcon(day: day, awake: keepAwakeActive)
-            lastIconState = iconState
-        }
+        iconWidth = day == nil ? 16 : 44
+        let image = Self.statusImage(title: displayedTitle, day: day, awake: keepAwakeActive)
+        button.title = ""
+        button.image = image
         let state = keepAwakeActive ? "Keep Awake on" : "Keep Awake off"
+        image.accessibilityDescription = "Uficast, \(displayedTitle), \(state)"
         button.toolTip = "Uficast — \(state) · Click for calendar and commands"
-        button.setAccessibilityLabel("Uficast, \(button.title), \(state)")
+        button.setAccessibilityLabel("Uficast, \(displayedTitle), \(state)")
     }
 
-    private static func statusIcon(day: Int?, awake: Bool) -> NSImage {
+    /// One non-template image holding the power state, optional calendar and the
+    /// clock text, all in a fixed full-contrast color. macOS draws template images
+    /// and button titles with the menu bar's own (dimmed on inactive displays)
+    /// treatment; an explicit color may stay readable there. The color is chosen
+    /// from the menu bar's appearance at draw time; the image is also rebuilt every tick.
+    static func statusImage(title: String, day: Int?, awake: Bool) -> NSImage {
         let power = NSImage(systemSymbolName: awake ? "cup.and.saucer.fill" : "zzz", accessibilityDescription: nil)!
             .withSymbolConfiguration(.init(pointSize: 13, weight: .regular))!
         let calendar = day.map { calendarIcon(day: $0) }
+        let iconWidth: CGFloat = calendar == nil ? 16 : 44
+        let text = NSAttributedString(string: title, attributes: [.font: titleFont, .foregroundColor: NSColor.black])
+        let textSize = title.isEmpty ? .zero : text.size()
+        let height = max(18, ceil(textSize.height))
+        let width = iconWidth + (title.isEmpty ? 0 : 4 + ceil(textSize.width))
+        let iconY = (height - 18) / 2
         let scale = min(16 / power.size.width, 16 / power.size.height)
         let powerSize = NSSize(width: power.size.width * scale, height: power.size.height * scale)
-        let powerFrame = NSRect(x: (16 - powerSize.width) / 2, y: (18 - powerSize.height) / 2,
+        let powerFrame = NSRect(x: (16 - powerSize.width) / 2, y: iconY + (18 - powerSize.height) / 2,
                                 width: powerSize.width, height: powerSize.height)
-        let image = NSImage(size: NSSize(width: calendar == nil ? 16 : 44, height: 18), flipped: false) { _ in
+        let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { rect in
             power.draw(in: powerFrame)
-            calendar?.draw(in: NSRect(x: 18, y: 0, width: 26, height: 18))
+            calendar?.draw(in: NSRect(x: 18, y: iconY, width: 26, height: 18))
+            if !title.isEmpty { text.draw(at: NSPoint(x: iconWidth + 4, y: (height - textSize.height) / 2)) }
+            // Recolor every drawn pixel, keeping its coverage.
+            contentColor().set()
+            rect.fill(using: .sourceAtop)
             return true
         }
-        image.isTemplate = true
+        image.isTemplate = false
         return image
+    }
+
+    private static func contentColor() -> NSColor {
+        NSAppearance.currentDrawing().bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .white : .black
     }
 
     private static func calendarIcon(day: Int) -> NSImage {

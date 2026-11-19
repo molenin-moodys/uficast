@@ -8,7 +8,7 @@ Uficast includes a Day-O-style clock and native calendar in its single menu-bar 
 
 ## Features
 
-- **Cmd+Space launcher** with application icons, fuzzy search and aliases that rank first.
+- **Cmd+Space launcher** (or another shortcut you choose) with application icons, fuzzy search and aliases that rank first. It opens on the display of the window you are working in.
 - **Wrong-layout search** for U.S./Russian keyboards: type `сркщьу` to find Chrome without changing layouts.
 - **Script folders** to discover local shell, Python and AppleScript commands, including Raycast title/argument headers.
 - **Local scripts** using shell, AppleScript or another configured interpreter. Pass one unchanged text argument and optionally open a generated URL.
@@ -59,7 +59,7 @@ scripts/build.sh
 open dist/Uficast.app
 ```
 
-Opening the app shows the launcher immediately. Its gear button opens Settings; **Cmd+,** and **Cmd+P** also open Settings. The menu bar includes the native calendar, **Open Launcher**, **Settings…**, **Date & Time…**, **Keep Awake** and **Quit**. **Retry Shortcut** and application refresh are available in General. The global shortcut uses Carbon registration and never requests Accessibility or Input Monitoring. Release conflicting Cmd+Space shortcuts in Spotlight/Raycast yourself; Uficast does not change their settings. A successful registration does not prove a system shortcut yields the chord.
+Opening the app shows the launcher immediately. Its gear button opens Settings; **Cmd+,** and **Cmd+P** also open Settings. The menu bar includes the native calendar, **Open Launcher**, **Settings…**, **Date & Time…**, **Keep Awake** and **Quit**. **Retry Shortcut** and application refresh are available in General. The global shortcut uses Carbon registration and never requests Accessibility or Input Monitoring. To use another launcher shortcut, open **General → Launcher**, click **Shortcut** and press the new combination (it must include Command, Control or Option); **Reset** restores Cmd+Space. A combination Uficast cannot register is not saved. Release conflicting shortcuts in Spotlight/Raycast yourself; Uficast does not change their settings. A successful registration does not prove a system shortcut yields the chord.
 
 Build output is `dist/Uficast.app`, locally ad-hoc signed. `scripts/build.sh debug` builds a debug bundle. Optionally set `UFICAST_SIGN_IDENTITY` to an existing signing identity. Quit the running copy before rebuilding or replacing it. Opening a rebuilt bundle while an older copy is still running reveals that existing process; it does not reload its executable. For an isolated build, set `UFICAST_OUTPUT_ROOT` to another output directory. Script Automation consent may need renewal after ad-hoc rebuilds; a stable installation path is recommended.
 
@@ -75,11 +75,11 @@ Application discovery uses `/Applications`, `/System/Applications` and `~/Applic
 
 ## Keyboard shortcuts
 
-These shortcuts work while Uficast has keyboard focus; only Cmd+Space and assigned app hotkeys are global.
+These shortcuts work while Uficast has keyboard focus; only the launcher shortcut and assigned app hotkeys are global.
 
 | Shortcut | Action |
 | --- | --- |
-| Cmd+Space | Toggle launcher globally |
+| Cmd+Space (configurable) | Toggle launcher globally |
 | Cmd+, or Cmd+P | Open Settings |
 | Esc in Settings | Cancel an inline alias/hotkey edit first; otherwise close Settings (sheets keep their own Cancel action) |
 | Cmd+W | Close the current window or launcher |
@@ -97,7 +97,7 @@ Apple's [standard Mac shortcuts](https://support.apple.com/en-us/102650) use Cmd
 
 In **Settings… → Commands**, double-click an **Alias** cell (or the alias in the inspector), type a value and press **Enter** to save. **Escape** cancels without saving; click **×** to remove an assigned alias. Invalid or duplicate aliases keep the draft open and show an error. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General starts with **Start Uficast at login** and also contains Menu Bar Calendar, Keep Awake, Caps Lock, application roots, refresh, import/export and backup recovery.
 
-In **Settings → Commands**, double-click an application’s **Hotkey** cell (the current shortcut or **Add Hotkey**) to open its inline recorder. A single click only selects the row. **Escape** closes recording without saving and keeps the previous shortcut. Click the **×** beside an assigned shortcut to remove it. You can also select an application and click **Record Hotkey** under **Show / Hide**. Press a combination containing Command, Control or Option; Escape cancels and Delete clears it. Enabled app shortcuts must be unique, and Cmd+Space is reserved for the launcher. The table shows assigned shortcuts and registration errors. If another app claims a chord, release it there first. Script-specific global hotkeys remain deferred.
+In **Settings → Commands**, double-click an application’s **Hotkey** cell (the current shortcut or **Add Hotkey**) to open its inline recorder. A single click only selects the row. **Escape** closes recording without saving and keeps the previous shortcut. Click the **×** beside an assigned shortcut to remove it. You can also select an application and click **Record Hotkey** under **Show / Hide**. Press a combination containing Command, Control or Option; Escape cancels and Delete clears it. Enabled app shortcuts must be unique, and the launcher shortcut (Cmd+Space unless changed) is reserved. The table shows assigned shortcuts and registration errors. If another app claims a chord, release it there first. Script-specific global hotkeys remain deferred.
 
 Private JSON lives in `~/Library/Application Support/Uficast/config.json`, with `config.backup.json`. Saves are atomic. Corrupt/unsupported files are preserved and editing is disabled; explicit backup recovery preserves the replaced file as `config.recovered-<id>.json`. A future schema cannot be overwritten by this older app. Export/import preserves machine-specific paths; locate missing scripts/apps on the new Mac.
 

@@ -1,10 +1,10 @@
 # Progress and handoff
 
-Last updated: November 18, 2026 (America/Los_Angeles).
+Last updated: November 19, 2026 (America/Los_Angeles).
 
 ## Current state
 
-Requested personal-use features through Stage 6k are implemented; Stage 6l is integrated into main at the owner’s request, with remaining manual acceptance pending. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. Window-shortcut/power checkpoint 7ebcf04 is pushed to origin/main. The calendar increment was developed on codex/day0-calendar-experiment and has now been fast-forward merged into main through 72d765c at the owner’s explicit request.
+Requested personal-use features through Stage 6k are implemented; Stage 6l is integrated into main at the owner’s request, with remaining manual acceptance pending. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. Window-shortcut/power checkpoint 7ebcf04 is pushed to origin/main. The calendar increment was developed on codex/day0-calendar-experiment and has now been fast-forward merged into main through 72d765c at the owner’s explicit request. Stage 6m (configurable launcher shortcut, focus-display placement and a clock-contrast experiment) is implemented on main and awaits the owner's hands-on checks.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
@@ -23,12 +23,13 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 | 6j — Window keyboard conventions | Implemented | Native menu/Esc-priority checks pass; desktop Cmd+P and Cmd+, opened Settings. Broader physical focus/minimize/hide acceptance remains pending. |
 | 6k — Remembered caffeine / transient errors | Implemented | 50 core tests pass with fake power restoration; native feedback check confirms hide clears retained errors and rejects late completion. |
 | 6l — Day-O calendar | Integrated into main by owner request | 51 core tests and native clock/menu-mode checks pass; compact NSDatePicker previews inspected. Real menu navigation, side-by-side seconds and preference persistence acceptance pending. |
+| 6m — Launcher shortcut, focus display, clock contrast | Implemented; owner checks pending | 57 core tests, six native checks and light/dark previews pass. Physical shortcut delivery, two-display placement and inactive-display readability are not yet observed. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
 
-- Swift 6.2.3 / macOS 26.6.2 arm64 with Command Line Tools; no external packages or full Xcode required. `scripts/build.sh` creates an ad-hoc signed app; `UFICAST_OUTPUT_ROOT` isolates output. Quit before replacing a running bundle.
-- Carbon RegisterEventHotKey handles fixed launcher Cmd+Space and configurable app bindings. Local recorder releases/restores Uficast registrations; duplicate/reserved chords are rejected. Native NSRunningApplication activate/hide/unhide launches closed apps without AX.
+- Originally Swift 6.2.3 / macOS 26.6.2 arm64 with Command Line Tools; no external packages or full Xcode required. Since an update the machine has Swift 6.4, macOS 26.7.3 and a default MacOSX27.0 SDK; see the Stage 6m toolchain note. `scripts/build.sh` creates an ad-hoc signed app; `UFICAST_OUTPUT_ROOT` isolates output. Quit before replacing a running bundle.
+- Carbon RegisterEventHotKey handles the configurable launcher shortcut (default Cmd+Space) and configurable app bindings. Local recorder releases/restores Uficast registrations; duplicate/reserved chords are rejected. Native NSRunningApplication activate/hide/unhide launches closed apps without AX.
 - InstanceLock uses process-held flock, never unlinks its inode, and InstanceCoordinator reveals the primary process via a user-scoped distributed notification. Ordinary launch/reopen reveals the panel; footer gear opens Settings.
 - ApplicationCatalog discovers configured roots in the background. SearchIndex preserves exact-alias priority and stable ranking/history. KeyboardLayoutSearch expands queries using U.S./Russian physical keys before folding diacritics; literal variants win ties. Arguments and visible input remain unchanged.
 - ConfigStore validates versioned private JSON, writes atomically, protects corrupt/future files and maintains recoverable backups. Optional app hotkeys and default-off Caps preference decode existing schema-1 files. Never commit personal config.
@@ -49,7 +50,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 
 ## Remaining manual/platform checks
 
-- Cmd+Space repeat/release and system conflict behavior, Secure Input, fullscreen/multiple monitors, editing/paste/focus across destinations and sleep/wake.
+- Launcher shortcut (default and a custom one) repeat/release and system conflict behavior, two-display focus placement, clock readability on an inactive display, Secure Input, fullscreen/multiple monitors, editing/paste/focus across destinations and sleep/wake.
 - App show/hide/closed-launch cycles with physical assigned shortcuts; persistence/restart acceptance.
 - Owner's real script/environment and full paste → script → browser flow; Automation consent across ad-hoc rebuilds.
 - Actual relogin at the stable app path, multiple physical keyboards/reconnect/wake, preservation under external mapping changes and perceived switching latency.
@@ -170,7 +171,27 @@ Stage 6l owner-requested calendar work is recorded below; the earlier daily-use 
 - The current AC profile already had displaysleep=0 and sleep=0; these settings were only read. Recent user activity was also present, so this is continued-running/log evidence, not a controlled idle-prevention acceptance test. IODisplayWrangler did not expose matching power-state properties on this Mac; no success is claimed for that optional query.
 - No new code change, rebuild, restart, power toggle or test rerun was needed. The corrected implementation remains checkpoint 8d18892. The remaining exact next step below is unchanged.
 
-**Exact next step:** owner checks normal idle use with caffeine active and confirms the screen stays on, then verifies stop/expiry restores normal idle behavior. If it still goes black, record the time and distinguish an automatic display-off event from screen saver/lock or explicit system sleep in the system log. Other daily-use/manual gaps remain open.
+The caffeine idle check from this section is still open; it is carried into the next step of Stage 6m below.
+
+## Stage 6m — launcher shortcut, focus display and clock contrast
+
+- Owner requests (November 19, 2026): make Cmd+Space configurable, open the launcher on the display that has focus, and keep the menu bar clock readable on an inactive display. macOS dims the whole menu bar there; no public setting turns that off. The owner chose an experiment (option B): draw the clock as one explicit-contrast image. The owner approved the design `docs/superpowers/specs/2026-11-19-launcher-hotkey-display-clock-design.md` (commit c4334cb).
+- Launcher shortcut: optional `launcherHotkey` in schema 1 (absent = Cmd+Space, default not written). Validation reserves the effective launcher shortcut against enabled app hotkeys in both directions. HotkeyService registers the configured combination; status text names it. General → Launcher has the native recorder (Escape cancels; Delete or Reset restores Cmd+Space). AppController validates and probes a candidate with register/unregister before saving; an unavailable combination is reported and not saved.
+- Display: `show()` reads owner PID, layer, alpha and bounds of the frontmost app's front layer-0 window from the system window list (no Screen Recording/Accessibility), and `DisplayPlacement` chooses the screen with the largest overlap; fallback is the pointer's screen, then `NSScreen.main`.
+- Clock: the button title is empty; text, power symbol and calendar are drawn into one non-template image, recolored black (aqua) or white (dark aqua) at draw time. Accessibility label/description and tooltip carry the clock text. `--preview-status-clock <png>` renders a fixed-text light/dark comparison.
+- Separate earlier commits today: bc3117d lets `scripts/build.sh` read an optional git-ignored `local/build.env` (the owner's local output path is there, not in Git).
+
+**Toolchain note (unresolved).** After the machine's update, `scripts/build.sh` fails with the default MacOSX27.0 SDK: Command Line Tools have no `SwiftUIMacros` plugin, so SwiftUI `@State` does not expand. `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk` builds successfully. `scripts/test.sh` also fails under the new default `swiftbuild` system (TestingMacros is not passed to the compiler); `scripts/test.sh --build-system native` works, with a deprecation warning. The scripts are unchanged; adapting them needs the owner's decision.
+
+Checks actually performed (all with `SDKROOT=…MacOSX26.5.sdk`):
+
+- `scripts/test.sh --build-system native`: **57 core tests passed** (6 new: legacy decode keeps Cmd+Space and writes no field, custom round trip and validation, conflicts both ways including relabeled and disabled bindings, Quartz→Cocoa conversion, overlap choice, pointer fallback). Warm search p95 **18.02 ms** over 2,000 synthetic apps. The new tests were first seen failing to compile before the implementation existed.
+- Isolated release build (`UFICAST_OUTPUT_ROOT=.build/check`) and strict signature verification passed. After a full rebuild only the pre-existing `AppController.swift:99` capture warning and linker search-path warnings remain.
+- Native checks on that bundle passed: `--verify-menu-clock` (now also: non-template image, empty title, text inside the image, full-contrast ink brightness in aqua and dark aqua; tick phases 5, 7, 6 ms on the final build), `--verify-shortcut-recorder`, `--verify-keyboard-shortcuts`, `--verify-alias-editor`, `--verify-script-feedback`, `--verify-native-icons`.
+- Offscreen previews inspected: status clock light/dark (black on light, white on dark, zzz/cup, calendar and text aligned) and General in light, which shows the new Launcher Shortcut row. The Reset button (shown only with a custom shortcut) was not rendered.
+- Not performed: pressing a real recorded shortcut, relaunch persistence, the availability probe against a real conflict, placement on two displays, the clock on an actual inactive display, and the open-menu highlight look. The owner's running copy in the local output folder was not replaced; it requires a normal Quit first.
+
+**Exact next step:** owner quits Uficast and installs the Stage 6m build (`SDKROOT=…MacOSX26.5.sdk scripts/build.sh`), then runs the new Launcher/two-display/inactive-display items in `docs/MANUAL_TESTS.md`. If the clock is still dimmed, revert only the clock-contrast part. Decide whether `build.sh`/`test.sh` should adapt to the new toolchain. The caffeine idle check (screen stays on while active; stop/expiry restores idle behavior) and other daily-use gaps remain open.
 
 
 ### Earlier cursor report checkpoint

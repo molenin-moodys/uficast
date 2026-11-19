@@ -87,6 +87,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         }
         settingsModel.onCheckKeyboard = { [weak self] in self?.checkKeyboard() }
         settingsModel.onSetLoginItem = { [weak self] in self?.setLoginItem($0) }
+        settingsModel.onSetLauncherHotkey = { [weak self] in self?.setLauncherHotkey($0) }
         settingsModel.onBeginShortcutRecording = { [weak self] in self?.hotkey.stop() }
         settingsModel.onEndShortcutRecording = { [weak self] in self?.hotkey.start() }
         settingsModel.onSetKeepAwake = { [weak self] in self?.changeKeepAwake(enabled: $0) }
@@ -335,6 +336,23 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         }
     }
 
+    /// nil restores Command+Space. An unavailable combination is reported and
+    /// never saved, so the launcher keeps a working shortcut.
+    private func setLauncherHotkey(_ shortcut: GlobalShortcut?) {
+        guard !settingsModel.isBusy, !settingsModel.isReadOnly else { return }
+        let current = settingsModel.configuration.effectiveLauncherHotkey
+        var config = settingsModel.configuration
+        config.launcherHotkey = shortcut?.signature == GlobalShortcut.launcher.signature ? nil : shortcut
+        guard config.effectiveLauncherHotkey.signature != current.signature else { return }
+        do { _ = try config.validated() } catch { settingsModel.status = error.localizedDescription; return }
+        let candidate = config.effectiveLauncherHotkey
+        if let error = hotkey.availabilityError(for: candidate) {
+            settingsModel.status = "\(candidate.display) is unavailable (error \(error)). The launcher keeps \(current.display)."
+            return
+        }
+        saveConfiguration(config)
+    }
+
     private func updateStatus() {
         settingsModel.shortcutStatus = hotkey.status
         settingsModel.hotkeyErrors = hotkey.appErrors
@@ -370,7 +388,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         let remapChanged = settingsModel.configuration.capsLockToF19Enabled != configuration.capsLockToF19Enabled
         settingsModel.configuration = configuration
         menuBarClock?.configure(configuration.menuBarClock)
-        hotkey.configure(appShortcuts: configuration.applications.compactMapValues { $0.isEnabled ? $0.hotkey : nil })
+        hotkey.configure(launcher: configuration.effectiveLauncherHotkey,
+                         appShortcuts: configuration.applications.compactMapValues { $0.isEnabled ? $0.hotkey : nil })
         let roots = configuration.applicationRoots.map(Configuration.fileURL)
         if roots != catalog.roots || catalog.entries.isEmpty { catalog.roots = roots; catalog.refresh() }
         updateEntries()

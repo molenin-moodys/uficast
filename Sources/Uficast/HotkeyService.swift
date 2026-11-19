@@ -10,6 +10,7 @@ final class HotkeyService {
     private var states: [UInt32: LauncherHotkey] = [:]
     private var appIDs: [UInt32: String] = [:]
     private var appShortcuts: [String: GlobalShortcut] = [:]
+    private var launcherShortcut = GlobalShortcut.launcher
     private let signature: OSType = 0x55464943
     var onToggle: (() -> Void)?
     var onAppToggle: ((String) -> Void)?
@@ -19,10 +20,22 @@ final class HotkeyService {
     private(set) var lastError: OSStatus = noErr
     var isRunning: Bool { registrations[1] != nil }
 
-    func configure(appShortcuts: [String: GlobalShortcut]) {
-        guard self.appShortcuts != appShortcuts else { return }
+    func configure(launcher: GlobalShortcut, appShortcuts: [String: GlobalShortcut]) {
+        guard launcherShortcut != launcher || self.appShortcuts != appShortcuts else { return }
+        launcherShortcut = launcher
         self.appShortcuts = appShortcuts
         start()
+    }
+
+    /// Registers and immediately releases a candidate, so a combination another
+    /// app already owns is reported before it replaces the working launcher key.
+    func availabilityError(for shortcut: GlobalShortcut) -> OSStatus? {
+        var reference: EventHotKeyRef?
+        let result = RegisterEventHotKey(shortcut.keyCode, shortcut.modifiers,
+            EventHotKeyID(signature: signature, id: UInt32.max), GetApplicationEventTarget(),
+            OptionBits(kEventHotKeyExclusive), &reference)
+        if let reference { UnregisterEventHotKey(reference) }
+        return result == noErr ? nil : result
     }
 
     func start() {
@@ -46,9 +59,10 @@ final class HotkeyService {
             onStatusChange?()
             return
         }
-        lastError = register(.launcher, id: 1)
-        status = lastError == noErr ? "⌘ Space registered. Release matching Spotlight/Raycast shortcuts if needed."
-            : "⌘ Space unavailable (error \(lastError)). Release it in other apps, then Retry."
+        lastError = register(launcherShortcut, id: 1)
+        let name = launcherShortcut.display
+        status = lastError == noErr ? "\(name) registered. Release matching Spotlight/Raycast shortcuts if needed."
+            : "\(name) unavailable (error \(lastError)). Release it in other apps, then Retry."
         for (offset, id) in appShortcuts.keys.sorted().enumerated() {
             let token = UInt32(offset + 2)
             let code = register(appShortcuts[id]!, id: token)

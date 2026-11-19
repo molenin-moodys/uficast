@@ -336,9 +336,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         NSApp.unhideWithoutActivation()
         beforeShow?()
         previousApplication = NSWorkspace.shared.frontmostApplication
-        let point = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
-        if let frame = screen?.visibleFrame {
+        if let frame = Self.targetScreen(for: previousApplication)?.visibleFrame {
             panel.setFrameOrigin(NSPoint(x: frame.midX - panel.frame.width / 2,
                                          y: frame.minY + frame.height * 0.65 - panel.frame.height / 2))
         }
@@ -347,6 +345,34 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)
         startMonitors()
+    }
+
+    /// The display of the focused app's front window, else the one under the pointer.
+    private static func targetScreen(for application: NSRunningApplication?) -> NSScreen? {
+        let screens = NSScreen.screens
+        guard let primary = screens.first else { return NSScreen.main }
+        let window = application.flatMap { frontWindowBounds(pid: $0.processIdentifier) }
+            .map { DisplayPlacement.cocoaRect(fromQuartz: $0, primaryScreenHeight: primary.frame.height) }
+        let index = DisplayPlacement.screenIndex(window: window, pointer: NSEvent.mouseLocation, screens: screens.map(\.frame))
+        return index.map { screens[$0] } ?? NSScreen.main
+    }
+
+    /// Window owner, layer and bounds are readable without Screen Recording or
+    /// Accessibility; titles and contents are neither requested nor used.
+    private static func frontWindowBounds(pid: pid_t) -> CGRect? {
+        guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]] else { return nil }
+        // The list is ordered front to back; skip menus, panels and tiny helper windows.
+        for info in windows {
+            guard (info[kCGWindowOwnerPID as String] as? Int32) == pid,
+                  (info[kCGWindowLayer as String] as? Int) == 0,
+                  (info[kCGWindowAlpha as String] as? Double ?? 1) > 0,
+                  let dictionary = info[kCGWindowBounds as String] as? NSDictionary,
+                  let bounds = CGRect(dictionaryRepresentation: dictionary as CFDictionary),
+                  bounds.width >= 80, bounds.height >= 80 else { continue }
+            return bounds
+        }
+        return nil
     }
 
     func dismiss(restoreFocus: Bool = true) {

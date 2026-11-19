@@ -8,7 +8,7 @@ Recorded on November 18, 2026; updated the same day to ordinary Cmd+Space with n
 | --- | --- |
 | Platform and stack | macOS only; Swift + AppKit approved. |
 | Distribution | Personal use. Build from source on each Mac. |
-| Global trigger | Command + Space (either Command key), replacing the original right-only request. |
+| Global trigger | Command + Space (either Command key) by default, replacing the original right-only request. Since November 19, 2026 the owner can choose another combination in General. |
 | Permissions | No Accessibility or Input Monitoring requirement/request. |
 | Launch lifecycle | Opening shows the launcher immediately; one process per user; a second launch reveals the existing instance. |
 | Settings entry | A visible gear button in the launcher opens Settings. |
@@ -42,10 +42,10 @@ These choices let implementation proceed without another questionnaire. They may
 - One unique alias per enabled item initially. Match aliases case-insensitively after normalization; reject duplicate aliases across enabled apps and scripts. No empty or whitespace-containing aliases in v1.
 - Aliases can be assigned to both apps and scripts. Their exact matches always win over application-name matches and usage history.
 - App discovery starts with `/Applications`, `/System/Applications`, and `~/Applications`; add other roots through settings. Avoid presenting nested helper apps by default.
-- Support light and dark appearance, keyboard navigation, and opening on the display containing the pointer.
+- Support light and dark appearance and keyboard navigation. Owner change (November 19, 2026): open on the display of the focused application's front window; fall back to the display containing the pointer when that app has no usable window. This supersedes pointer-only placement.
 - Start at login is optional and controlled by the owner. No independent keyboard daemon in v1.
 - No automatic execution while typing and no automatic clipboard reads. Pasting uses the normal text-editing command.
-- App-specific global hotkeys are in scope. Script-specific global hotkeys remain deferred. The launcher shortcut is fixed to Cmd+Space.
+- App-specific global hotkeys are in scope. Script-specific global hotkeys remain deferred. The launcher shortcut defaults to Cmd+Space; the owner requested on November 19, 2026 that it be configurable in General.
 
 ## Launcher behavior
 
@@ -111,6 +111,13 @@ Shortcuts/Kasa, clipboard history, snippets, file search, window management, cal
 - App icons load on a serial background queue as small bitmap data. Completion updates only the matching existing launcher cell; search, selection and scroll position must remain stable.
 - Keep Awake uses a native IOPM idle-display-sleep assertion (which also prevents idle system sleep), off on first installation, with indefinite/30-minute/one-hour sessions. Remember the last active/off state locally across exits; timed sessions resume the remaining deadline or stay off if expired. Show a cup icon while active and a `zzz` sleep icon while off (including startup and decaf mode); with the clock enabled, place this state icon left of the calendar in the same button. Also expose state in the tooltip and menu. Release exactly this app's assertion on stop, expiry or quit. The display stays on during idle use while active. Explicit system/lid sleep behavior remains governed by macOS. This owner clarification supersedes the earlier implementation default that allowed the display to sleep.
 - Verify actual login after enabling start-at-login, multiple physical keyboards, reconnect/wake, per-app show/hide cycles and a real idle-sleep session. Record observed outcomes separately from fixture tests.
+
+## Launcher shortcut, display and clock contrast (owner additions, November 19, 2026)
+
+- The launcher shortcut is recorded in General with the same native recorder as app hotkeys. It must contain Command, Control or Option. Escape cancels; Delete or Reset restores Cmd+Space. Older configuration files keep Cmd+Space. App hotkeys may not reuse the effective launcher shortcut, and the launcher may not take an enabled app's shortcut.
+- A combination that Uficast cannot register is reported and not saved, so the launcher keeps a working shortcut. Still no Accessibility, Input Monitoring or keyboard observation.
+- Display choice uses only window owner, layer and bounds from the system window list; no Screen Recording or Accessibility grant is requested.
+- The owner reported that the menu-bar clock is unreadable on an inactive display, where macOS dims the bar. The owner chose an experiment: draw the clock text and icons as one explicit full-contrast image (black on a light bar, white on a dark bar) instead of system-styled template icons and title. macOS may dim the whole bar regardless; only the owner's two-display observation can confirm the effect. If it does not help, revert this part. Turning off "Displays have separate Spaces" in macOS remains the owner's own alternative; Uficast never changes that setting.
 
 ## Keyboard conventions (owner additions)
 

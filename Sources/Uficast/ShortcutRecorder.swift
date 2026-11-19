@@ -5,6 +5,7 @@ import UficastCore
 struct ShortcutRecorder: NSViewRepresentable {
     var shortcut: GlobalShortcut?
     var requiresDoubleClick = false
+    var accessibilityName = "Record application hotkey"
     var onCapture: (GlobalShortcut?) -> Void
     var onBegin: () -> Void
     var onEnd: () -> Void
@@ -12,6 +13,7 @@ struct ShortcutRecorder: NSViewRepresentable {
     func updateNSView(_ view: ShortcutRecorderButton, context: Context) {
         view.shortcut = shortcut
         view.requiresDoubleClick = requiresDoubleClick
+        view.setAccessibilityLabel(accessibilityName)
         view.isEnabled = context.environment.isEnabled
         view.onCapture = onCapture
         view.onBegin = onBegin

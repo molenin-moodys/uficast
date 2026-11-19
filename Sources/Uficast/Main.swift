@@ -21,6 +21,16 @@ struct UficastMain {
             catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
             return
         }
+        if let index = CommandLine.arguments.firstIndex(of: "--preview-status-clock"), CommandLine.arguments.indices.contains(index + 1) {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try StatusClockPreview.write(to: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
+                print("Wrote light/dark status clock preview.")
+            } catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
+            return
+        }
         if let index = CommandLine.arguments.firstIndex(of: "--preview-calendar"), CommandLine.arguments.indices.contains(index + 1) {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)
@@ -146,7 +156,7 @@ struct UficastMain {
             let values: [String: Any] = [
                 "bundleIdentifier": Bundle.main.bundleIdentifier ?? "unbundled",
                 "bundlePath": Bundle.main.bundlePath,
-                "shortcut": "Command + Space",
+                "shortcut": "Command + Space by default; configurable in Settings",
                 "requiresAccessibility": false,
                 "osVersion": ProcessInfo.processInfo.operatingSystemVersionString,
             ]

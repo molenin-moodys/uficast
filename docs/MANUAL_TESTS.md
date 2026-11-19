@@ -9,8 +9,12 @@ All items are pending unless a dated result is recorded in PROGRESS. No Accessib
 - Release matching Spotlight/Raycast shortcuts yourself for this test. Automation must not change these settings.
 - Cmd+Space toggles once using either Command key. Holding Space must not repeatedly toggle or insert spaces in the previous app.
 - Test both Command keys, extra modifiers, releasing Command before Space, retry, sleep/wake, fullscreen and multiple monitors when available.
+- General → Launcher: record another shortcut (for example Ctrl+Space), press it from another app, quit and reopen Uficast, and confirm it persists. Cmd+Space must then be free. Try a combination already used by an enabled app hotkey: it must be rejected. Press Escape while recording: nothing changes. Use Reset (or Delete while recording) to restore Cmd+Space.
+- Two displays: focus a window on each display in turn and open the launcher; it must appear on the focused window's display even when the pointer is on the other one. With a windowless app frontmost (for example Finder with no windows), it opens on the pointer's display.
 - Escape and outside clicks dismiss; cancellation restores prior focus when appropriate. Opening a destination must let it take focus.
 - Record actual Secure Input behavior and known limitations; do not bypass system protection.
+
+- Inactive display: with two displays, focus a window on one display and look at the Uficast clock on the other. Record whether the clock text and icons are readable compared with other menu-bar items. Check both light and dark menu bars and the open-menu highlight.
 
 ## Added features
 
