@@ -141,6 +141,21 @@ Validate acquire/renew/stop ownership, expiry and backend failures using a fake 
 
 Suggested commit: `feat: add built-in keep-awake sessions`.
 
+## Stage 6c — Owner additions: app shortcuts, launch lifecycle and icons
+
+- Show the launcher on first/open/reopen; add a Settings gear button.
+- Enforce one normal app process per user with a process-held lock and reveal notification.
+- Persist and record per-app global shortcuts without Accessibility; validate duplicates/reserved chords and implement native activate/hide/launch behavior.
+- Show real icons in both lists, with bounded background loading and direct existing-cell updates to avoid reload jitter.
+- Put the startup checkbox at the top of General.
+- Diagnose conflicting system Caps Lock modifier profiles and reapply owned mappings when keyboard services appear.
+
+Validate lock exclusivity/release, configuration compatibility, hotkey conflicts and keyboard-profile detection with fixtures. Check native icon completion using --verify-native-icons. Record startup, Settings navigation and visual observations separately from remaining physical hotkey, reconnect and login checks.
+
+## Stage 6d — Wrong-layout search (owner addition)
+
+Expand search queries using standard U.S./Russian physical-key mappings in both directions. Preserve exact-alias priority, favor literal matches within each rank tier, and deduplicate results. Apply to launcher and Commands search only; arguments remain unchanged. Validate both directions, mixed input, alias precedence and ё/й mapping, plus the existing 2,000-app performance target.
+
 ## Stage 7 — Daily-use verification and source-build handoff
 
 Tasks:

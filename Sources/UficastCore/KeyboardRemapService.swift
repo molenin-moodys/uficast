@@ -21,7 +21,7 @@ public actor KeyboardRemapService {
         while busy { try? await Task.sleep(for: .milliseconds(25)) }
     }
 
-    public func reconcile(enabled: Bool) async throws -> String {
+    public func reconcile(enabled: Bool, reapplyOwned: Bool = false) async throws -> String {
         guard !busy else { throw RemapError.busy }
         busy = true
         defer { busy = false }
@@ -32,6 +32,12 @@ public actor KeyboardRemapService {
         if enabled {
             guard caps.count <= 1 else { throw RemapError.conflictingCapsLock }
             if caps.first == .capsLockToF19 {
+                // A new keyboard service may not have inherited the global table.
+                // Re-publish only a mapping whose ownership is already durable.
+                if recovery != nil, reapplyOwned {
+                    try await backend.write(current)
+                    guard equivalent(try await backend.read(), current) else { throw RemapError.verificationFailed }
+                }
                 return recovery == nil ? "Caps Lock → F19 is managed externally; Uficast will leave it unchanged." : "Caps Lock → F19 is enabled."
             }
             guard caps.isEmpty else { throw RemapError.conflictingCapsLock }

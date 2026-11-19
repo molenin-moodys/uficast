@@ -18,6 +18,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     private let argumentScroll = NSScrollView()
     private let argumentInput = NSTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 38))
     private let placeholder = ClickThroughLabel(labelWithString: "")
+    private let settingsButton = NSButton()
     private var argumentCommand: ScriptCommand?
     private var previousQuery = ""
     private var isDismissing = false
@@ -27,6 +28,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     var onSelect: ((LauncherEntry) -> Void)?
     var onArgumentSelection: ((LauncherEntry) -> Void)?
     var onArgumentSubmit: ((String, String) -> Void)?
+    var onOpenSettings: (() -> Void)?
     var beforeShow: (() -> Void)?
     private var previousApplication: NSRunningApplication?
     private var localMonitor: Any?
@@ -78,7 +80,6 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         table.doubleAction = #selector(activateSelected)
         table.setAccessibilityLabel("Search results")
         scroll.documentView = table
-        icons.onLoad = { [weak self] in self?.table.reloadData() }
         emptyLabel.textColor = .secondaryLabelColor
         token.target = self
         token.action = #selector(returnToSearch)
@@ -114,7 +115,16 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         placeholder.isHidden = true
         hint.font = .systemFont(ofSize: 12)
         hint.textColor = .secondaryLabelColor
-        for view in [field, line, scroll, emptyLabel, hint, token, argumentScroll, placeholder] {
+        hint.lineBreakMode = .byTruncatingTail
+        hint.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        settingsButton.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Open Settings")
+        settingsButton.title = settingsButton.image == nil ? "Settings" : ""
+        settingsButton.isBordered = false
+        settingsButton.target = self
+        settingsButton.action = #selector(openSettingsFromLauncher)
+        settingsButton.toolTip = "Open Settings (⌘,)"
+        settingsButton.setAccessibilityLabel("Open Settings")
+        for view in [field, line, scroll, emptyLabel, hint, token, argumentScroll, placeholder, settingsButton] {
             view.translatesAutoresizingMaskIntoConstraints = false
             background.addSubview(view)
         }
@@ -134,6 +144,11 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
             emptyLabel.centerYAnchor.constraint(equalTo: scroll.centerYAnchor),
             hint.leadingAnchor.constraint(equalTo: field.leadingAnchor),
             hint.bottomAnchor.constraint(equalTo: background.bottomAnchor, constant: -16),
+            hint.trailingAnchor.constraint(lessThanOrEqualTo: settingsButton.leadingAnchor, constant: -12),
+            settingsButton.trailingAnchor.constraint(equalTo: field.trailingAnchor),
+            settingsButton.centerYAnchor.constraint(equalTo: hint.centerYAnchor),
+            settingsButton.widthAnchor.constraint(equalToConstant: 28),
+            settingsButton.heightAnchor.constraint(equalToConstant: 28),
             token.leadingAnchor.constraint(equalTo: field.leadingAnchor),
             token.centerYAnchor.constraint(equalTo: field.centerYAnchor),
             token.widthAnchor.constraint(lessThanOrEqualToConstant: 220),
@@ -146,6 +161,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
             placeholder.centerYAnchor.constraint(equalTo: argumentScroll.centerYAnchor),
         ])
     }
+
+    @objc private func openSettingsFromLauncher() { onOpenSettings?() }
 
     func setEntries(_ entries: [LauncherEntry], refreshing: Bool = false) {
         index = SearchIndex(entries: entries)
@@ -163,6 +180,33 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         if argumentMode { enterArgument(command) }
         guard let view = panel.contentView else { return }
         try ViewPreview.write(view, to: url)
+    }
+
+    /// Offscreen regression check: asynchronous icon completion must update the
+    /// existing AppKit cell without replacing rows or changing scroll position.
+    func verifyNativeIconRefresh() throws {
+        let entries = Array(ApplicationCatalog.discover(roots: ApplicationCatalog.defaultRoots).entries.prefix(50))
+        guard !entries.isEmpty else { throw ConfigError.invalid("Native icon fixture applications are unavailable.") }
+        setEntries(entries)
+        panel.contentView?.layoutSubtreeIfNeeded()
+        let originals = try results.indices.map { row in
+            guard let cell = table.view(atColumn: 0, row: row, makeIfNecessary: true) as? EntryRow else {
+                throw ConfigError.invalid("Could not construct a native launcher cell.")
+            }
+            return cell
+        }
+        let origin = table.enclosingScrollView?.contentView.bounds.origin
+        let rowRects = results.indices.map { table.rect(ofRow: $0) }
+        let deadline = Date().addingTimeInterval(10)
+        while originals.contains(where: { !$0.hasLoadedIcon }) && Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+        let loaded = originals.filter(\.hasLoadedIcon).count
+        guard loaded == originals.count,
+              results.indices.allSatisfy({ table.rect(ofRow: $0) == rowRects[$0] }),
+              table.enclosingScrollView?.contentView.bounds.origin == origin else {
+            throw ConfigError.invalid("Native icon refresh: \(loaded)/\(originals.count) loaded, or row geometry/scroll position changed.")
+        }
     }
 
     private func reloadResults(preserveSelection: Bool = true) {
@@ -184,7 +228,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let item = results[row]
         let cell = EntryRow()
-        cell.configure(item, icon: icons.icon(for: item.fileURL))
+        cell.configure(item, icons: icons)
         return cell
     }
 
@@ -364,6 +408,10 @@ private final class EntryRow: NSTableCellView {
     private let name = NSTextField(labelWithString: "")
     private let alias = NSTextField(labelWithString: "")
     private let kind = NSTextField(labelWithString: "")
+    private var representedURL: URL?
+    var hasLoadedIcon: Bool {
+        icon.image?.representations.contains { $0 is NSBitmapImageRep && $0.pixelsWide == 64 && $0.pixelsHigh == 64 } ?? false
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -394,8 +442,12 @@ private final class EntryRow: NSTableCellView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func configure(_ entry: LauncherEntry, icon image: NSImage?) {
-        icon.image = image
+    func configure(_ entry: LauncherEntry, icons: IconStore) {
+        representedURL = entry.fileURL
+        icon.image = icons.icon(for: entry.fileURL) { [weak self] image in
+            guard let self, self.representedURL == entry.fileURL else { return }
+            self.icon.image = image ?? NSImage(systemSymbolName: "app", accessibilityDescription: nil)
+        }
         name.stringValue = entry.name
         alias.stringValue = entry.alias ?? ""
         kind.stringValue = entry.kind == .application ? "Application" : "Script"

@@ -10,3 +10,5 @@
 - Do not change the machine's hotkeys, keyboard mappings, login items, or privacy grants merely to verify code. Interactive setup must be clearly tied to an explicit user action in the app or an authorized manual test.
 
 - Mandatory updated requirement: Uficast must not require or request Accessibility or Input Monitoring. The launcher uses ordinary Cmd+Space (either Command key) through RegisterEventHotKey. Do not restore the earlier side-specific event-tap design.
+
+- Accepted additions: per-application show/hide hotkeys, built-in Keep Awake, singleton opening, real app icons, startup checkbox, and U.S./Russian wrong-layout search. Convert search queries only; never script arguments.

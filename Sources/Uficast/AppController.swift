@@ -3,7 +3,7 @@ import UficastCore
 import UniformTypeIdentifiers
 
 @MainActor
-final class AppController: NSObject, NSApplicationDelegate {
+final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     private let hotkey = HotkeyService()
     private let launcher = LauncherPanelController()
     private let catalog = CatalogService()
@@ -14,6 +14,10 @@ final class AppController: NSObject, NSApplicationDelegate {
     private let scriptRunner = ScriptRunner()
     private let keyboard = KeyboardRemapService()
     private let devices = KeyboardDeviceObserver()
+    private let keepAwake = KeepAwakeService()
+    private let keepAwakeToggle = NSMenuItem(title: "Keep Awake", action: nil, keyEquivalent: "")
+    private let keepAwakeDetail = NSMenuItem(title: "Automatic sleep allowed", action: nil, keyEquivalent: "")
+    private var powerRevision: UInt64 = 0
     private var didLoadConfiguration = false
     private var didReconcileKeyboard = false
     private var isTerminating = false
@@ -32,12 +36,27 @@ final class AppController: NSObject, NSApplicationDelegate {
         menu.addItem(item("Refresh Applications", #selector(refreshCatalog)))
         menu.addItem(actionStatus)
         menu.addItem(.separator())
+        keepAwakeToggle.target = self
+        keepAwakeToggle.action = #selector(toggleKeepAwake)
+        menu.addItem(keepAwakeToggle)
+        menu.addItem(keepAwakeDetail)
+        let durationItem = NSMenuItem(title: "Keep Awake For", action: nil, keyEquivalent: "")
+        let durations = NSMenu()
+        for (title, seconds) in [("30 Minutes", 1800), ("1 Hour", 3600), ("Until Stopped", 0)] {
+            let choice = item(title, #selector(keepAwakeFor(_:)))
+            choice.representedObject = NSNumber(value: seconds)
+            durations.addItem(choice)
+        }
+        durationItem.submenu = durations
+        menu.addItem(durationItem)
+        menu.addItem(.separator())
         menu.addItem(statusLine)
         menu.addItem(item("Retry Shortcut", #selector(retryShortcut)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Uficast", #selector(quit), key: "q"))
         statusItem.menu = menu
         hotkey.onToggle = { [weak self] in self?.launcher.toggle() }
+        hotkey.onAppToggle = { [weak self] in self?.toggleApplication($0) }
         hotkey.onStatusChange = { [weak self] in self?.updateStatus() }
         hotkey.start()
         catalog.onChange = { [weak self] in
@@ -48,6 +67,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         launcher.onSelect = { [weak self] entry in self?.launch(entry) }
         launcher.onArgumentSelection = { [weak self] entry in self?.selectArgumentCommand(entry) }
         launcher.onArgumentSubmit = { [weak self] id, argument in self?.runScript(id: id, argument: argument) }
+        launcher.onOpenSettings = { [weak self] in self?.openSettings() }
         settingsModel.onSave = { [weak self] in self?.saveConfiguration($0) }
         settingsModel.onRefresh = { [weak self] in self?.catalog.refresh() }
         settingsModel.onRetryShortcut = { [weak self] in self?.hotkey.start() }
@@ -67,14 +87,23 @@ final class AppController: NSObject, NSApplicationDelegate {
         }
         settingsModel.onCheckKeyboard = { [weak self] in self?.checkKeyboard() }
         settingsModel.onSetLoginItem = { [weak self] in self?.setLoginItem($0) }
+        settingsModel.onBeginShortcutRecording = { [weak self] in self?.hotkey.stop() }
+        settingsModel.onEndShortcutRecording = { [weak self] in self?.hotkey.start() }
+        settingsModel.onSetKeepAwake = { [weak self] in self?.changeKeepAwake(enabled: $0) }
+        settingsModel.onKeepAwakeFor = { [weak self] in self?.changeKeepAwake(enabled: true, seconds: $0) }
+        Task {
+            await keepAwake.setObserver { [weak self] state, error in
+                Task { @MainActor [weak self] in self?.updateKeepAwake(state, error: error) }
+            }
+        }
         updateLoginItemStatus()
-        devices.onChange = { [weak self] in self?.reconcileKeyboard() }
+        devices.onChange = { [weak self] in self?.reconcileKeyboard(reapplyOwned: true) }
         devices.start()
         loadConfiguration()
         NSWorkspace.shared.notificationCenter.addObserver(
             self, selector: #selector(resumeServices), name: NSWorkspace.didWakeNotification, object: nil
         )
-        if CommandLine.arguments.contains("--show") { launcher.show() }
+        launcher.show()
     }
 
     func applicationWillTerminate(_ notification: Notification) { hotkey.stop(); devices.stop() }
@@ -93,6 +122,8 @@ final class AppController: NSObject, NSApplicationDelegate {
         Task {
             await scriptRunner.cancelAll()
             await scriptRunner.waitUntilIdle()
+            await keepAwake.waitUntilIdle()
+            _ = try? await keepAwake.disable()
             await keyboard.waitUntilIdle()
             if !settingsModel.isReadOnly { _ = try? await keyboard.reconcile(enabled: false) }
             NSApp.reply(toApplicationShouldTerminate: true)
@@ -101,17 +132,61 @@ final class AppController: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openLauncher() { launcher.show() }
+    func revealLauncher() { launcher.show() }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func retryShortcut() { hotkey.start() }
     @objc private func refreshCatalog() { catalog.refresh() }
-    @objc private func resumeServices() { hotkey.start(); reconcileKeyboard() }
+    @objc private func resumeServices() { hotkey.start(); reconcileKeyboard(reapplyOwned: true) }
 
-    private func reconcileKeyboard() {
+    @objc private func toggleKeepAwake() { changeKeepAwake(enabled: !settingsModel.keepAwakeActive) }
+    @objc private func keepAwakeFor(_ sender: NSMenuItem) {
+        let seconds = (sender.representedObject as? NSNumber)?.doubleValue ?? 0
+        changeKeepAwake(enabled: true, seconds: seconds > 0 ? seconds : nil)
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(toggleKeepAwake) || menuItem.action == #selector(keepAwakeFor(_:)) {
+            return !settingsModel.isKeepAwakeBusy && !isTerminating
+        }
+        return true
+    }
+
+    private func changeKeepAwake(enabled: Bool, seconds: TimeInterval? = nil) {
+        guard !settingsModel.isKeepAwakeBusy, !isTerminating else { return }
+        settingsModel.isKeepAwakeBusy = true
+        Task {
+            do {
+                if enabled { try await keepAwake.enable(for: seconds) }
+                else { try await keepAwake.disable() }
+            } catch { settingsModel.status = error.localizedDescription }
+            settingsModel.isKeepAwakeBusy = false
+        }
+    }
+
+    private func updateKeepAwake(_ state: KeepAwakeState, error: String?) {
+        guard state.revision >= powerRevision else { return }
+        powerRevision = state.revision
+        settingsModel.keepAwakeActive = state.isActive
+        keepAwakeToggle.state = state.isActive ? .on : .off
+        let detail: String
+        if state.isActive {
+            detail = state.expiresAt.map { "Awake until \($0.formatted(date: .omitted, time: .shortened))" } ?? "Awake until stopped"
+        } else { detail = "Automatic idle sleep is allowed." }
+        keepAwakeDetail.title = detail
+        settingsModel.keepAwakeStatus = error.map { "\(detail) \($0)" } ?? detail
+        statusItem.button?.image = NSImage(systemSymbolName: state.isActive ? "cup.and.saucer.fill" : "command.square",
+                                          accessibilityDescription: state.isActive ? "Uficast — Keep Awake on" : "Uficast")
+    }
+
+    private func reconcileKeyboard(reapplyOwned: Bool = false) {
         guard didLoadConfiguration, !isTerminating, !settingsModel.isReadOnly, !settingsModel.isKeyboardBusy else { return }
         settingsModel.isKeyboardBusy = true
         let enabled = settingsModel.configuration.capsLockToF19Enabled
         Task {
-            do { settingsModel.keyboardStatus = try await keyboard.reconcile(enabled: enabled) }
+            do {
+                settingsModel.keyboardStatus = try await keyboard.reconcile(enabled: enabled, reapplyOwned: reapplyOwned)
+                if enabled { settingsModel.keyboardStatus += ModifierMappingDiagnostics.warning }
+            }
             catch { settingsModel.keyboardStatus = error.localizedDescription }
             settingsModel.isKeyboardBusy = false
         }
@@ -121,7 +196,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         guard !settingsModel.isKeyboardBusy else { return }
         settingsModel.isKeyboardBusy = true
         Task {
-            do { settingsModel.keyboardStatus = try await keyboard.checkStatus() }
+            do { settingsModel.keyboardStatus = try await keyboard.checkStatus() + ModifierMappingDiagnostics.warning }
             catch { settingsModel.keyboardStatus = error.localizedDescription }
             settingsModel.isKeyboardBusy = false
         }
@@ -223,6 +298,22 @@ final class AppController: NSObject, NSApplicationDelegate {
     private func updateStatus() {
         statusLine.title = hotkey.status
         settingsModel.shortcutStatus = hotkey.status
+        settingsModel.hotkeyErrors = hotkey.appErrors
+    }
+
+    private func toggleApplication(_ id: String) {
+        guard let entry = settingsModel.configuration.entries(catalog: catalog.entries).first(where: { $0.id == id && $0.isEnabled }) else { return }
+        let running = NSWorkspace.shared.runningApplications.first {
+            if id.hasPrefix("app:") { return $0.bundleIdentifier == String(id.dropFirst(4)) }
+            return $0.bundleURL?.standardizedFileURL == entry.fileURL.standardizedFileURL
+        }
+        guard let running else { launch(entry); return }
+        if running.isActive && !running.isHidden {
+            if !running.hide() { actionStatus.title = "Could not hide \(entry.name)." }
+        } else {
+            running.unhide()
+            if !running.activate() { actionStatus.title = "Could not activate \(entry.name)." }
+        }
     }
 
     @objc private func openSettings() {
@@ -238,6 +329,7 @@ final class AppController: NSObject, NSApplicationDelegate {
     private func applyConfiguration(_ configuration: Configuration) {
         let remapChanged = settingsModel.configuration.capsLockToF19Enabled != configuration.capsLockToF19Enabled
         settingsModel.configuration = configuration
+        hotkey.configure(appShortcuts: configuration.applications.compactMapValues { $0.isEnabled ? $0.hotkey : nil })
         let roots = configuration.applicationRoots.map(Configuration.fileURL)
         if roots != catalog.roots || catalog.entries.isEmpty { catalog.roots = roots; catalog.refresh() }
         updateEntries()

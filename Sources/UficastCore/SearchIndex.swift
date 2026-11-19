@@ -11,6 +11,7 @@ public struct SearchIndex: Sendable {
         var indexed: Indexed
         var tier: Int
         var score: Int
+        var variant: Int
         var usage: UsageRecord
     }
     private var items: [Indexed]
@@ -24,31 +25,45 @@ public struct SearchIndex: Sendable {
 
     public func search(_ text: String, usage: [String: UsageRecord] = [:], limit: Int = 50) -> [LauncherEntry] {
         guard limit > 0 else { return [] }
-        let query = SearchText.normalize(text.trimmingCharacters(in: .whitespacesAndNewlines))
-        let queryCharacters = Array(query)
+        let queries = KeyboardLayoutSearch.variants(text).map { ($0, Array($0)) }
         var matches = [Match]()
         for item in items {
-            let tier: Int
-            let score: Int
-            if query.isEmpty { tier = 6; score = 0 }
-            else if item.alias == query { tier = 0; score = 0 }
-            else if let alias = item.alias, alias.hasPrefix(query) { tier = 1; score = 0 }
-            else if item.name == query { tier = 2; score = 0 }
-            else if item.name.hasPrefix(query) { tier = 3; score = 0 }
-            else if item.name.contains(query) { tier = 4; score = 0 }
-            else if let fuzzy = Self.fuzzyScore(query: queryCharacters, name: item.characters) { tier = 5; score = fuzzy }
-            else { continue }
-            matches.append(Match(indexed: item, tier: tier, score: score, usage: usage[item.entry.id] ?? UsageRecord()))
+            var best: Match?
+            for (priority, query) in queries.enumerated() {
+                guard let rank = Self.rank(item, query: query.0, characters: query.1) else { continue }
+                let candidate = Match(indexed: item, tier: rank.tier, score: rank.score, variant: priority,
+                                      usage: usage[item.entry.id] ?? UsageRecord())
+                if let current = best, !Self.precedes(candidate, current) { continue }
+                best = candidate
+            }
+            if let best { matches.append(best) }
         }
-        matches.sort {
-            if $0.tier != $1.tier { return $0.tier < $1.tier }
-            if $0.score != $1.score { return $0.score > $1.score }
-            if $0.usage.count != $1.usage.count { return $0.usage.count > $1.usage.count }
-            if $0.usage.lastUsed != $1.usage.lastUsed { return $0.usage.lastUsed > $1.usage.lastUsed }
-            if $0.indexed.name != $1.indexed.name { return $0.indexed.name < $1.indexed.name }
-            return $0.indexed.entry.id < $1.indexed.entry.id
-        }
+        matches.sort(by: Self.precedes)
         return matches.prefix(limit).map(\.indexed.entry)
+    }
+
+    private static func rank(_ item: Indexed, query: String, characters: [Character]) -> (tier: Int, score: Int)? {
+        let tier: Int
+        let score: Int
+        if query.isEmpty { tier = 6; score = 0 }
+        else if item.alias == query { tier = 0; score = 0 }
+        else if let alias = item.alias, alias.hasPrefix(query) { tier = 1; score = 0 }
+        else if item.name == query { tier = 2; score = 0 }
+        else if item.name.hasPrefix(query) { tier = 3; score = 0 }
+        else if item.name.contains(query) { tier = 4; score = 0 }
+        else if let fuzzy = Self.fuzzyScore(query: characters, name: item.characters) { tier = 5; score = fuzzy }
+        else { return nil }
+        return (tier, score)
+    }
+
+    private static func precedes(_ left: Match, _ right: Match) -> Bool {
+        if left.tier != right.tier { return left.tier < right.tier }
+        if left.variant != right.variant { return left.variant < right.variant }
+        if left.score != right.score { return left.score > right.score }
+        if left.usage.count != right.usage.count { return left.usage.count > right.usage.count }
+        if left.usage.lastUsed != right.usage.lastUsed { return left.usage.lastUsed > right.usage.lastUsed }
+        if left.indexed.name != right.indexed.name { return left.indexed.name < right.indexed.name }
+        return left.indexed.entry.id < right.indexed.entry.id
     }
 
     private static func fuzzyScore(query: [Character], name: [Character]) -> Int? {

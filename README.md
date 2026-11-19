@@ -2,16 +2,19 @@
 
 A personal, native macOS launcher for applications and local scripts, inspired by the small subset of Raycast its owner uses.
 
-**Status:** native app catalog and fuzzy search implemented; persistent settings/aliases and argument scripts are implemented; Caps Lock/login lifecycle is next. Global shortcut delivery and desktop UI acceptance remain pending manual verification.
+**Status:** personal-use feature implementation is available. Automated checks and selected desktop flows pass; remaining hands-on acceptance is tracked in [PROGRESS](docs/plan/PROGRESS.md).
 
 ## Agreed scope
 
 - Swift + AppKit; English interface and project documentation.
 - Open with **Command + Space**, using either Command key; no Accessibility or Input Monitoring requirement.
-- Find and launch applications, with exact aliases ahead of fuzzy name matches.
+- Find and launch applications, with exact aliases ahead of fuzzy name matches and U.S./Russian wrong-layout search.
 - Run local shell scripts, AppleScript, and other explicitly configured executables.
 - Select a command with `k` → `Tab`, paste one text argument with `Cmd+V`, and press `Enter` to run it; support opening a generated URL.
-- Raycast-inspired launcher and settings UI.
+- Raycast-inspired launcher and settings UI, with real application icons in both.
+- Opening the app immediately shows the launcher. Only one instance runs; opening another copy reveals the existing launcher.
+- Per-application global shortcuts bring an app forward, hide it when already active, or launch it if closed.
+- Built-in Keep Awake sessions and an optional start-at-login checkbox.
 - Optional Caps Lock → F19 remapping; use macOS's input-source shortcut to switch between the two existing layouts.
 - Build from source on each personal Mac. No App Store release or cloud service is planned.
 
@@ -34,9 +37,9 @@ scripts/build.sh
 open dist/Uficast.app
 ```
 
-Use the menu bar's **Open Launcher**, **Settings…**, **Retry Shortcut** and **Quit**. The global shortcut uses Carbon registration and never requests Accessibility or Input Monitoring. Release conflicting Cmd+Space shortcuts in Spotlight/Raycast yourself; Uficast does not change their settings. A successful registration does not prove a system shortcut yields the chord.
+Opening the app shows the launcher immediately. Its gear button opens Settings; **Cmd+,** also opens Settings. The menu bar includes **Open Launcher**, **Settings…**, **Keep Awake**, **Retry Shortcut** and **Quit**. The global shortcut uses Carbon registration and never requests Accessibility or Input Monitoring. Release conflicting Cmd+Space shortcuts in Spotlight/Raycast yourself; Uficast does not change their settings. A successful registration does not prove a system shortcut yields the chord.
 
-Build output is `dist/Uficast.app`, locally ad-hoc signed. `scripts/build.sh debug` builds a debug bundle. Optionally set `UFICAST_SIGN_IDENTITY` to an existing signing identity. Avoid replacing the bundle while it is running. Script Automation consent may need renewal after ad-hoc rebuilds; a stable installation path is recommended.
+Build output is `dist/Uficast.app`, locally ad-hoc signed. `scripts/build.sh debug` builds a debug bundle. Optionally set `UFICAST_SIGN_IDENTITY` to an existing signing identity. Quit the running copy before rebuilding or replacing it. Opening a rebuilt bundle while an older copy is still running reveals that existing process; it does not reload its executable. For an isolated build, set `UFICAST_OUTPUT_ROOT` to another output directory. Script Automation consent may need renewal after ad-hoc rebuilds; a stable installation path is recommended.
 
 Read-only diagnostics (no registration or permission prompts):
 
@@ -46,11 +49,13 @@ dist/Uficast.app/Contents/MacOS/Uficast --diagnostics
 
 See [manual verification](docs/MANUAL_TESTS.md). Pure tests and signing checks do not prove real desktop shortcut delivery.
 
-Application discovery uses `/Applications`, `/System/Applications` and `~/Applications`. Use **Refresh Applications** after installing an app; default root changes are also observed. Search supports fuzzy abbreviations, Up/Down selection and Enter to launch/activate. Usage ordering is currently in memory. `--catalog-summary` prints a read-only discovery count/timing without launching apps.
+Application discovery uses `/Applications`, `/System/Applications` and `~/Applications`. Use **Refresh Applications** after installing an app; default root changes are also observed. Search supports fuzzy abbreviations and U.S./Russian physical-key alternatives (for example `сркщьу` finds Chrome). Script arguments are never converted. Use Up/Down selection and Enter to launch/activate. Usage ordering is currently in memory. `--catalog-summary` prints a read-only discovery count/timing without launching apps.
 
 ## Settings and aliases
 
-Open **Settings… → Commands**, select an app, enter an alias and click **Apply**. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General contains application roots, refresh, import/export and backup recovery.
+Open **Settings… → Commands**, select an app, enter an alias and click **Apply**. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General starts with **Start Uficast at login** and also contains Keep Awake, Caps Lock, application roots, refresh, import/export and backup recovery.
+
+Select an application and click **Record Hotkey** under **Show / Hide**. Press a combination containing Command, Control or Option; Escape cancels and Delete clears it. Enabled app shortcuts must be unique, and Cmd+Space is reserved for the launcher. The table shows assigned shortcuts and registration errors. If another app claims a chord, release it there first. Script-specific global hotkeys remain deferred.
 
 Private JSON lives in `~/Library/Application Support/Uficast/config.json`, with `config.backup.json`. Saves are atomic. Corrupt/unsupported files are preserved and editing is disabled; explicit backup recovery preserves the replaced file as `config.recovered-<id>.json`. A future schema cannot be overwritten by this older app. Export/import preserves machine-specific paths; locate missing scripts/apps on the new Mac.
 
@@ -76,3 +81,29 @@ dist/Uficast.app/Contents/MacOS/Uficast --preview-settings .build/previews/setti
 ```
 
 Previews verify layout; desktop keyboard delivery, focus, paste and browser behavior require the manual checklist.
+
+## Caps Lock and multiple keyboards
+
+In **General**, enable **Map Caps Lock to F19**. For each keyboard, open macOS **Keyboard → Keyboard Shortcuts → Modifier Keys** and leave the source key as **Caps Lock → Caps Lock**. A system assignment such as Caps Lock → Option or No Action can override the intended source, even when hidutil reports the correct F19 table. Uficast diagnoses conflicting modifier profiles without rewriting them automatically.
+
+Assign **F19** to **Select the previous input source** under macOS **Input Sources**. With two layouts, that switches between them. Keep Uficast running: normal Quit restores its owned mapping; optional start-at-login reapplies the saved preference. Wake and device/service notifications re-publish an owned global table for newly connected keyboard services. Existing identical mappings stay externally managed; competing mappings are preserved and reported. Ownership recovery is local to this Mac and excluded from configuration export.
+
+The owner confirmed physical Caps Lock switching after the current keyboard's system modifier assignment was restored from Option to Caps Lock. Simultaneous external-keyboard and relogin checks are still pending.
+
+## Keep Awake
+
+Use the menu bar **Keep Awake** toggle or choose **30 Minutes**, **1 Hour**, or **Until Stopped**. General offers the same controls. A cup icon indicates an active session. A native, process-owned IOPM assertion prevents idle system sleep; no `caffeinate` child process or Accessibility permission is used.
+
+Sessions start off on each app launch, expire automatically when timed, and stop on Quit. The display may dim or sleep; explicit Sleep, closing the lid, low battery and other macOS sleep reasons still apply. This is the behavior of Apple's [idle-system-sleep assertion](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep).
+
+## Start at login
+
+The checkbox is at the top of **Settings → General**. macOS may require approval in **Login Items**; Uficast shows the actual registered/pending/disabled state. Keep the app at a stable path and recheck registration after moving it. A checked box alone is not evidence of a successful relogin test.
+
+## Native icon regression check
+
+```sh
+dist/Uficast.app/Contents/MacOS/Uficast --verify-native-icons
+```
+
+This renders 50 AppKit launcher cells offscreen and verifies that background icon loading delivers real bitmaps without moving rows or the scroll position. It registers no hotkeys and changes no personal configuration. Development previews also support `--dark`, Settings `--general`, and `--preview-script-editor <output.png>`.

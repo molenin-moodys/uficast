@@ -42,6 +42,7 @@ struct ScriptEditor: View {
             }.padding(16)
         }
         .frame(width: 680, height: 720)
+        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             if let data = try? JSONSerialization.data(withJSONObject: script.environment, options: [.prettyPrinted, .sortedKeys]),
                let text = String(data: data, encoding: .utf8) { environment = text }

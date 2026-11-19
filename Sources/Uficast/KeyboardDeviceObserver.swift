@@ -23,11 +23,13 @@ final class KeyboardDeviceObserver {
                 Unmanaged<KeyboardDeviceObserver>.fromOpaque(context).takeUnretainedValue().changed()
             }
         }
+        for serviceClass in ["IOHIDDevice", "IOHIDEventService"] {
         for kind in [kIOFirstMatchNotification, kIOTerminatedNotification] {
             var iterator: io_iterator_t = 0
-            let result = IOServiceAddMatchingNotification(port, kind, IOServiceMatching("IOHIDDevice"), callback,
+            let result = IOServiceAddMatchingNotification(port, kind, IOServiceMatching(serviceClass), callback,
                                                           Unmanaged.passUnretained(self).toOpaque(), &iterator)
             if result == KERN_SUCCESS { iterators.append(iterator); drain(iterator) }
+        }
         }
     }
 

@@ -4,83 +4,56 @@ Last updated: November 18, 2026 (America/Los_Angeles).
 
 ## Current state
 
-The owner requested autonomous implementation while context permits. Native scaffold, app catalog and ranked search are implemented and release-built. **Mandatory steering: ordinary Cmd+Space, with no Accessibility or Input Monitoring requirement/request.** The earlier right-only event tap has been removed. Real desktop shortcut delivery remains pending manual acceptance; continue independent catalog/settings work without claiming that check passed.
+Requested personal-use features through Stage 6d are implemented. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. The owner requested commit/push, followed by a README with screenshots containing only neutral standard-app fixtures.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
-| 0 — Plan | Complete | Initial planning commit a5021c5; updated by subsequent steering. |
-| 1 — Native app and global shortcut | Implemented; manual acceptance pending | SwiftPM/AppKit app, Carbon registration, menu/Edit actions, panel and settings scaffold. Real shortcut delivery/focus still pending. |
-| 2 — Application catalog/search | Implemented; desktop acceptance pending | Catalog fixtures and ranking tests pass; actual app activation and UI still require desktop checks. |
-| 3 — Settings/persistence/aliases | Implemented; desktop acceptance pending | 11 tests pass; release builds. Manual UI/restart flow remains pending. |
-| 4 — Script runner | Implemented; app-controlled Automation checks pending | Native process-group runner, editor, run/cancel/history, shell and AppleScript fixtures pass. |
-| 5 — Inline argument/URL workflow | Implemented; desktop workflow pending | Native NSTextView input and explicit URL mode; 22 tests pass and offscreen previews inspected. |
-| 6 — Caps Lock/login lifecycle | Implemented; real system acceptance pending | 28 tests pass; real mapping/login items were not changed. |
-| 7 — Daily-use validation/handoff | Not started | Requires actual desktop acceptance. |
+| 0 — Plan | Complete | Requirements, architecture and resumable stages committed. |
+| 1–3 — Native launcher, catalog, aliases/settings | Implemented | Packaged desktop launch, settings navigation and icons observed. Broader shortcut/focus acceptance remains pending. |
+| 4–5 — Scripts, inline argument and URL contract | Implemented | Exact-argv, subprocess, timeout/cancel and URL fixture tests pass; private script/browser workflow still pending. |
+| 6 — Caps Lock and login | Implemented; Caps owner-confirmed | Owner confirmed physical Caps switches layouts after correcting a conflicting system modifier assignment. Relogin/multiple physical keyboards remain pending. |
+| 6b — Keep Awake | Implemented | Native power assertion with injected-backend tests; real idle-sleep session pending. |
+| 6c — Lifecycle, app shortcuts and icons | Implemented | Real startup/gear/singleton and launcher/Settings icon observations; core shortcut/lock fixtures pass. |
+| 6d — Wrong-layout search | Implemented | Both U.S./Russian directions, alias ordering, mixed input and ё/й fixtures pass. |
+| 7 — Daily-use handoff | Partial | Source-build guide present; neutral screenshots and clean-source build next. Manual evidence gaps listed below. |
 
-## Environment and implemented paths
+## Implementation map
 
-- macOS 26.6.2 (25G83), arm64, Swift 6.2.3, Command Line Tools; no full Xcode dependency or remote packages.
-- Package.swift, Resources/Info.plist, scripts/build.sh and test.sh, Sources/UficastCore and Sources/Uficast, Tests/UficastCoreTests.
-- App menu includes Open Launcher, Settings, registration status, Retry and Quit. Standard Edit actions support ordinary text editing. Panel is a nonactivating key-capable NSPanel.
-- HotkeyService uses Carbon RegisterEventHotKey/pressed/released events, exclusive conflicts and repeat debouncing. No keyboard event tap or privacy preflight/request calls remain.
-- --diagnostics reports bundle identity and the no-Accessibility design without registering a shortcut.
-- Command Line Tools contains Testing.framework but SwiftPM needs an explicit framework path/rpath. test.sh handles that and disables unavailable XCTest.
+- Swift 6.2.3 / macOS 26.6.2 arm64 with Command Line Tools; no external packages or full Xcode required. `scripts/build.sh` creates an ad-hoc signed app; `UFICAST_OUTPUT_ROOT` isolates output. Quit before replacing a running bundle.
+- Carbon RegisterEventHotKey handles fixed launcher Cmd+Space and configurable app bindings. Local recorder releases/restores Uficast registrations; duplicate/reserved chords are rejected. Native NSRunningApplication activate/hide/unhide launches closed apps without AX.
+- InstanceLock uses process-held flock, never unlinks its inode, and InstanceCoordinator reveals the primary process via a user-scoped distributed notification. Ordinary launch/reopen reveals the panel; footer gear opens Settings.
+- ApplicationCatalog discovers configured roots in the background. SearchIndex preserves exact-alias priority and stable ranking/history. KeyboardLayoutSearch expands queries using U.S./Russian physical keys before folding diacritics; literal variants win ties. Arguments and visible input remain unchanged.
+- ConfigStore validates versioned private JSON, writes atomically, protects corrupt/future files and maintains recoverable backups. Optional app hotkeys and default-off Caps preference decode existing schema-1 files. Never commit personal config.
+- ScriptRunner wraps the C posix_spawn/poll process-group worker: exact argv, one unchanged argument, concurrent bounded pipe draining, cancellation/timeout and managed descendant cleanup. Strict single HTTP(S) stdout URL opens only after success. Deliberately detached daemons are outside cleanup guarantees.
+- IconStore serially renders 64px PNGs, transfers Data across actors and retains a bounded 256-image cache. Each launcher EntryRow receives its own guarded completion; no icon-triggered table reload. Settings observes cache updates.
+- Caps ownership/recovery preserves unrelated/external mappings. Device/service lifecycle and wake re-publish owned mappings without observing input. ModifierMappingDiagnostics detects macOS Caps modifier conflicts across keyboard profiles without automatically rewriting them.
+- Native SMAppService startup checkbox is at the top of General and shows actual authorization state. KeepAwakeService owns one IOPM idle-system-sleep assertion, starts off, supports timed/indefinite renewal and releases on stop/quit.
 
-## Evidence and pending checks
+## Actual verification
 
-- The initial right-only scaffold built/tests passed, then was superseded before commit by the owner's no-Accessibility steering. Current Carbon implementation: scripts/test.sh passed both lifecycle tests; scripts/build.sh passed release build and strict signing verification; plutil lint passed; --diagnostics reports the expected bundle and requiresAccessibility=false.
-- The initial packaged diagnostics reported the correct bundle identity and no existing keyboard permissions. These calls have since been removed; app diagnostics no longer query privacy state.
-- Desktop launch through Computer Use timed out twice; the app did not appear in that inventory. Its optional launch API was unavailable. **No successful GUI launch or visual/focus/paste/shortcut test is claimed.** This does not establish the cause of the launch failure.
-- No Accessibility/Input Monitoring grants, Spotlight/Raycast settings, keyboard mappings, or login items were changed by the agent.
-- Matching Spotlight/Raycast chords must be released by the owner. Carbon success alone cannot prove freedom from system shortcut interference.
+- `scripts/test.sh`: **40 tests passed**, including wrong-layout search, shortcuts, configuration, singleton lock, remap ownership, keyboard profiles, power fixtures and real shell/AppleScript argument/process tests. Warm search over 2,000 synthetic apps: debug p95 **19.67 ms**, target below 30 ms.
+- Current isolated release build (`UFICAST_OUTPUT_ROOT="$PWD/.build/release-check" scripts/build.sh`) and strict ad-hoc signature checks passed, including wrong-layout changes. The native 50-icon check also passed on that release.
+- Native `--verify-native-icons` passed for 50 actual catalog entries after the direct-completion fix. Checks loaded bitmap representations, row geometry and scroll origin, not AppKit's offscreen view-cache identity.
+- Desktop: canonical `dist/Uficast.app` launched with the panel immediately; gear opened Settings, real icons appeared in Settings and later in launcher. The latest icon fix was verified in the actual running canonical app. Opening a second copy exited and revealed the original process.
+- Owner enabled startup/Caps controls. A conflicting macOS Modifier Keys assignment mapped Caps Lock to Right Option despite correct hidutil tables. During the authorized setup, the current keyboard's Caps assignment was restored to Caps Lock, keeping the F19 input-source shortcut. Owner then explicitly confirmed physical Caps switches layouts while Uficast runs. No latency measurement or multi-keyboard acceptance is claimed.
+- No Accessibility/Input Monitoring grants requested or enabled. No keyboard events are monitored. Automated mapping, login and Keep Awake tests use fixtures and do not change actual settings/assertions.
+- Offscreen fixture previews verify layout only; they do not establish actual keyboard delivery, paste, focus or browser operation.
 
-## Stage 2 validation
+## Remaining manual/platform checks
 
-- Seven tests pass: hotkey lifecycle, alias precedence even against heavy usage, rank tiers, fuzzy abbreviation, diacritic/case normalization, disabled entries, stable ties/limits, and catalog fixtures with duplicate bundles/nested helpers.
-- Debug warm search over 2,000 synthetic apps and four queries: p95 10.81 ms over 40 samples (target below 30 ms).
-- Release app builds and strict signature verification passes. Read-only --catalog-summary found 101 applications, zero unavailable default roots, discovery 0.240 seconds. No apps were launched by this command.
-- CatalogService discovers off the UI actor, retains existing results during refresh, watches root directory changes, and refreshes stale data on opening/manual request. Icons are loaded off the UI actor and transferred as Data.
-- Launcher now renders search results with icons/types/aliases, selection and Enter/double-click activation. NSWorkspace activation and focus behavior remain unverified manually.
-- CLT lacks the optional _Testing_Foundation Swift module despite shipping its binary. test.sh disables automatic cross-import overlays only for that incomplete CLT setup; generic Testing assertions pass.
+- Cmd+Space repeat/release and system conflict behavior, Secure Input, fullscreen/multiple monitors, editing/paste/focus across destinations and sleep/wake.
+- App show/hide/closed-launch cycles with physical assigned shortcuts; persistence/restart acceptance.
+- Owner's real script/environment and full paste → script → browser flow; Automation consent across ad-hoc rebuilds.
+- Actual relogin at the stable app path, multiple physical keyboards/reconnect/wake, preservation under external mapping changes and perceived switching latency.
+- Real timed/indefinite idle-sleep prevention, expiry and stop (fake-backend tests are not sleep acceptance).
+- Other Macs, Intel and older macOS versions have not been tested.
 
-## Stage 3 validation
+## Repository delivery and next step
 
-- ConfigStore actor uses versioned/validated JSON, atomic writes, private directory/file permissions, first-save backup, last-known-good backup on subsequent saves, and explicit backup restoration with preservation of the replaced original.
-- Tests cover app/script alias conflicts, disabled alias reuse, round trips, missing app fallback records, corrupt-file save protection, backup recovery and unsupported future versions during load/save/recovery.
-- Settings now has General/Commands navigation, searchable All/Apps/Scripts table, selection/alias inspector, Enabled checkboxes, application folders/add-app, import/export/recovery. Normal startup loads config without writing defaults; errors preserve the file and disable edits.
-- All 11 tests passed after final Stage 3 changes; latest debug search p95 9.85 ms. Release build and strict signature verification passed. UI interaction/restart testing is still pending.
-- Catalog root-change notifications are now debounced. Paths are preserved on import; missing files are not silently remapped.
+Finish the current isolated release check, review the diff and commit/push implemented work. SSH authentication has no usable key; existing authenticated `gh` HTTPS credentials can be used with command-scoped git URL rewriting and credential helper, without changing the remote/global configuration. Never print credentials or force-push.
 
-## Stages 4–5 validation
+Then create README screenshots from isolated, hard-coded standard macOS application fixtures, with no personal configuration, paths, internal URLs or desktop background. Visually inspect every PNG, document their fixture origin, update this handoff, commit and push that documentation increment. Keep the existing uppercase README.md rather than a case-only duplicate.
 
-- Script CRUD/editor supports interpreter/path, alias/enabled state, one required argument, placeholder, result mode, timeout, working directory and JSON environment overrides. Delete removes the config record, not the source file.
-- Runner uses a small C posix_spawn worker, not Foundation Process: each run owns a process group, stdin is /dev/null, pipes are polled/drained concurrently with 1 MiB capture per stream, cancellation/deadline sends TERM then KILL, and the child leader stays waitable until cleanup to prevent PID reuse. Deliberately detached daemons are outside the cleanup contract.
-- 22 tests passed: unchanged Unicode/quotes/metacharacters/newlines as one argv element, zero args, cwd/environment, missing/non-executable files, concurrent large pipes, nonzero exit, uncooperative shell+child timeout, exited leader with child-held pipes, cancellation, duplicate protection, argument rejection before spawn, plain AppleScript echo and strict URL outputs.
-- Latest debug search p95 10.38 ms. Release build/strict signature check passed; clang static analysis (-Wall/-Wextra) reported no issues in the C worker. Source scan finds no AX/CGEvent keyboard-tap or grant APIs.
-- Inline argument mode is wired to Tab/Enter, ordinary paste/edit/undo, Escape/empty Backspace and one unchanged string. NSTextView avoids single-line field newline normalization. Async failures appear in bounded in-memory recent runs; stdout/URLs/arguments/environment are not persisted. Normal quit cancels managed runs and waits for cleanup.
-- Search query changes now select the top-ranked match rather than retaining an older matching selection that could hide an exact alias.
-- Offscreen native launcher, argument and Settings PNGs were rendered and visually inspected under .build/previews. Fixed token sizing and hosted control/background rendering. These are deterministic fixture previews with no hotkey registration or grants, and do not establish real keyboard/paste/focus/browser behavior.
-- Read-only hidutil property --get UserKeyMapping returned (null). No mapping was applied.
+### Earlier cursor report checkpoint
 
-## Stage 6 validation
-
-- Caps Lock → F19 uses hidutil through the bounded native utility runner. Ownership is recorded atomically before a write; unrelated entries survive, existing identical mappings stay externally owned, competing Caps Lock maps are rejected, and disable/quit restores only a still-owned entry. Failed verification retains recovery state.
-- Registry-only IOKit device lifecycle notifications and wake events trigger reconciliation. No HID devices are opened and no keyboard input is observed.
-- Preferences default off, including legacy schema-1 decoding. Settings exposes the explicit toggle, current-map read and F19/system shortcut guidance. Native SMAppService provides optional start-at-login with actual enabled/pending/disabled status.
-- 28 tests pass, including remapping ownership/restart/failure fixtures and literal utility argv. Release build/signing passed. Actual hidutil writes, input-source latency, device reconnect and login-item registration remain untested by design.
-- Offscreen General, script editor and dark argument previews generated. Script-editor header/footer background needs the same explicit root background as Settings (transparent offscreen regions); real desktop remains pending.
-
-## Next action
-
-Owner added a built-in Caffeine / Keep Awake feature. Implement Stage 6b with native IOPM assertions (no Accessibility or caffeinate subprocess), explicit menu toggle and optional session duration, default off and no automatic restore across app launches. Test with an injected fake assertion backend. Then finish clean-source build and Stage 7 handoff.
-
-## Remaining evidence gaps
-
-### Cursor report checkpoint (November 18)
-
-- Owner reported a stationary cursor and suspects ChatGPT's pointer. Computer Use inventory did not list Uficast; direct inspection of the ChatGPT app was unavailable. The cursor's source and disappearance remain unverified. Ended the Computer Use check without interacting with other apps or changing system settings.
-- Preserved the existing uncommitted implementation work. No app code changed or build/tests ran for this report. Next project step remains Stage 6b, beginning with review of the existing working-tree changes before further implementation.
-
-Actual GUI launch and delivery of Cmd+Space, repeat/release behavior, Spotlight/Raycast coexistence, standard editing/focus, fullscreen/two monitors, sleep/wake/Secure Input; Automation consent/signing behavior; owner's real Kibana script/environment; F19 remapping and perceived switching latency. Use generic scripts and fixture mappings until actual tests are authorized through normal user actions.
-
-At every checkpoint update actual checks/results, stage states, and the next concrete action, then commit relevant files. Use Git history for the latest checkpoint hash.
+Commit 62e8296 preserved an unrelated stationary-cursor report. Its source/disappearance was not established; no app code changed for that report. Do not treat it as a verified Uficast defect or interact with unrelated apps to investigate it without a new request.

@@ -1,6 +1,6 @@
 # Architecture and decisions
 
-Status: native scaffold implemented; real desktop delivery remains pending manual verification. Later sections describe remaining implementation.
+Status: requested feature paths are implemented. See PROGRESS for actual tests, desktop observations and remaining acceptance checks.
 
 ## Build and runtime
 
@@ -18,7 +18,7 @@ Package.swift
 Sources/UficastCore/       Models, ranking, config validation, execution contracts
 Sources/Uficast/           AppKit lifecycle, panel, settings, platform services
 Tests/UficastCoreTests/    Ranking, config, argument/result contracts
-Tests/UficastTests/        Platform/service integration tests where practical
+Sources/UficastProcess/    Small C posix_spawn/poll process-group worker
 Resources/                Info.plist, application assets
 scripts/                  Build/package and verification entry points
 examples/                 Portable scripts using public/example URLs
@@ -33,15 +33,19 @@ Stage 1 created the package, core/app/test targets, resources, and build/test sc
 | --- | --- |
 | AppController | Lifecycle, menu bar, wiring services, current launch/run status. |
 | LauncherPanelController | Presentation, screen/Space placement, search vs argument mode, focus restoration. |
-| HotkeyService | Carbon Cmd+Space registration, conflict status, repeat debouncing and recovery. |
+| HotkeyService | Carbon launcher/app registration, per-binding conflict status, repeat debouncing and recovery. |
+| InstanceCoordinator / InstanceLock | Process-held lock and local distributed notification to reveal the primary instance. |
+| IconStore | Serial background 64-pixel PNG loading, cache, and targeted completion updates. |
+| KeepAwakeService | Native owned power assertion, session expiry, and status notifications. |
 | ApplicationCatalog | Discover app bundles, stable identity, refresh, metadata/icon loading. |
-| SearchEngine | Deterministic ranking across apps and scripts, alias precedence. |
+| KeyboardLayoutSearch | Query-only U.S./Russian physical-key alternatives; mapping precedes diacritic folding. |
+| SearchIndex | Deterministic ranking across apps and scripts, alias precedence. |
 | ConfigStore | Versioned JSON, validation, atomic writes, backups, migration. |
 | ScriptRunner | Exact argv, interpreter, environment, async output, timeout and cancellation. |
 | KeyboardRemapService | Read/merge/write Caps Lock mapping, ownership/conflict tracking and recovery. |
 | LoginItemService | Optional start-at-login via SMAppService, current authorization/status. |
 
-UI work stays on the main actor. Catalog work, process I/O, persistence, and remapping subprocesses must not block typing or the event-tap callback. Avoid synchronous cross-actor waits in callbacks.
+UI work stays on the main actor. Catalog work, process I/O, persistence, and remapping subprocesses must not block typing or hotkey callbacks. Avoid synchronous cross-actor waits in callbacks.
 
 ## Command + Space without Accessibility
 
@@ -68,6 +72,7 @@ Keep explicit states: `hidden`, `search(query, selection)`, and `argument(comman
 - Use bundle identifier as an app's primary persisted identity, with an explicit fallback to canonical bundle URL. Resolve moves/duplicates deterministically and avoid merging unrelated apps just because names match.
 - Refresh on startup, app install/remove/root changes where observable, and explicit Refresh. Keep previous results usable during refresh. No dependency on complete Spotlight indexing.
 - Combine app records with script records and user overrides. Persist aliases/enabled status separately from the rebuildable discovery cache.
+- Expand only search queries into deduplicated literal, Russian→U.S., and U.S.→Russian variants. Map before normalization so ё/й keep their physical-key identity. Rank by match tier, then literal/converted variant, then score/history. Apply to launcher and Settings search; never rewrite visible input, aliases, system layout, or script arguments.
 - Use normalized case-insensitive comparison, stable rank tiers, and fuzzy subsequence scoring. History breaks ties within a tier; it must never outrank an exact alias. Do not store argument text in usage history.
 
 ## Persistence
@@ -79,14 +84,15 @@ Conceptual configuration fields:
 ```text
 schemaVersion
 applicationRoots
-applications: stableID -> alias?, enabled, fallbackURL?
+applications: stableID -> alias?, isEnabled, lastKnownName?, fallbackPath?, hotkey?
 scripts: id, name, alias?, enabled, fileURL, interpreter?,
          requiresArgument, argumentPlaceholder, resultMode,
          workingDirectory?, environmentOverrides, timeoutSeconds
-keyboard: capsLockToF19Enabled, mappingOwnership/recoveryState
+capsLockToF19Enabled
+keyboard-recovery.json: separate local versioned ownership state
 ```
 
-The implemented schemaVersion 1 currently contains applicationRoots, applications (including lastKnownName/fallbackPath), and scripts; launcher Cmd+Space is fixed. Keyboard preferences will be added with compatible decoding when implemented. The sketch above records future fields too. Persist only preferences; query actual login-item/permission/remap status from macOS. Back up/export configuration without treating it as executable shell source. Logs and local state are gitignored.
+Schema version 1 contains applicationRoots, applications (including optional hotkey), scripts and capsLockToF19Enabled. The latter defaults off when decoding older schema-1 files; app hotkeys are optional. Launcher Cmd+Space is fixed. Persist only preferences; query actual login-item/permission/remap status from macOS. Back up/export configuration without treating it as executable shell source. Logs and local state are gitignored.
 
 ## Script execution
 
@@ -130,3 +136,25 @@ Stage 3 uses an actor ConfigStore plus a main-actor ObservableObject for a Swift
 The native worker polls both output streams, checks cancellation/deadlines between bounded reads, and leaves the leader waitable (waitid with WNOWAIT) until group cleanup finishes. This prevents signaling a reused PID. A final managed-group cleanup also handles children that close their streams and outlive a successful shell. Scripts intentionally starting detached daemons must manage that lifecycle themselves. Crash/force-quit cleanup is not guaranteed; normal app quit waits for runner cancellation. Development-only --preview-launcher/--preview-settings render deterministic views offscreen without constructing AppController, registering shortcuts or modifying personal configuration.
 
 Stage 6 recovery is stored separately in keyboard-recovery.json with its own version. Default-off launch does not invoke hidutil unless a prior ownership record needs recovery. Registry-only IOKit service notifications observe device lifecycle without opening HID devices. SMAppService registration changes occur only through the explicit startup control; status is queried from macOS. Keep Awake is a new owner-requested addition using process-owned IOPM idle-sleep assertions; no persisted active state or subprocess is planned.
+
+## Single instance and reopening
+
+InstanceLock owns an open O_CLOEXEC file descriptor under Application Support/Uficast/instance.lock and uses nonblocking flock. Leave the inode in place; close releases ownership and the kernel also releases it on process exit. A second normal launch sends a user-scoped distributed notification and exits. The primary opens its existing launcher. Development-only diagnostics/previews bypass the application lock but never instantiate AppController or register shortcuts. Normal first launch shows the launcher immediately; the footer gear and Cmd+, open Settings.
+
+## App-specific global shortcuts
+
+Application overrides persist keyCode, Carbon modifier bits and a display label. Validation compares physical combinations, reserves Cmd+Space and rejects duplicate enabled app bindings. Carbon uses a per-binding pressed/released state. A launcher conflict does not prevent independent app shortcuts from registering; errors appear against the affected item. The local NSButton recorder uses ordinary responder events, temporarily suspending Uficast's registrations while focused. It does not observe global keys. App show/hide uses NSRunningApplication hide/unhide/activate and NSWorkspace launch, requiring no Accessibility.
+
+## Icon loading and regression
+
+IconStore renders each app icon into a 64×64 PNG on a serial background queue, transferring Data to the main actor and caching decoded immutable images in a strong, bounded 256-entry cache. Large multi-representation TIFFs are not retained. SwiftUI Settings observes completion. In the AppKit launcher, each requesting EntryRow receives its own weak completion callback, guarded by its represented URL; reloading the whole table per icon caused placeholder retention/jitter. The development-only --verify-native-icons check verifies the loaded bitmaps in 50 constructed cells, unchanged row geometry and unchanged scroll origin offscreen. AppKit may virtualize offscreen views; the check does not assert table cache identity.
+
+## Keyboard profiles and multiple devices
+
+The global hidutil table and macOS Modifier Keys are separate layers. The current keyboard had Caps Lock → Right Option in its current-host modifier profile; the HID table already contained Caps Lock → F19. Correcting only that system modifier source to Caps Lock resolved physical switching, as confirmed by the owner. Application diagnostics read only modifier-mapping preference keys and warn about conflicting profiles (including potentially disconnected keyboards); they do not rewrite those profiles automatically.
+
+Wake and registry notifications for IOHIDDevice/IOHIDEventService trigger debounced re-publication of a still-owned global table for newly ready services, even if the global getter already reports F19. Existing externally owned identical mappings are not rewritten. The read/modify/write API is not atomic against independent external remappers; simultaneous physical-device testing remains pending. Normal Quit restores an owned mapping, while the saved enabled preference is reapplied on next launch.
+
+## Keep Awake
+
+KeepAwakeService owns at most one IOPM assertion. The native backend uses IOPMAssertionCreateWithName with kIOPMAssertPreventUserIdleSystemSleep; fixture tests inject a backend and never change power state. Renewals reuse the assertion, cancel the prior timer and increment a generation to reject stale expirations. State revisions prevent stale UI callbacks. Release failure retains ownership and publishes the error; normal quit waits for operations before releasing. No active session is persisted. The kernel releases a process-owned assertion when its process exits. See Apple's [assertion contract](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep) for display/lid/explicit sleep behavior.

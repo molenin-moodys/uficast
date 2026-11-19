@@ -5,12 +5,14 @@ public struct AppOverride: Codable, Equatable, Sendable {
     public var isEnabled: Bool
     public var lastKnownName: String?
     public var fallbackPath: String?
+    public var hotkey: GlobalShortcut?
 
-    public init(alias: String? = nil, isEnabled: Bool = true, lastKnownName: String? = nil, fallbackPath: String? = nil) {
+    public init(alias: String? = nil, isEnabled: Bool = true, lastKnownName: String? = nil, fallbackPath: String? = nil, hotkey: GlobalShortcut? = nil) {
         self.alias = alias
         self.isEnabled = isEnabled
         self.lastKnownName = lastKnownName
         self.fallbackPath = fallbackPath
+        self.hotkey = hotkey
     }
 }
 
@@ -112,10 +114,17 @@ public struct Configuration: Codable, Equatable, Sendable {
             }
         }
         for path in applicationRoots { try checkPath(path) }
+        var shortcuts: Set<UInt64> = [GlobalShortcut.launcher.signature]
         for (id, app) in applications {
             guard id.hasPrefix("app:") || id.hasPrefix("app-path:") else { throw ConfigError.invalid("Invalid application identity.") }
             try checkAlias(app.alias, enabled: app.isEnabled)
             if let path = app.fallbackPath { try checkPath(path) }
+            if let hotkey = app.hotkey {
+                try hotkey.validate()
+                if app.isEnabled, !shortcuts.insert(hotkey.signature).inserted {
+                    throw ConfigError.invalid("That shortcut is already assigned or reserved for the launcher.")
+                }
+            }
         }
         var ids: Set<String> = []
         for script in scripts {

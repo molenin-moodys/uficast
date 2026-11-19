@@ -44,9 +44,12 @@ private actor FixtureMappings: KeyMappingBackend {
     let next = KeyboardRemapService(directory: directory, backend: backend)
     _ = try await next.reconcile(enabled: true)
     #expect(await backend.writes == 1)
+    // Keyboard attach/wake re-publishes an owned table for newly ready services.
+    _ = try await next.reconcile(enabled: true, reapplyOwned: true)
+    #expect(await backend.writes == 2)
     _ = try await next.reconcile(enabled: false)
     #expect(await backend.mappings == [other])
-    #expect(await backend.writes == 2)
+    #expect(await backend.writes == 3)
     #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("keyboard-recovery.json").path))
 }
 

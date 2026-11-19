@@ -34,12 +34,22 @@ final class SettingsModel: ObservableObject {
     var onSetCapsLock: ((Bool) -> Void)?
     var onCheckKeyboard: (() -> Void)?
     var onSetLoginItem: ((Bool) -> Void)?
+    @Published var keepAwakeActive = false
+    @Published var keepAwakeStatus = "Automatic idle sleep is allowed."
+    @Published var isKeepAwakeBusy = false
+    var onSetKeepAwake: ((Bool) -> Void)?
+    var onKeepAwakeFor: ((TimeInterval) -> Void)?
+    @Published var hotkeyErrors: [String: String] = [:]
+    var onBeginShortcutRecording: (() -> Void)?
+    var onEndShortcutRecording: (() -> Void)?
 
     var entries: [LauncherEntry] {
-        configuration.entries(catalog: catalogEntries).filter {
-            (filter == "All" || (filter == "Apps" ? $0.kind == .application : $0.kind == .script))
-                && (query.isEmpty || SearchText.normalize($0.name).contains(SearchText.normalize(query))
-                    || SearchText.normalize($0.alias ?? "").contains(SearchText.normalize(query)))
+        let queries = KeyboardLayoutSearch.variants(query)
+        return configuration.entries(catalog: catalogEntries).filter { entry in
+            guard filter == "All" || (filter == "Apps" ? entry.kind == .application : entry.kind == .script) else { return false }
+            let name = SearchText.normalize(entry.name)
+            let alias = SearchText.normalize(entry.alias ?? "")
+            return queries.contains { name.contains($0) || alias.contains($0) }
         }.sorted { $0.name == $1.name ? $0.id < $1.id : $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
@@ -72,9 +82,17 @@ final class SettingsModel: ObservableObject {
         onSave?(updated)
     }
 
+    func saveShortcut(_ shortcut: GlobalShortcut?, for entry: LauncherEntry) {
+        var config = configuration
+        var app = applicationOverride(entry)
+        app.hotkey = shortcut
+        config.applications[entry.id] = app
+        onSave?(config)
+    }
+
     private func applicationOverride(_ entry: LauncherEntry) -> AppOverride {
         AppOverride(alias: entry.alias, isEnabled: entry.isEnabled,
-                    lastKnownName: entry.name, fallbackPath: entry.fileURL.path)
+                    lastKnownName: entry.name, fallbackPath: entry.fileURL.path, hotkey: configuration.applications[entry.id]?.hotkey)
     }
 }
 
@@ -107,6 +125,7 @@ final class SettingsWindowController: NSWindowController {
 
 private struct SettingsView: View {
     @ObservedObject var model: SettingsModel
+    @StateObject private var icons = IconStore()
     @State private var alias = ""
     @State private var roots = ""
 
@@ -163,8 +182,9 @@ private struct SettingsView: View {
             Table(model.entries, selection: $model.selectedID) {
                 TableColumn("Name") { entry in
                     HStack(spacing: 12) {
-                        Image(systemName: entry.kind == .application ? "app.fill" : "terminal.fill")
-                            .foregroundStyle(entry.kind == .application ? Color.accentColor : .secondary)
+                        if entry.kind == .application {
+                            Image(nsImage: icons.icon(for: entry.fileURL) ?? NSImage()).resizable().scaledToFit().frame(width: 24, height: 24)
+                        } else { Image(systemName: "terminal.fill").frame(width: 24).foregroundStyle(.secondary) }
                         Text(entry.name).lineLimit(1)
                     }.padding(.vertical, 5)
                 }.width(min: 230, ideal: 340)
@@ -172,6 +192,9 @@ private struct SettingsView: View {
                     .width(min: 90, ideal: 110)
                 TableColumn("Alias") { Text($0.alias ?? "Add Alias").foregroundStyle($0.alias == nil ? .tertiary : .primary) }
                     .width(min: 100, ideal: 150)
+                TableColumn("Hotkey") { entry in
+                    Text(model.configuration.applications[entry.id]?.hotkey?.display ?? "—").foregroundStyle(.secondary)
+                }.width(min: 110, ideal: 160)
                 TableColumn("Enabled") { entry in
                     Toggle("Enabled", isOn: Binding(get: { entry.isEnabled }, set: { model.setEnabled($0, for: entry) }))
                         .labelsHidden().toggleStyle(.checkbox).disabled(model.isBusy || model.isReadOnly)
@@ -182,6 +205,7 @@ private struct SettingsView: View {
             }
             if let selected = model.selected {
                 Divider()
+                VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 14) {
                     Text(selected.name).fontWeight(.medium).lineLimit(1)
                     Spacer()
@@ -199,6 +223,18 @@ private struct SettingsView: View {
                             model.onSave?(config)
                         }.disabled(model.isBusy || model.isReadOnly)
                     }
+                }
+                if selected.kind == .application {
+                    HStack {
+                        Text("Show / Hide").foregroundStyle(.secondary)
+                        ShortcutRecorder(shortcut: model.configuration.applications[selected.id]?.hotkey,
+                            onCapture: { model.saveShortcut($0, for: selected) },
+                            onBegin: { model.onBeginShortcutRecording?() }, onEnd: { model.onEndShortcutRecording?() })
+                            .frame(width: 180).disabled(model.isBusy || model.isReadOnly)
+                        Text("Brings the app forward; press again while active to hide.").font(.caption).foregroundStyle(.secondary)
+                    }
+                    if let error = model.hotkeyErrors[selected.id] { Text(error).font(.caption).foregroundStyle(.red) }
+                }
                 }.padding(16)
             }
         }
@@ -207,6 +243,12 @@ private struct SettingsView: View {
     private var general: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
+                Text("Startup").font(.title2.bold())
+                Toggle("Start Uficast at login", isOn: Binding(get: { model.loginItemRegistered }, set: { model.onSetLoginItem?($0) }))
+                    .disabled(model.isLoginItemBusy)
+                Text(model.loginItemStatus).font(.caption).foregroundStyle(.secondary)
+                Button("Login Items…") { LoginItemService.openSettings() }
+                Divider()
                 Text("Launcher").font(.title2.bold())
                 Text("Command + Space · Either Command key")
                 Text("No Accessibility or Input Monitoring access is required.").foregroundStyle(.secondary)
@@ -220,19 +262,25 @@ private struct SettingsView: View {
                 Text("If Spotlight or Raycast uses the same shortcut, release it in their settings. Uficast does not change those assignments.")
                     .font(.caption).foregroundStyle(.secondary)
                 Divider()
+                Text("Keep Awake").font(.title2.bold())
+                Toggle("Keep Mac awake", isOn: Binding(get: { model.keepAwakeActive }, set: { model.onSetKeepAwake?($0) }))
+                    .disabled(model.isKeepAwakeBusy)
+                Text(model.keepAwakeStatus).font(.callout)
+                Text("Prevents automatic idle system sleep while active. The display may turn off. Turns off when Uficast quits.")
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Button("30 Minutes") { model.onKeepAwakeFor?(1800) }
+                    Button("1 Hour") { model.onKeepAwakeFor?(3600) }
+                    Button("Until Stopped") { model.onSetKeepAwake?(true) }
+                }.disabled(model.isKeepAwakeBusy)
+                Divider()
                 Text("Keyboard").font(.title2.bold())
                 Toggle("Map Caps Lock to F19", isOn: Binding(get: { model.configuration.capsLockToF19Enabled }, set: { model.onSetCapsLock?($0) }))
                     .disabled(model.isBusy || model.isReadOnly || model.isKeyboardBusy)
                 Text(model.keyboardStatus).font(.callout)
-                Text("Then assign F19 in Keyboard Shortcuts → Input Sources to switch between your two layouts. Uficast preserves other mappings and restores only its own on normal quit.")
+                Text("For each keyboard, set Caps Lock to Caps Lock in Modifier Keys first. Then assign F19 in Input Sources. Keep Uficast running; quitting restores its mapping.")
                     .font(.caption).foregroundStyle(.secondary)
                 Button("Check Current Mapping") { model.onCheckKeyboard?() }.disabled(model.isKeyboardBusy)
-                Divider()
-                Text("Startup").font(.title2.bold())
-                Toggle("Start Uficast at login", isOn: Binding(get: { model.loginItemRegistered }, set: { model.onSetLoginItem?($0) }))
-                    .disabled(model.isLoginItemBusy)
-                Text(model.loginItemStatus).font(.caption).foregroundStyle(.secondary)
-                Button("Login Items…") { LoginItemService.openSettings() }
                 Divider()
                 Text("Application Folders").font(.title2.bold())
                 Text("One folder or application path per line. Paths may start with ~/.").foregroundStyle(.secondary)

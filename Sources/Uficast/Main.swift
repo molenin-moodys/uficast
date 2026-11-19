@@ -6,6 +6,19 @@ import UficastCore
 struct UficastMain {
     @MainActor
     static func main() {
+        if CommandLine.arguments.contains("--verify-native-icons") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try LauncherPanelController().verifyNativeIconRefresh()
+                print("PASS: catalog icons updated existing launcher cells without moving rows.")
+            } catch {
+                FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
+            return
+        }
         if let flag = CommandLine.arguments.firstIndex(where: { ["--preview-launcher", "--preview-settings", "--preview-script-editor"].contains($0) }) {
             guard CommandLine.arguments.indices.contains(flag + 1) else {
                 print("Provide an output PNG path for the preview.")
@@ -63,9 +76,19 @@ struct UficastMain {
                let value = String(data: data, encoding: .utf8) { print(value) }
             return
         }
+        let coordinator = InstanceCoordinator()
+        do {
+            guard try coordinator.becomePrimary() else { coordinator.revealPrimary(); return }
+        } catch {
+            NSApplication.shared.setActivationPolicy(.regular)
+            NSAlert(error: error).runModal()
+            return
+        }
         let application = NSApplication.shared
         let controller = AppController()
+        coordinator.onReopen = { [weak controller] in controller?.revealLauncher() }
         application.delegate = controller
-        withExtendedLifetime(controller) { application.run() }
+        withExtendedLifetime((controller, coordinator)) { application.run() }
+        coordinator.stop()
     }
 }
