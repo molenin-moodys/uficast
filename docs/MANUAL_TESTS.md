@@ -64,6 +64,18 @@ Follow [requirements](plan/REQUIREMENTS.md). Caps Lock remapping, login items, o
 - During an owner-initiated power test: enable caffeine, quit/reopen and confirm active restoration with one fresh owned assertion. Stop, quit/reopen and confirm decaf stays off. A timed session resumes only its remaining time; let it expire while closed and confirm it stays off. Tests use fake assertions, not the actual machine's sleep policy.
 - --verify-keyboard-shortcuts checks native menu equivalence, Esc priority and hotkey capture with fixtures and no global registration. Core restoration tests round-trip the saved session and verify release/reacquire/expiry using fake backends.
 
+## AI text
+
+- **Command.** General → AI Text shows the default command. Change the model name, Apply, run a rewrite, then Reset to Default. A wrong model name or a missing CLI shows the error text in the panel. Enter retries; there is no automatic retry.
+- **Clipboard.** Record "Rewrite from clipboard" and "Translate from clipboard" shortcuts.
+  - In an Electron app (for example Teams or Slack), copy English text, press the rewrite shortcut and check the result. Enter, then Cmd+V pastes it.
+  - Repeat with Russian and English text for translate.
+  - With an empty clipboard or an image, the panel says "Copy text first."
+- **Services.** Assign shortcuts to "Rewrite with Uficast" and "Translate with Uficast" in Keyboard Shortcuts → Services. In Notes, Mail and a Safari text field, select text and use each Service; Enter replaces the selection. Esc while "Working…" and while the result is shown leaves the text unchanged.
+- **Formatting.** Select text that contains bold, italics and a link, then rewrite it through the Service. The replacement keeps them. Do the same through the clipboard and paste into Mail.
+- **Timeout.** Leave a Service result open for more than about 85 s. The panel switches to "Time ran out for replacing." and Enter only copies.
+- **Codex.** If Codex is installed, enter its command and check that only the answer appears.
+
 ## Day-O calendar experiment
 
 - [ ] Compare the installed experiment with Day-O: one Uficast clock button, compact menu width, native calendar typography/arrows/selection, and light/dark appearance.

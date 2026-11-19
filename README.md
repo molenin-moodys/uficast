@@ -14,6 +14,7 @@ Uficast includes a Day-O-style clock and native calendar in its single menu-bar 
 - **Local scripts** using shell, AppleScript or another configured interpreter. Pass one unchanged text argument and optionally open a generated URL.
 - **Per-app shortcuts** to show, hide or launch an application.
 - **Keep Awake** with timed or indefinite sessions, plus optional start at login.
+- **AI text**: rewrite copied or selected English into correct, simple English, or translate it between English and Russian, using `claude -p` (Claude Haiku 5.5) or any CLI you configure. The result is shown first, Enter inserts or copies it, and inline formatting is kept.
 - **Menu-bar clock and calendar** using the same standard AppKit calendar control as Day-O, with month browsing, Today and customizable format.
 - **Caps Lock → F19** remapping for macOS input-source switching, with mapping ownership and keyboard-conflict diagnostics.
 - **Native menu bar app** with light/dark appearance, a Settings gear in the launcher and one running instance per user.
@@ -120,6 +121,24 @@ Default result handling runs for side effects and ignores stdout (the script can
 While a script runs, the launcher stays open with a running status. Success closes it; failure shows the exit/timeout error in the lower section, preferring stderr and falling back to stdout. **Edit Input** restores the exact submitted argument for correction; only an explicit Enter retries. The latest failure and argument stay in memory only. Hiding the launcher for any reason clears its error and remembered input. A late result cannot bring that error back or replace newer input. Each deliberate reopen starts clean.
 
 General → Recent Runs shows active commands, Cancel controls and the ten most recent outcomes in memory. Each command can run once concurrently; different commands can overlap. Output capture is bounded to 1 MiB per stream while both pipes continue draining. Normal quit cancels managed process groups; deliberately detached daemons and force-quit/crash cleanup are outside that guarantee. AppleScript controlling other applications may need **Automation** consent; scripts depending on Accessibility are unsupported under the no-Accessibility requirement.
+
+## AI text
+
+**General → AI Text** holds the command and two clipboard shortcuts. The default command is:
+
+```sh
+claude -p --model claude-haiku-5-5 --tools "" --strict-mcp-config --disable-slash-commands --no-session-persistence --setting-sources project,local
+```
+
+The command gets the prompt on stdin and must print only the answer. You can change the model or use another CLI. It runs in your login shell from an empty private folder. The selected text never becomes part of the command line.
+
+- **Clipboard.** Copy text, press **Rewrite from clipboard** or **Translate from clipboard**, and check the result. **Enter** copies it for Cmd+V and **Esc** cancels. This works in any app.
+- **Services.** Select text and choose **Rewrite with Uficast** or **Translate with Uficast** from the Services menu. Assign their shortcuts in System Settings → Keyboard → Keyboard Shortcuts → Services. **Enter** replaces the selection and also copies the result.
+  - macOS offers these Services only where the selection can be edited. Some Electron apps and terminals do not support them; use the clipboard there.
+- **Formatting.** Bold, italics, links and other inline styles are carried through the model with markers and restored. If the model breaks them, the result keeps the selection's main style and the panel says so.
+- **Privacy.** The text goes to the program the command runs: Anthropic for `claude`. Uficast stores no text, but that program may keep data under its own settings.
+
+`--verify-ai-text` checks the rich-text bridge, panel and request handling offscreen with a fake command and private pasteboards; it never runs a real AI command.
 
 ## Development previews
 

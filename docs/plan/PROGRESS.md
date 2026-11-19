@@ -4,7 +4,7 @@ Last updated: November 19, 2026 (America/Los_Angeles).
 
 ## Current state
 
-Requested personal-use features through Stage 6k are implemented; Stage 6l is integrated into main at the owner’s request, with remaining manual acceptance pending. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. Window-shortcut/power checkpoint 7ebcf04 is pushed to origin/main. The calendar increment was developed on codex/day0-calendar-experiment and has now been fast-forward merged into main through 72d765c at the owner’s explicit request. Stage 6m (configurable launcher shortcut, focus-display placement and a clock-contrast experiment) is implemented on main and awaits the owner's hands-on checks.
+Requested personal-use features through Stage 6k are implemented; Stage 6l is integrated into main at the owner’s request, with remaining manual acceptance pending. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. Window-shortcut/power checkpoint 7ebcf04 is pushed to origin/main. The calendar increment was developed on codex/day0-calendar-experiment and has now been fast-forward merged into main through 72d765c at the owner’s explicit request. Stage 6m (configurable launcher shortcut, focus-display placement and a clock-contrast experiment) is implemented on main and awaits the owner's hands-on checks. Stage 6n (AI text rewrite and translation) is implemented on branch `feat/ai-text` and awaits review and the owner's checks.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
@@ -24,6 +24,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 | 6k — Remembered caffeine / transient errors | Implemented | 50 core tests pass with fake power restoration; native feedback check confirms hide clears retained errors and rejects late completion. |
 | 6l — Day-O calendar | Integrated into main by owner request | 51 core tests and native clock/menu-mode checks pass; compact NSDatePicker previews inspected. Real menu navigation, side-by-side seconds and preference persistence acceptance pending. |
 | 6m — Launcher shortcut, focus display, clock contrast | Implemented; clock owner-confirmed | 57 core tests, six native checks and light/dark previews pass. Owner confirmed the clock is readable on an inactive display. Physical shortcut delivery and two-display placement are not yet observed. |
+| 6n — AI text rewrite and translation | Implemented on `feat/ai-text`; owner checks pending | 78 core tests and `--verify-ai-text` (fakes, private pasteboards) pass. Real Services replacement, formatting in Mail/Notes and clipboard use in Electron apps are not yet observed. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -196,7 +197,51 @@ Owner-installed build and result (November 19, 2026):
 - The owner quit Uficast normally; the build was then rebuilt into the owner's local output folder with `SDKROOT=…MacOSX26.5.sdk scripts/build.sh`, the strict signature check passed and the app was reopened.
 - **Owner confirmed: the clock is readable on an inactive display.** The clock-contrast change is kept. Light/dark bar variants and the open-menu highlight were not reported separately.
 
-**Exact next step:** owner runs the remaining Launcher shortcut and two-display placement items in `docs/MANUAL_TESTS.md`. Decide whether `build.sh`/`test.sh` should adapt to the new toolchain. The caffeine idle check (screen stays on while active; stop/expiry restores idle behavior) and other daily-use gaps remain open.
+## Stage 6n — AI text rewrite and translation (branch `feat/ai-text`)
+
+- Owner request (November 19, 2026): rewrite English into correct, simple English and translate EN↔RU by keyboard, using `claude -p` with Haiku 5.5 or another CLI the owner configures.
+  - The result is shown first; Enter inserts it where possible, otherwise copies it; Esc cancels.
+  - Clipboard and macOS Services entry points; inline formatting kept.
+  - Approved design `docs/superpowers/specs/2026-11-19-ai-text-rewrite-translate-design.md`; plan `docs/superpowers/plans/2026-11-19-ai-text-rewrite-translate.md`.
+- Spike (owner-approved, two Haiku calls through `/bin/zsh -lc`): 5.14 s with the base flags and 2.78 s adding `--setting-sources project,local`. In both, stdout held only the answer and the markers were kept. No sample text reached files under `~/.claude`. The second variant is the default command.
+- Implementation by task:
+  1. Native worker stdin with no SIGPIPE.
+  2. `AITextRunner`, `AITextPrompt`, `AITextPreferences` and `Configuration.aiText`.
+  3. `SpanMarkup`.
+  4. `RichTextBridge` and a separate `AITextPanelController` with the launcher's look.
+  5. `AITextCoordinator`, Services in Info.plist and a nested event loop for Services.
+  6. Carbon IDs 1000/1001 for clipboard shortcuts, the General → AI Text section and `NSApp.servicesProvider`.
+- Builder rulings (details in the design and ARCHITECTURE):
+  - Separate result panel.
+  - The shown copy drops source text colors.
+  - A second Service request during a wait returns an error.
+  - The timeout note is kept through a retry.
+  - Dev-only `--preview-settings … --height N`.
+
+Checks actually performed (all with `SDKROOT=…MacOSX26.5.sdk`):
+
+- `scripts/test.sh --build-system native`: **78 core tests passed**. New tests cover:
+  - stdin: large input, early exit, timeout and exact bytes.
+  - Runner: trimmed output, missing CLI with stderr, empty output, cancel and no shell injection.
+  - Configuration: legacy defaults, command limits, conflicts and round trip.
+  - Prompt and clean.
+  - Markers: escaping, round trip, moved markers, broken markers and entities.
+  - Each new test was first seen failing (missing API).
+- Release build into `.build/check` with strict signature check. No new warnings; only the pre-existing `AppController` capture warning, now at line 109.
+- `--verify-ai-text` passed:
+  - Rich round trip with bold and link, and pasteboard types.
+  - Panel hints and Enter/Esc behavior.
+  - With a fake runner: empty and image clipboard, clipboard rewrite, Esc during work with a late result, failure then retry, Service replacement keeping bold, Service cancel, Service deadline then copy mode, broken-marker fallback.
+- All other native checks still pass.
+- Settings preview (light) visually inspected: the AI Text section with command, Apply/Reset, recorders and captions.
+- Not performed:
+  - Any real Service invocation from another app, or pbs/System Settings registration of the Services.
+  - Replacement and formatting in Mail/Notes/Safari.
+  - The clipboard flow with a real `claude` call through the app, and real global shortcut delivery.
+  - Dark appearance of the panel, and a Codex command (Codex is not installed).
+- The owner's running copy was not replaced.
+
+**Exact next step:** final whole-branch review of `feat/ai-text`, then merge into main with the owner's agreement. Then the owner installs the build (quit Uficast first) and runs the AI text items in `docs/MANUAL_TESTS.md`; Services may need logging out and in or `/System/Library/CoreServices/pbs -update` before they appear. Also still open: the Launcher shortcut and two-display placement checks; decide whether `build.sh`/`test.sh` should adapt to the new toolchain. The caffeine idle check (screen stays on while active; stop/expiry restores idle behavior) and other daily-use gaps remain open.
 
 
 ### Earlier cursor report checkpoint

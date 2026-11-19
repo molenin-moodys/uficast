@@ -27,6 +27,7 @@ Recorded on November 18, 2026; updated the same day to ordinary Cmd+Space with n
 | Built-in commands | `caffeine` / `cafe` enables indefinite Keep Awake; `decaffeine` / `decafe` disables it. Fuzzy and wrong-layout search apply. |
 | Keep Awake (added November 18) | Built-in Caffeine-style prevention of idle display and Mac sleep; native app-owned power assertion. Owner clarified that the screen must stay on while caffeine is active. |
 | Menu bar calendar | The clock is the single Uficast menu-bar button. Use Day-O’s standard native calendar appearance, month browsing and Today; configurable date/time format and Show Icon. Upper menu bar only, no Dock addition. |
+| AI text (added November 19) | Rewrite selected or copied English into correct, simple English, and translate EN↔RU, through an owner-editable CLI command (default `claude -p` with Claude Haiku 5.5). Clipboard shortcuts and macOS Services; the result is shown first, Enter inserts or copies, Esc cancels; inline formatting is kept. |
 | Deferred | Kasa/Shortcuts integration. |
 | Continuity | English plan in the repository, committed to Git; implementation can span sessions. |
 
@@ -44,7 +45,7 @@ These choices let implementation proceed without another questionnaire. They may
 - App discovery starts with `/Applications`, `/System/Applications`, and `~/Applications`; add other roots through settings. Avoid presenting nested helper apps by default.
 - Support light and dark appearance and keyboard navigation. Owner change (November 19, 2026): open on the display of the focused application's front window; fall back to the display containing the pointer when that app has no usable window. This supersedes pointer-only placement.
 - Start at login is optional and controlled by the owner. No independent keyboard daemon in v1.
-- No automatic execution while typing and no automatic clipboard reads. Pasting uses the normal text-editing command.
+- No automatic execution while typing and no automatic clipboard reads. Pasting uses the normal text-editing command. Owner addition (November 19, 2026): pressing an AI text clipboard shortcut reads the clipboard once, at that press; nothing else reads it.
 - App-specific global hotkeys are in scope. Script-specific global hotkeys remain deferred. The launcher shortcut defaults to Cmd+Space; the owner requested on November 19, 2026 that it be configurable in General.
 
 ## Launcher behavior
@@ -118,6 +119,21 @@ Shortcuts/Kasa, clipboard history, snippets, file search, window management, cal
 - A combination that Uficast cannot register is reported and not saved, so the launcher keeps a working shortcut. Still no Accessibility, Input Monitoring or keyboard observation.
 - Display choice uses only window owner, layer and bounds from the system window list; no Screen Recording or Accessibility grant is requested.
 - The owner reported that the menu-bar clock is unreadable on an inactive display, where macOS dims the bar. The owner chose an experiment: draw the clock text and icons as one explicit full-contrast image (black on a light bar, white on a dark bar) instead of system-styled template icons and title. On November 19, 2026 the owner confirmed that the clock is readable on an inactive display with this change, so it is kept. Turning off "Displays have separate Spaces" in macOS remains the owner's own alternative; Uficast never changes that setting.
+
+## AI text rewrite and translation (owner addition, November 19, 2026)
+
+Design: `docs/superpowers/specs/2026-11-19-ai-text-rewrite-translate-design.md` (approved).
+
+- Two actions: Rewrite (correct, simple English) and Translate (Russian → English, otherwise → Russian).
+- Two entry points:
+  - Clipboard: the owner copies text and presses a Uficast shortcut recorded in General. Enter copies the result for Cmd+V.
+  - macOS Services "Rewrite with Uficast" and "Translate with Uficast": the owner selects text and uses the Service, with its shortcut assigned in Keyboard Shortcuts → Services. Enter replaces the selection and also copies the result.
+  - Both entry points show the result first. Esc cancels without changes. A returning Service is disabled by macOS on read-only text; there the clipboard entry point applies.
+- The command is an owner-editable shell command line. It gets the prompt on stdin and prints only the answer, so the model can be changed by hand or the CLI replaced (for example Codex).
+  - Default: `claude -p --model claude-haiku-5-5 --tools "" --strict-mcp-config --disable-slash-commands --no-session-persistence --setting-sources project,local`.
+  - The selected text is never placed in argv or shell text.
+- Inline formatting (bold, italics, links, fonts and colors of runs) is kept through `<sN>` span markers. If the model breaks them, the result falls back to the selection's base style with a visible note.
+- Still no Accessibility, Input Monitoring or synthetic input. Uficast stores no selected text or results; the configured CLI keeps data under its own settings.
 
 ## Keyboard conventions (owner additions)
 

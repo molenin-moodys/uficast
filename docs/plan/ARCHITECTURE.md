@@ -188,6 +188,32 @@ Owner steering supersedes closing the launcher on accepted execution: scripts ke
 
 AppMenu builds standard application/File/Edit/Window menus and a hidden-but-active Cmd+P Settings alias while preserving visible Cmd+,. Cmd+F focuses launcher search or requests Commands search focus through SwiftUI FocusState. Cmd+W uses native performClose; the launcher routes it through dismiss for cleanup. SettingsWindow handles only window-local Esc events: attached sheets keep native dispatch, active inline edits cancel first, otherwise Settings closes. Native view key equivalents continue to handle recorded chords before menus. Menu actions do not register more global shortcuts. References: [Apple shortcuts](https://support.apple.com/en-us/102650), [Cocoa key-equivalent routing](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/EventOverview/HandlingKeyEvents/HandlingKeyEvents.html).
 
+## AI text (Stage 6n)
+
+- **stdin.** The native worker accepts optional stdin bytes (`uf_process_run_input`). They are written while stdout/stderr are drained, on a non-blocking pipe with `F_SETNOSIGPIPE`. EPIPE or child exit stops writing quietly, and stop/timeout closes the pipe. `uf_process_run` keeps `/dev/null`.
+- **AITextRunner** (UficastCore actor) runs `/bin/zsh -lc <command>` in the private empty folder `~/Library/Application Support/Uficast/ai-workdir` (0700). The login shell provides the owner's PATH. The prompt goes to stdin only.
+  - It enforces the 60 s timeout and a 1 MiB output limit.
+  - Errors map to `AITextError`: a non-zero exit carries the stderr text, empty output and over-limit output have their own cases, and cancellation is reported as cancelled.
+  - One run at a time; `cancel()` stops the current one.
+- **AITextPrompt** wraps the text in `<text>` tags as data, with rewrite or translate instructions and, when needed, the marker rule. `clean` trims the answer and drops echoed `<text>` tags.
+- **SpanMarkup** encodes styled runs as `<sN>…</sN>`, escaping `&`, `<` and `>` only when markers exist. Decoding is a strict scanner: an unknown, nested or unbalanced marker, or any other `<`, means "fall back".
+- **RichTextBridge** (app):
+  - Reads RTF, then HTML, then plain text.
+  - Splits attributed text into runs against the base style (the attributes at index 0); equal attribute sets share a style index.
+  - Rebuilds the result with each run's original attributes.
+  - Writes RTF only for a rich source and plain text always.
+- **AITextPanelController** is a separate non-activating panel with the launcher's material and placement.
+  - Builder decision: it is separate so the launcher's script run and stale-result state never mixes with AI requests.
+  - The result view is read-only and selectable. Return/Enter confirms (or retries after a failure), and Esc, an outside click or losing key cancels.
+  - The shown copy drops source text colors for readability; the inserted or copied result keeps them.
+- **AITextCoordinator** owns one request at a time, identified by UUID. Results for any other UUID are ignored, and starting or cancelling a request cancels the runner.
+  - Clipboard entry point: an empty or non-text clipboard shows "Copy text first."; Enter writes to the general pasteboard.
+  - The Services provider methods `rewriteText:userData:error:` and `translateText:userData:error:` run a nested `nextEvent`/`sendEvent` loop in the default mode until Enter, Esc or the 85 s deadline. Info.plist sets `NSTimeout` to 90000 ms.
+  - Enter writes the result to the Service pasteboard and to the general pasteboard. Esc returns without writing.
+  - At the deadline the panel switches to copy mode ("Time ran out for replacing.").
+  - A second Service request during a wait returns at once with an error.
+- **HotkeyService** registers the two clipboard actions as Carbon IDs 1000/1001. Configuration reserves them against the launcher, enabled app hotkeys and each other, and AppController probes a new one before saving it. `--verify-ai-text` checks the bridge, panel and coordinator with fakes and private pasteboards. Real Services delivery and replacement in other apps are owner-verified, not inferred.
+
 ## Menu-bar calendar
 
 MenuBarClockController updates the existing NSStatusItem, never creating a second permanent button. Clock enabled/Show Icon/format live in schema-1 menuBarClock with default decoding for older files. Turning off the clock restores the existing cup/zzz state. The clock's tooltip and menu still expose Keep Awake; power behavior does not change.

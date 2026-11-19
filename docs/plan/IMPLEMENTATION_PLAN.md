@@ -197,6 +197,10 @@ Make the launcher shortcut configurable in General with Cmd+Space as the default
 
 Validate with core tests (legacy decode, round trip, validation, conflicts, display geometry), native recorder/clock checks, light/dark previews and a release build. Physical shortcut delivery and two-display placement require the owner's observation. The owner confirmed inactive-display clock readability on November 19, 2026.
 
+## Stage 6n — AI text rewrite and translation (owner addition)
+
+Rewrite into correct, simple English and translate EN↔RU through an owner-editable CLI command (default `claude -p` with Haiku 5.5), from the clipboard or macOS Services, showing the result first and keeping inline formatting. Design: `docs/superpowers/specs/2026-11-19-ai-text-rewrite-translate-design.md`; task plan: `docs/superpowers/plans/2026-11-19-ai-text-rewrite-translate.md`. Validate with core tests (stdin worker, runner, prompt, markers, configuration), `--verify-ai-text` and a release build; real Services replacement, formatting in Mail/Notes and a Codex command need the owner's observation.
+
 ## Stage 7 — Daily-use verification and source-build handoff
 
 Tasks:
