@@ -9,6 +9,7 @@ final class SettingsModel: ObservableObject {
     @Published var catalogEntries: [LauncherEntry] = []
     @Published var query = ""
     @Published var filter = "All"
+    @Published var searchFocusRequest = 0
     @Published var selectedID: String?
     @Published var status = "Loading settings…"
     @Published var shortcutStatus = ""
@@ -114,7 +115,7 @@ final class SettingsModel: ObservableObject {
 @MainActor
 final class SettingsWindowController: NSWindowController {
     init(model: SettingsModel) {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 980, height: 680),
+        let window = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 980, height: 680),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "Uficast Settings"
         window.minSize = NSSize(width: 800, height: 580)
@@ -142,6 +143,7 @@ private struct SettingsView: View {
     @ObservedObject var model: SettingsModel
     @StateObject private var icons = IconStore()
     @State private var roots = ""
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -182,6 +184,10 @@ private struct SettingsView: View {
         VStack(spacing: 0) {
             HStack(spacing: 16) {
                 TextField("Search…", text: $model.query).textFieldStyle(.roundedBorder)
+                    .focused($searchFocused)
+                    .task(id: model.searchFocusRequest) {
+                        if model.searchFocusRequest > 0 { searchFocused = true }
+                    }
                 Picker("Type", selection: $model.filter) {
                     ForEach(["All", "Apps", "Scripts"], id: \.self) { Text($0) }
                 }.pickerStyle(.segmented).labelsHidden().frame(width: 250)
@@ -333,7 +339,7 @@ private struct SettingsView: View {
                 Toggle("Keep Mac awake", isOn: Binding(get: { model.keepAwakeActive }, set: { model.onSetKeepAwake?($0) }))
                     .disabled(model.isKeepAwakeBusy)
                 Text(model.keepAwakeStatus).font(.callout)
-                Text("Prevents automatic idle system sleep while active. The display may turn off. Turns off when Uficast quits.")
+                Text("Prevents automatic idle system sleep while active. The display may turn off. Remembers the last mode on relaunch; timed sessions keep their original end time.")
                     .font(.caption).foregroundStyle(.secondary)
                 HStack {
                     Button("30 Minutes") { model.onKeepAwakeFor?(1800) }

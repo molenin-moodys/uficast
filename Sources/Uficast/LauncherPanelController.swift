@@ -4,6 +4,7 @@ import UficastCore
 private final class LauncherPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+    override func performClose(_ sender: Any?) { (delegate as? LauncherPanelController)?.dismiss() }
 }
 
 @MainActor
@@ -255,6 +256,10 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         let noInput = beginScriptRun(command)
         finishScriptRun(noInput, command: command, argument: nil, error: "Missing executable")
         try check(!failureBox.isHidden && editInputButton.isHidden, "A command with no argument offered input editing.")
+        dismiss(restoreFocus: false)
+        finishScriptRun(noInput, command: command, argument: input, error: "Late result after hiding")
+        try check(lastFailure == nil && failureBox.isHidden && activeRunID == nil && latestRunID == nil,
+                  "Hiding retained an error/input or allowed a late result to restore it.")
     }
 
     /// Offscreen regression check: asynchronous icon completion must update the
@@ -328,6 +333,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
 
     func show() {
         guard !panel.isVisible else { return }
+        NSApp.unhideWithoutActivation()
         beforeShow?()
         previousApplication = NSWorkspace.shared.frontmostApplication
         let point = NSEvent.mouseLocation
@@ -338,13 +344,13 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         }
         field.stringValue = ""
         reloadResults(preserveSelection: false)
-        if let lastFailure { displayFailure(lastFailure) }
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)
         startMonitors()
     }
 
     func dismiss(restoreFocus: Bool = true) {
+        clearArgument()
         guard panel.isVisible, !isDismissing else { return }
         isDismissing = true
         defer { isDismissing = false }
@@ -355,7 +361,13 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
             previousApplication.activate()
         }
         previousApplication = nil
-        clearArgument()
+    }
+
+    func focusSearch() {
+        if !panel.isVisible { show() }
+        if argumentCommand != nil { returnToSearch() }
+        panel.makeFirstResponder(field)
+        field.selectText(nil)
     }
 
     func windowDidResignKey(_ notification: Notification) { dismiss(restoreFocus: false) }
@@ -423,9 +435,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     }
 
     func finishScriptRun(_ id: UUID, command: ScriptCommand, argument: String?, error: String?) {
-        if latestRunID == id, let error { lastFailure = (command, argument, String(error.prefix(700))) }
         // A late result must never reopen or replace a newer search/input.
-        guard activeRunID == id else { return }
+        guard activeRunID == id, latestRunID == id else { return }
+        if let error { lastFailure = (command, argument, String(error.prefix(700))) }
         activeRunID = nil
         argumentInput.isEditable = true
         if let lastFailure, error != nil { displayFailure(lastFailure) }
@@ -473,6 +485,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
 
     private func clearArgument() {
         activeRunID = nil
+        latestRunID = nil
+        lastFailure = nil
         argumentInput.isEditable = true
         hideFailure()
         argumentCommand = nil

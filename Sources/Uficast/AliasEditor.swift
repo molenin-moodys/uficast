@@ -21,6 +21,7 @@ final class AliasEditorView: NSView, NSTextFieldDelegate {
     private var representedID = ""
     private var value: String?
     private var editing = false
+    var isEditing: Bool { editing }
     var onCommit: ((String) -> Bool)?
 
     override init(frame: NSRect) {

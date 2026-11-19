@@ -56,7 +56,7 @@ scripts/build.sh
 open dist/Uficast.app
 ```
 
-Opening the app shows the launcher immediately. Its gear button opens Settings; **Cmd+,** also opens Settings. The menu bar includes **Open Launcher**, **Settings…**, **Keep Awake**, **Retry Shortcut** and **Quit**. The global shortcut uses Carbon registration and never requests Accessibility or Input Monitoring. Release conflicting Cmd+Space shortcuts in Spotlight/Raycast yourself; Uficast does not change their settings. A successful registration does not prove a system shortcut yields the chord.
+Opening the app shows the launcher immediately. Its gear button opens Settings; **Cmd+,** and **Cmd+P** also open Settings. The menu bar includes **Open Launcher**, **Settings…**, **Keep Awake**, **Retry Shortcut** and **Quit**. The global shortcut uses Carbon registration and never requests Accessibility or Input Monitoring. Release conflicting Cmd+Space shortcuts in Spotlight/Raycast yourself; Uficast does not change their settings. A successful registration does not prove a system shortcut yields the chord.
 
 Build output is `dist/Uficast.app`, locally ad-hoc signed. `scripts/build.sh debug` builds a debug bundle. Optionally set `UFICAST_SIGN_IDENTITY` to an existing signing identity. Quit the running copy before rebuilding or replacing it. Opening a rebuilt bundle while an older copy is still running reveals that existing process; it does not reload its executable. For an isolated build, set `UFICAST_OUTPUT_ROOT` to another output directory. Script Automation consent may need renewal after ad-hoc rebuilds; a stable installation path is recommended.
 
@@ -69,6 +69,26 @@ dist/Uficast.app/Contents/MacOS/Uficast --diagnostics
 See [manual verification](docs/MANUAL_TESTS.md). Pure tests and signing checks do not prove real desktop shortcut delivery.
 
 Application discovery uses `/Applications`, `/System/Applications` and `~/Applications`. Use **Refresh Applications** after installing an app; default root changes are also observed. Search supports fuzzy abbreviations and U.S./Russian physical-key alternatives (for example `сркщьу` finds Chrome). Script arguments are never converted. Use Up/Down selection and Enter to launch/activate. Usage ordering is currently in memory. `--catalog-summary` prints a read-only discovery count/timing without launching apps.
+
+## Keyboard shortcuts
+
+These shortcuts work while Uficast has keyboard focus; only Cmd+Space and assigned app hotkeys are global.
+
+| Shortcut | Action |
+| --- | --- |
+| Cmd+Space | Toggle launcher globally |
+| Cmd+, or Cmd+P | Open Settings |
+| Esc in Settings | Cancel an inline alias/hotkey edit first; otherwise close Settings (sheets keep their own Cancel action) |
+| Cmd+W | Close the current window or launcher |
+| Cmd+F | Focus search; in Settings, switch to Commands first |
+| Cmd+H / Option+Cmd+H | Hide Uficast / hide other apps |
+| Cmd+M | Minimize Settings |
+| Cmd+Q | Quit Uficast |
+| Cmd+A/C/X/V, Cmd+Z, Shift+Cmd+Z | Standard text editing and undo/redo |
+| Tab / Shift+Tab | Native control navigation; Tab in launcher enters the selected script's argument |
+| Up/Down, Enter | Select and run a launcher result |
+
+Apple's [standard Mac shortcuts](https://support.apple.com/en-us/102650) use Cmd+, for Settings and Cmd+P for printing. Cmd+P is an owner-requested additional Settings shortcut in Uficast; this app has no print command. Active shortcut recording takes priority over menu shortcuts.
 
 ## Settings and aliases
 
@@ -94,7 +114,7 @@ For the `k` workflow, configure [browser-search.py](examples/browser-search.py),
 
 Default result handling runs for side effects and ignores stdout (the script can call `/usr/bin/open` itself). URL mode opens exactly one valid HTTP(S) URL only after exit code zero. Arguments are passed as one argv value; `.zshrc` is not sourced. PATH includes Homebrew and standard system directories; per-command environment overrides are supported. The default working directory is the script folder and the default timeout is 30 seconds.
 
-While a script runs, the launcher stays open with a running status. Success closes it; failure shows the exit/timeout error in the lower section, preferring stderr and falling back to stdout. **Edit Input** restores the exact submitted argument for correction; only an explicit Enter retries. The latest failure and argument stay in memory only. Dismissing the launcher or moving to another command prevents a late result from reopening it or overwriting the new input; reopening can show the last failure and its Edit Input action.
+While a script runs, the launcher stays open with a running status. Success closes it; failure shows the exit/timeout error in the lower section, preferring stderr and falling back to stdout. **Edit Input** restores the exact submitted argument for correction; only an explicit Enter retries. The latest failure and argument stay in memory only. Hiding the launcher for any reason clears its error and remembered input. A late result cannot bring that error back or replace newer input. Each deliberate reopen starts clean.
 
 General → Recent Runs shows active commands, Cancel controls and the ten most recent outcomes in memory. Each command can run once concurrently; different commands can overlap. Output capture is bounded to 1 MiB per stream while both pipes continue draining. Normal quit cancels managed process groups; deliberately detached daemons and force-quit/crash cleanup are outside that guarantee. AppleScript controlling other applications may need **Automation** consent; scripts depending on Accessibility are unsupported under the no-Accessibility requirement.
 
@@ -131,7 +151,7 @@ In the launcher, run **caffeine** (or **cafe**) to stay awake until stopped, and
 
 Use the menu bar **Keep Awake** toggle or choose **30 Minutes**, **1 Hour**, or **Until Stopped**. General offers the same controls. The menu bar shows a cup during an active session and a `zzz` sleep icon when Keep Awake is off (decaf mode). A native, process-owned IOPM assertion prevents idle system sleep; no `caffeinate` child process or Accessibility permission is used.
 
-Sessions start off on each app launch, expire automatically when timed, and stop on Quit. The display may dim or sleep; explicit Sleep, closing the lid, low battery and other macOS sleep reasons still apply. This is the behavior of Apple's [idle-system-sleep assertion](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep).
+The last caffeine/decaf mode is remembered locally and restored on relaunch. Timed sessions resume their remaining time; an already expired session stays off. A fresh installation starts off. Quit releases the process-owned assertion while preserving the remembered mode for the next launch. The display may dim or sleep; explicit Sleep, closing the lid, low battery and other macOS sleep reasons still apply. This is the behavior of Apple's [idle-system-sleep assertion](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep).
 
 ## Start at login
 

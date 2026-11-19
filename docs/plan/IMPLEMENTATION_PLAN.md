@@ -135,7 +135,7 @@ Suggested commit: `feat: add caps-lock remapping and launch-at-login`.
 
 ## Stage 6b — Built-in Keep Awake (owner addition)
 
-Use a native IOPM PreventUserIdleSystemSleep assertion owned by this app. Provide a menu toggle, 30-minute / one-hour / indefinite sessions, visible state and General settings controls. Start off on every app launch; release on stop, expiry and normal quit. macOS releases a process-owned assertion on exit. Idle system sleep is prevented; display sleep, explicit Sleep and lid behavior remain governed by macOS. No Accessibility, Input Monitoring or caffeinate subprocess.
+Use a native IOPM PreventUserIdleSystemSleep assertion owned by this app. Provide a menu toggle, 30-minute / one-hour / indefinite sessions, visible state and General settings controls. Original default-off-on-every-launch behavior is superseded by Stage 6k; first installation still starts off; release on stop, expiry and normal quit. macOS releases a process-owned assertion on exit. Idle system sleep is prevented; display sleep, explicit Sleep and lid behavior remain governed by macOS. No Accessibility, Input Monitoring or caffeinate subprocess.
 
 Validate acquire/renew/stop ownership, expiry and backend failures using a fake backend without changing actual power assertions. Real idle-sleep acceptance remains a manual check initiated by the owner.
 
@@ -176,6 +176,14 @@ Edit aliases in the table/inspector by double-click; Enter commits, Escape cance
 ## Stage 6i — Argument appearance and script errors (owner addition)
 
 Remove the opaque white input surface, align placeholder/text insets and inspect empty/filled light/dark previews. Keep the launcher open during execution, close on success, and show a bounded failure footer with Edit Input. Preserve the exact argument, retry only on Enter, prefer stderr with stdout fallback, and reject stale completion updates after dismissal/navigation. Test native presentation plus real generic subprocess failures; do not run private scripts for verification.
+
+## Stage 6j — Window keyboard conventions (owner addition)
+
+Esc closes Settings after cancelling inline edits first. Keep sheet cancellation intact. Add Cmd+P as the owner's additional Settings shortcut and retain standard Cmd+,. Supply relevant native menu commands for close, find, hide, minimize, quit and text editing; local recording must take precedence. Research primary Apple references and verify routing with native fixtures and deliberate desktop actions.
+
+## Stage 6k — Remembered caffeine and transient errors (owner additions)
+
+Persist local caffeine/decaf mode and optional expiry. Restore indefinite or remaining timed sessions, not expired ones; snapshot before releasing on quit and suppress initial/cleanup observer writes. Test with fake assertions and Codable fixtures, without changing actual power state merely to test. Clear launcher errors/input on every hide and reject late results before they can be remembered or shown on reopen.
 
 ## Stage 7 — Daily-use verification and source-build handoff
 

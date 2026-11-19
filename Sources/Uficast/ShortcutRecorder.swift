@@ -28,6 +28,7 @@ final class ShortcutRecorderButton: NSButton {
     var onBegin: (() -> Void)?
     var onEnd: (() -> Void)?
     private var recording = false
+    var isRecording: Bool { recording }
     override var acceptsFirstResponder: Bool { true }
     init() {
         super.init(frame: .zero)

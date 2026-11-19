@@ -6,6 +6,19 @@ import UficastCore
 struct UficastMain {
     @MainActor
     static func main() {
+        if CommandLine.arguments.contains("--verify-keyboard-shortcuts") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try KeyboardVerification.run()
+                print("PASS: Settings shortcuts, Find, Escape precedence and hotkey recording priority.")
+            } catch {
+                FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
+            return
+        }
         if CommandLine.arguments.contains("--verify-script-feedback") {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)

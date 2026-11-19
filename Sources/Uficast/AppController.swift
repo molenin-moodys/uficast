@@ -18,6 +18,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     private let keepAwakeToggle = NSMenuItem(title: "Keep Awake", action: nil, keyEquivalent: "")
     private let keepAwakeDetail = NSMenuItem(title: "Automatic sleep allowed", action: nil, keyEquivalent: "")
     private var powerRevision: UInt64 = 0
+    private var restoringPower = true
+    private let savedPowerKey = "keepAwakeSession.v1"
     private var didLoadConfiguration = false
     private var didReconcileKeyboard = false
     private var isTerminating = false
@@ -93,10 +95,22 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         settingsModel.onEndShortcutRecording = { [weak self] in self?.hotkey.start() }
         settingsModel.onSetKeepAwake = { [weak self] in self?.changeKeepAwake(enabled: $0) }
         settingsModel.onKeepAwakeFor = { [weak self] in self?.changeKeepAwake(enabled: true, seconds: $0) }
+        let savedPower = UserDefaults.standard.data(forKey: savedPowerKey)
+            .flatMap { try? JSONDecoder().decode(SavedKeepAwakeSession.self, from: $0) } ?? SavedKeepAwakeSession()
+        settingsModel.isKeepAwakeBusy = true
         Task {
             await keepAwake.setObserver { [weak self] state, error in
                 Task { @MainActor [weak self] in self?.updateKeepAwake(state, error: error) }
             }
+            guard !isTerminating else { return }
+            var restoreError: String?
+            do { try await keepAwake.restore(savedPower) }
+            catch { restoreError = error.localizedDescription }
+            guard !isTerminating else { return }
+            let state = await keepAwake.state
+            restoringPower = false
+            updateKeepAwake(state, error: restoreError)
+            settingsModel.isKeepAwakeBusy = false
         }
         updateLoginItemStatus()
         devices.onChange = { [weak self] in self?.reconcileKeyboard(reapplyOwned: true) }
@@ -111,6 +125,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     func applicationWillTerminate(_ notification: Notification) { hotkey.stop(); devices.stop() }
 
     func applicationDidBecomeActive(_ notification: Notification) { updateLoginItemStatus() }
+    func applicationDidHide(_ notification: Notification) { launcher.dismiss(restoreFocus: false) }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         launcher.show()
@@ -125,6 +140,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
             await scriptRunner.cancelAll()
             await scriptRunner.waitUntilIdle()
             await keepAwake.waitUntilIdle()
+            if !restoringPower { rememberPower(await keepAwake.state) }
             _ = try? await keepAwake.disable()
             await keyboard.waitUntilIdle()
             if !settingsModel.isReadOnly { _ = try? await keyboard.reconcile(enabled: false) }
@@ -147,6 +163,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(focusSearch) || menuItem.action == #selector(openSettings) {
+            return NSApp.keyWindow?.sheetParent == nil && NSApp.keyWindow?.attachedSheet == nil
+        }
         if menuItem.action == #selector(toggleKeepAwake) || menuItem.action == #selector(keepAwakeFor(_:)) {
             return !settingsModel.isKeepAwakeBusy && !isTerminating
         }
@@ -172,6 +191,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     private func updateKeepAwake(_ state: KeepAwakeState, error: String?) {
         guard state.revision >= powerRevision else { return }
         powerRevision = state.revision
+        if !restoringPower && !isTerminating { rememberPower(state) }
         settingsModel.keepAwakeActive = state.isActive
         keepAwakeToggle.state = state.isActive ? .on : .off
         let detail: String
@@ -182,6 +202,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         settingsModel.keepAwakeStatus = error.map { "\(detail) \($0)" } ?? detail
         statusItem.button?.image = NSImage(systemSymbolName: state.isActive ? "cup.and.saucer.fill" : "zzz",
                                           accessibilityDescription: state.isActive ? "Uficast — Keep Awake on" : "Uficast — Keep Awake off")
+    }
+
+    private func rememberPower(_ state: KeepAwakeState) {
+        if let data = try? JSONEncoder().encode(SavedKeepAwakeSession(state: state)) {
+            UserDefaults.standard.set(data, forKey: savedPowerKey)
+        }
     }
 
     private func reconcileKeyboard(reapplyOwned: Bool = false) {
@@ -484,26 +510,15 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     }
 
     private func installMainMenu() {
-        let main = NSMenu()
-        let app = NSMenuItem()
-        let appMenu = NSMenu()
-        appMenu.addItem(item("Settings…", #selector(openSettings), key: ","))
-        appMenu.addItem(item("Quit Uficast", #selector(quit), key: "q"))
-        app.submenu = appMenu
-        main.addItem(app)
-        let edit = NSMenuItem()
-        let editMenu = NSMenu(title: "Edit")
-        for (title, action, key) in [
-            ("Undo", "undo:", "z"), ("Redo", "redo:", "Z"),
-            ("Cut", "cut:", "x"), ("Copy", "copy:", "c"),
-            ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a"),
-        ] {
-            let menuItem = NSMenuItem(title: title, action: NSSelectorFromString(action), keyEquivalent: key.lowercased())
-            if title == "Redo" { menuItem.keyEquivalentModifierMask = [.command, .shift] }
-            editMenu.addItem(menuItem)
-        }
-        edit.submenu = editMenu
-        main.addItem(edit)
+        let main = AppMenu.make(target: self, settings: #selector(openSettings), quit: #selector(quit), find: #selector(focusSearch))
         NSApp.mainMenu = main
+        NSApp.windowsMenu = main.item(withTitle: "Window")?.submenu
+    }
+
+    @objc private func focusSearch() {
+        if settings.window?.isKeyWindow == true {
+            settingsModel.section = "Commands"
+            settingsModel.searchFocusRequest += 1
+        } else { launcher.focusSearch() }
     }
 }

@@ -66,7 +66,7 @@ These choices let implementation proceed without another questionnaire. They may
 - Cmd+V, Cmd+A, Cmd+C, Cmd+X, undo/redo, cursor navigation, and input methods work normally.
 - Submit the entire field as one argument. Preserve spaces, quotation marks, Unicode, and pasted newlines. Enter submits; do not split or evaluate pasted content as shell source.
 - A required argument must contain a non-whitespace character, but validation must not trim the value passed to the process.
-- The panel stays open while a script executes and closes on success. Failure appears in its lower section with exit/timeout and stderr (stdout fallback); Edit Input restores the submitted argument without running it. Enter explicitly retries. If the owner dismissed/navigated away, completion must not reopen or overwrite the new view. The last failure/input may be offered on deliberate reopen, in memory only. Immediate validation errors stay in the field.
+- The panel stays open while a script executes and closes on success. Failure appears in its lower section with exit/timeout and stderr (stdout fallback); Edit Input restores the submitted argument without running it. Enter explicitly retries. If the owner dismissed/navigated away, completion must not reopen or overwrite the new view. Hiding for any reason clears failure/input; late completion cannot restore it, and deliberate reopening starts clean. Immediate validation errors stay in the field.
 
 ## Settings reference
 
@@ -108,5 +108,11 @@ Shortcuts/Kasa, clipboard history, snippets, file search, window management, cal
 - App shortcuts use physical key code/modifiers; duplicate combinations are rejected regardless of display labels. While recording, Uficast temporarily releases its own registrations and restores them when recording ends.
 - Show/hide means activate/unhide a background app, hide an already active app, and launch a closed app. This applies to the application, not individual windows.
 - App icons load on a serial background queue as small bitmap data. Completion updates only the matching existing launcher cell; search, selection and scroll position must remain stable.
-- Keep Awake uses native IOPM idle-system-sleep assertions, default off, with indefinite/30-minute/one-hour sessions. Show a cup icon while active and a `zzz` sleep icon while off (including startup and decaf mode). Release exactly this app's assertion on stop, expiry or quit. Display sleep and explicit system/lid sleep behavior remain governed by macOS.
+- Keep Awake uses native IOPM idle-system-sleep assertions, off on first installation, with indefinite/30-minute/one-hour sessions. Remember the last active/off state locally across exits; timed sessions resume the remaining deadline or stay off if expired. Show a cup icon while active and a `zzz` sleep icon while off (including startup and decaf mode). Release exactly this app's assertion on stop, expiry or quit. Display sleep and explicit system/lid sleep behavior remain governed by macOS.
 - Verify actual login after enabling start-at-login, multiple physical keyboards, reconnect/wake, per-app show/hide cycles and a real idle-sleep session. Record observed outcomes separately from fixture tests.
+
+## Keyboard conventions (owner additions)
+
+- Settings opens locally with Cmd+, and the owner's additional Cmd+P (macOS normally uses Cmd+P for printing). Esc closes Settings, except that inline alias/hotkey edits consume the first Esc to cancel; script sheets retain their own Cancel behavior.
+- Provide standard menu commands: Cmd+W close window/panel, Cmd+F search (Commands in Settings), Cmd+H hide, Option+Cmd+H hide others, Cmd+M minimize Settings and Cmd+Q quit. Preserve normal text editing, undo/redo and focus navigation. No additional global keyboard registrations or input observation.
+- Follow Apple's documented conventions where applicable; a launcher has no document printing/opening/tab system to assign those commands to.

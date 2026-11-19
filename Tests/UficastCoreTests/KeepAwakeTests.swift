@@ -20,6 +20,41 @@ private actor FixtureAssertions: SleepAssertionBackend {
     func failRelease(_ fail: Bool) { releaseFails = fail }
 }
 
+@Test func restoresRememberedModeAndReleasesOnlyTheCurrentProcessAssertion() async throws {
+    let firstBackend = FixtureAssertions()
+    let first = KeepAwakeService(backend: firstBackend)
+    try await first.enable()
+    let saved = SavedKeepAwakeSession(state: await first.state)
+    #expect(try JSONDecoder().decode(SavedKeepAwakeSession.self, from: JSONEncoder().encode(saved)) == saved)
+    try await first.disable() // Quit releases the assertion, not the remembered mode.
+    #expect(await firstBackend.releases == [101])
+    let nextBackend = FixtureAssertions()
+    let next = KeepAwakeService(backend: nextBackend)
+    try await next.restore(saved)
+    #expect(await next.state.isActive)
+    #expect(await nextBackend.acquisitions == 1)
+    #expect(await next.state.expiresAt == nil)
+    try await next.disable()
+    let off = SavedKeepAwakeSession(state: await next.state)
+    try await next.restore(off)
+    #expect(await next.state.isActive == false)
+    #expect(await nextBackend.acquisitions == 1)
+}
+
+@Test func timedSessionRestoresOnlyRemainingTimeAndExpiredSessionsStayOff() async throws {
+    let backend = FixtureAssertions()
+    let service = KeepAwakeService(backend: backend)
+    let now = Date()
+    let deadline = now.addingTimeInterval(60)
+    try await service.restore(SavedKeepAwakeSession(isActive: true, expiresAt: deadline), now: now.addingTimeInterval(20))
+    let expiry = try #require(await service.state.expiresAt)
+    #expect(abs(expiry.timeIntervalSinceNow - 40) < 2)
+    try await service.disable()
+    try await service.restore(SavedKeepAwakeSession(isActive: true, expiresAt: deadline), now: deadline)
+    #expect(await service.state.isActive == false)
+    #expect(await backend.acquisitions == 1)
+}
+
 @Test func keepAwakeStartsOffAndRenewalReusesExactlyOneOwnedAssertion() async throws {
     let backend = FixtureAssertions()
     let service = KeepAwakeService(backend: backend)
