@@ -45,6 +45,9 @@ final class SettingsModel: ObservableObject {
     var onKeepAwakeFor: ((TimeInterval) -> Void)?
     @Published var hotkeyErrors: [String: String] = [:]
     var onSetLauncherHotkey: ((GlobalShortcut?) -> Void)?
+    var onSetAICommand: ((String) -> Void)?
+    var onSetAIHotkey: ((AITextAction, GlobalShortcut?) -> Void)?
+    @Published var aiHotkeyErrors: [AITextAction: String] = [:]
     var onBeginShortcutRecording: (() -> Void)?
     var onEndShortcutRecording: (() -> Void)?
 
@@ -351,6 +354,8 @@ private struct SettingsView: View {
                 }
                 Text("If Spotlight or Raycast uses the same shortcut, release it in their settings. Uficast does not change those assignments.")
                     .font(.caption).foregroundStyle(.secondary)
+                Divider()
+                AITextSettings(model: model)
                 Divider()
                 Text("Keep Awake").font(.title2.bold())
                 Toggle("Keep Mac awake", isOn: Binding(get: { model.keepAwakeActive }, set: { model.onSetKeepAwake?($0) }))

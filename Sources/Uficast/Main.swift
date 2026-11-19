@@ -153,7 +153,15 @@ struct UficastMain {
                                               styleMask: [.borderless], backing: .buffered, defer: false)
                         window.contentView = NSHostingView(rootView: ScriptEditor(model: model, script: command))
                         try ViewPreview.write(window.contentView!, to: path)
-                    } else { try SettingsWindowController(model: model).renderPreview(to: path) }
+                    } else {
+                        let controller = SettingsWindowController(model: model)
+                        // Development-only: a taller window shows sections further down General.
+                        if let index = CommandLine.arguments.firstIndex(of: "--height"), CommandLine.arguments.indices.contains(index + 1),
+                           let height = Double(CommandLine.arguments[index + 1]) {
+                            controller.window?.setContentSize(NSSize(width: 980, height: height))
+                        }
+                        try controller.renderPreview(to: path)
+                    }
                 }
                 print("Wrote offscreen preview: \(path.path)")
             } catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }

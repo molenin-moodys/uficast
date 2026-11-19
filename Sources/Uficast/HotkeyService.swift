@@ -11,18 +11,24 @@ final class HotkeyService {
     private var appIDs: [UInt32: String] = [:]
     private var appShortcuts: [String: GlobalShortcut] = [:]
     private var launcherShortcut = GlobalShortcut.launcher
+    private var aiShortcuts: [AITextAction: GlobalShortcut] = [:]
+    /// Carbon IDs: 1 launcher, 2… applications, these for the AI clipboard actions.
+    private static let aiIDs: [AITextAction: UInt32] = [.rewrite: 1000, .translate: 1001]
     private let signature: OSType = 0x55464943
     var onToggle: (() -> Void)?
     var onAppToggle: ((String) -> Void)?
+    var onAIAction: ((AITextAction) -> Void)?
     var onStatusChange: (() -> Void)?
     private(set) var appErrors: [String: String] = [:]
+    private(set) var aiErrors: [AITextAction: String] = [:]
     private(set) var status = "Shortcut is not registered."
     private(set) var lastError: OSStatus = noErr
     var isRunning: Bool { registrations[1] != nil }
 
-    func configure(launcher: GlobalShortcut, appShortcuts: [String: GlobalShortcut]) {
-        guard launcherShortcut != launcher || self.appShortcuts != appShortcuts else { return }
+    func configure(launcher: GlobalShortcut, ai: [AITextAction: GlobalShortcut], appShortcuts: [String: GlobalShortcut]) {
+        guard launcherShortcut != launcher || aiShortcuts != ai || self.appShortcuts != appShortcuts else { return }
         launcherShortcut = launcher
+        aiShortcuts = ai
         self.appShortcuts = appShortcuts
         start()
     }
@@ -41,6 +47,7 @@ final class HotkeyService {
     func start() {
         stop()
         appErrors = [:]
+        aiErrors = [:]
         var types = [
             EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
             EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased)),
@@ -63,6 +70,11 @@ final class HotkeyService {
         let name = launcherShortcut.display
         status = lastError == noErr ? "\(name) registered. Release matching Spotlight/Raycast shortcuts if needed."
             : "\(name) unavailable (error \(lastError)). Release it in other apps, then Retry."
+        for action in AITextAction.allCases {
+            guard let shortcut = aiShortcuts[action], let id = Self.aiIDs[action] else { continue }
+            let code = register(shortcut, id: id)
+            if code != noErr { aiErrors[action] = "Shortcut unavailable (error \(code)). Release it in other apps, then Retry." }
+        }
         for (offset, id) in appShortcuts.keys.sorted().enumerated() {
             let token = UInt32(offset + 2)
             let code = register(appShortcuts[id]!, id: token)
@@ -101,6 +113,7 @@ final class HotkeyService {
         states[identity.id] = state
         if trigger {
             if identity.id == 1 { onToggle?() }
+            else if let action = Self.aiIDs.first(where: { $0.value == identity.id })?.key { onAIAction?(action) }
             else if let app = appIDs[identity.id] { onAppToggle?(app) }
         }
         return noErr
