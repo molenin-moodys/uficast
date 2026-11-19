@@ -187,7 +187,7 @@ Persist local caffeine/decaf mode and optional expiry. Restore indefinite or rem
 
 ## Stage 6l — Day-O menu-bar calendar experiment (owner addition)
 
-Use the separately requested codex/day0-calendar-experiment branch after the adjacent chat completes. Make the clock Uficast's single status button; preserve Keep Awake through its menu. Use the standard compact AppKit NSDatePicker found in Day-O, with month browsing/Today and reset on opening. Add General format/Show Icon preferences with backward-compatible persistence. Keep diagnostics out of the root menu so it stays narrow. Anchor seconds to system boundaries and resynchronize after wake/time changes.
+Use the separately requested codex/day0-calendar-experiment branch after the adjacent chat completes. Make the clock Uficast's single status button; preserve Keep Awake through its menu. Use the standard compact AppKit NSDatePicker found in Day-O, with month browsing/Today and reset on opening. Add General format/Show Icon preferences with backward-compatible persistence. Keep diagnostics out of the root menu so it stays narrow. Verify horizontal centering inside an actual open NSMenu, including when command rows widen it. Keep a zzz/cup state indicator to the left of the calendar within the single button. Anchor seconds to system boundaries and resynchronize after wake/time changes.
 
 Validate legacy config/defaults/round trip/format limits, native light/dark previews, native menu-tracking tick phases, release build and signature. Record actual menu navigation and side-by-side timing separately; never claim unperformed physical checks. Keep this experiment out of main until the owner accepts it.
 

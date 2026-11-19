@@ -6,6 +6,13 @@ import UficastCore
 struct UficastMain {
     @MainActor
     static func main() {
+        if CommandLine.arguments.contains("--preview-calendar-menu") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.accessory)
+            application.finishLaunching()
+            CalendarMenuPreview().run()
+            return
+        }
         if CommandLine.arguments.contains("--verify-menu-clock") {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)

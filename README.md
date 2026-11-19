@@ -152,7 +152,7 @@ Assign **F19** to **Select the previous input source** under macOS **Input Sourc
 
 In the launcher, run **caffeine** (or **cafe**) to stay awake until stopped, and **decaffeine** (or **decafe**) to allow idle sleep again. Fuzzy input and U.S./Russian wrong-layout search apply to these commands too. An explicit user alias wins if it reuses a built-in abbreviation; full command names remain searchable. These commands use the same native assertion as the menu and Settings.
 
-Use the menu bar **Keep Awake** toggle or choose **30 Minutes**, **1 Hour**, or **Until Stopped**. General offers the same controls. With the clock enabled, its button opens the calendar and Keep Awake submenu; the toggle and tooltip show the power state. Disabling the clock restores a cup during an active session and a `zzz` sleep icon when off. A native, process-owned IOPM assertion prevents idle system sleep; no `caffeinate` child process or Accessibility permission is used.
+Use the menu bar **Keep Awake** toggle or choose **30 Minutes**, **1 Hour**, or **Until Stopped**. General offers the same controls. With the clock enabled, its button opens the calendar and Keep Awake submenu; a `zzz` or cup indicator to the left of the calendar shows the power state, along with the toggle and tooltip. Disabling the clock restores a cup during an active session and a `zzz` sleep icon when off. A native, process-owned IOPM assertion prevents idle system sleep; no `caffeinate` child process or Accessibility permission is used.
 
 The last caffeine/decaf mode is remembered locally and restored on relaunch. Timed sessions resume their remaining time; an already expired session stays off. A fresh installation starts off. Quit releases the process-owned assertion while preserving the remembered mode for the next launch. The display may dim or sleep; explicit Sleep, closing the lid, low battery and other macOS sleep reasons still apply. This is the behavior of Apple's [idle-system-sleep assertion](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep).
 
@@ -160,7 +160,7 @@ The last caffeine/decaf mode is remembered locally and restored on relaunch. Tim
 
 The clock is Uficast's one menu-bar button. Click it for a compact native calendar, use its arrows to browse months and the dot to return to today. Each opening starts at today. The menu also offers Open Launcher, Settings, macOS Date & Time, Keep Awake and Quit.
 
-In **Settings → General → Menu Bar Calendar**, edit **Date & Time Format** and press Enter or Apply. **Show Icon** controls the calendar/day icon beside the text. The default `EEE HH:mm:ss` shows weekday and 24-hour time; `E h:mm:ss a` uses 12-hour time. A preview updates while you edit. Disabling date/time restores the cup/zzz button.
+In **Settings → General → Menu Bar Calendar**, edit **Date & Time Format** and press Enter or Apply. **Show Icon** controls the calendar/day icon beside the text; the `zzz`/cup power indicator stays visible to its left. The default `EEE HH:mm:ss` shows weekday and 24-hour time; `E h:mm:ss a` uses 12-hour time. A preview updates while you edit. Disabling date/time restores the cup/zzz button.
 
 Seconds are scheduled at system-second boundaries, including during menu tracking, and resynchronize after wake or time-zone/clock changes. Calendar browsing uses AppKit NSDatePicker; it does not read calendar events/accounts.
 
