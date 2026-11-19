@@ -4,7 +4,7 @@ Last updated: November 18, 2026 (America/Los_Angeles).
 
 ## Current state
 
-Requested personal-use features through Stage 6d are implemented. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. The owner requested commit/push, followed by a README with screenshots containing only neutral standard-app fixtures.
+Requested personal-use features through Stage 6d are implemented. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 was committed and pushed to origin/main. The subsequent README update uses screenshots containing only neutral standard-app fixtures.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ Requested personal-use features through Stage 6d are implemented. Mandatory: ord
 | 6b — Keep Awake | Implemented | Native power assertion with injected-backend tests; real idle-sleep session pending. |
 | 6c — Lifecycle, app shortcuts and icons | Implemented | Real startup/gear/singleton and launcher/Settings icon observations; core shortcut/lock fixtures pass. |
 | 6d — Wrong-layout search | Implemented | Both U.S./Russian directions, alias ordering, mixed input and ё/й fixtures pass. |
-| 7 — Daily-use handoff | Partial | Source-build guide present; neutral screenshots and clean-source build next. Manual evidence gaps listed below. |
+| 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
 
@@ -48,11 +48,17 @@ Requested personal-use features through Stage 6d are implemented. Mandatory: ord
 - Real timed/indefinite idle-sleep prevention, expiry and stop (fake-backend tests are not sleep acceptance).
 - Other Macs, Intel and older macOS versions have not been tested.
 
-## Repository delivery and next step
+## README and repository delivery
 
-Finish the current isolated release check, review the diff and commit/push implemented work. SSH authentication has no usable key; existing authenticated `gh` HTTPS credentials can be used with command-scoped git URL rewriting and credential helper, without changing the remote/global configuration. Never print credentials or force-push.
+- Implementation checkpoint **69b1310** is pushed to origin/main. SSH authentication had no key; push used existing `gh` HTTPS credentials with command-scoped URL rewriting/helper, without changing the remote/global configuration. Configured 1Password signing was unavailable, so the commit used command-scoped `commit.gpgsign=false`; no global setting changed.
+- README now describes features, build/run, configuration, scripts and keyboard setup, with three actual native-view screenshots: standard-app launcher, Commands with example aliases/hotkey, and dark argument mode. Images were visually inspected; no personal data, internal URLs, home paths or desktop content is shown.
+- `ViewPreview` owns hard-coded Calculator/Calendar/Notes/Safari/Terminal and generic Search Example fixtures. Preview paths do not construct AppController, discover installed apps, read personal config, register hotkeys or change mappings/login/power state. `scripts/screenshots.sh [bundle.app]` reproduces the PNGs under `docs/screenshots/`.
+- Screenshot review exposed and fixed an empty-query regression in Settings: blank/whitespace search now retains all entries. The final Commands capture visibly includes all six fixture commands and their icons/aliases.
+- Current preview release build and strict signature check passed. A separate source-only snapshot (without Git metadata, caches or private configuration) also built successfully using the documented `scripts/build.sh`, including strict signature verification. All relative Markdown file/image links resolve; shell syntax and diff whitespace checks passed. Native screenshots verify layout, not physical input.
 
-Then create README screenshots from isolated, hard-coded standard macOS application fixtures, with no personal configuration, paths, internal URLs or desktop background. Visually inspect every PNG, document their fixture origin, update this handoff, commit and push that documentation increment. Keep the existing uppercase README.md rather than a case-only duplicate.
+The README/preview increment is ready for its commit/push; use Git history/status to verify delivery rather than relying on a predicted hash. The current running canonical `dist/Uficast.app` was not replaced while running; latest source was built into isolated `.build/readme-app` and `.build/clean-source-check/dist` paths. Rebuild/restart the canonical bundle when the owner wants to try the latest source.
+
+Next product work is the remaining owner-led daily-use acceptance above; do not mark it complete from automated/preview results. No new feature implementation is implied by this handoff.
 
 ### Earlier cursor report checkpoint
 

@@ -47,6 +47,7 @@ final class SettingsModel: ObservableObject {
         let queries = KeyboardLayoutSearch.variants(query)
         return configuration.entries(catalog: catalogEntries).filter { entry in
             guard filter == "All" || (filter == "Apps" ? entry.kind == .application : entry.kind == .script) else { return false }
+            if queries == [""] { return true }
             let name = SearchText.normalize(entry.name)
             let alias = SearchText.normalize(entry.alias ?? "")
             return queries.contains { name.contains($0) || alias.contains($0) }

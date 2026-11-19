@@ -33,19 +33,12 @@ struct UficastMain {
                 if CommandLine.arguments[flag] == "--preview-launcher" {
                     try LauncherPanelController().renderPreview(to: path, argumentMode: CommandLine.arguments.contains("--argument"))
                 } else {
-                    let model = SettingsModel()
-                    model.isBusy = false
-                    model.status = "Settings ready."
+                    let model = ViewPreview.settingsModel()
                     if CommandLine.arguments.contains("--general") { model.section = "General" }
-                    model.configuration.scripts = [ScriptCommand(name: "Kibana", alias: "k", path: "/tmp/fixture.py")]
-                    model.catalogEntries = [
-                        LauncherEntry(id: "fixture-kitty", name: "kitty", fileURL: URL(fileURLWithPath: "/tmp/kitty.app")),
-                        LauncherEntry(id: "fixture-browser", name: "Browser", fileURL: URL(fileURLWithPath: "/tmp/Browser.app")),
-                    ]
                     if CommandLine.arguments[flag] == "--preview-script-editor" {
                         var command = model.configuration.scripts[0]
                         command.requiresArgument = true
-                        command.argumentPlaceholder = "log_stream"
+                        command.argumentPlaceholder = "Search text"
                         command.interpreter = "/usr/bin/python3"
                         command.resultMode = .openURL
                         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 680, height: 720),

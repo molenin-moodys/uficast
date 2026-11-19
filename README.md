@@ -1,22 +1,36 @@
 # Uficast
 
-A personal, native macOS launcher for applications and local scripts, inspired by the small subset of Raycast its owner uses.
+A lightweight, native macOS launcher for applications and local scripts. Built with Swift and AppKit, with no external packages.
 
 **Status:** personal-use feature implementation is available. Automated checks and selected desktop flows pass; remaining hands-on acceptance is tracked in [PROGRESS](docs/plan/PROGRESS.md).
 
-## Agreed scope
+## Features
 
-- Swift + AppKit; English interface and project documentation.
-- Open with **Command + Space**, using either Command key; no Accessibility or Input Monitoring requirement.
-- Find and launch applications, with exact aliases ahead of fuzzy name matches and U.S./Russian wrong-layout search.
-- Run local shell scripts, AppleScript, and other explicitly configured executables.
-- Select a command with `k` → `Tab`, paste one text argument with `Cmd+V`, and press `Enter` to run it; support opening a generated URL.
-- Raycast-inspired launcher and settings UI, with real application icons in both.
-- Opening the app immediately shows the launcher. Only one instance runs; opening another copy reveals the existing launcher.
-- Per-application global shortcuts bring an app forward, hide it when already active, or launch it if closed.
-- Built-in Keep Awake sessions and an optional start-at-login checkbox.
-- Optional Caps Lock → F19 remapping; use macOS's input-source shortcut to switch between the two existing layouts.
-- Build from source on each personal Mac. No App Store release or cloud service is planned.
+- **Cmd+Space launcher** with application icons, fuzzy search and aliases that rank first.
+- **Wrong-layout search** for U.S./Russian keyboards: type `сркщьу` to find Chrome without changing layouts.
+- **Local scripts** using shell, AppleScript or another configured interpreter. Pass one unchanged text argument and optionally open a generated URL.
+- **Per-app shortcuts** to show, hide or launch an application.
+- **Keep Awake** with timed or indefinite sessions, plus optional start at login.
+- **Caps Lock → F19** remapping for macOS input-source switching, with mapping ownership and keyboard-conflict diagnostics.
+- **Native menu bar app** with light/dark appearance, a Settings gear in the launcher and one running instance per user.
+
+No Accessibility or Input Monitoring access is required. The interface is English. Uficast is intended for personal builds on macOS; distribution and notarization are not included.
+
+## Screenshots
+
+These are captures of the actual app views rendered with a fixed demonstration dataset: standard macOS apps and a generic example script. They do not use personal configuration, scan the installed-app catalog or capture the desktop. The shown aliases and shortcut are examples.
+
+**Launcher** — standard apps, aliases and keyboard navigation.
+
+![Launcher showing Calculator, Calendar, Notes, Safari and Terminal](docs/screenshots/launcher.png)
+
+**Commands** — application icons, aliases, enabled state and per-app shortcuts.
+
+![Commands settings with standard macOS applications and a sample shortcut](docs/screenshots/commands.png)
+
+**Script argument** — one text input, shown in dark appearance.
+
+![Dark launcher with a generic Search Example command and release notes argument](docs/screenshots/argument.png)
 
 ## Planning documents
 
@@ -80,15 +94,21 @@ dist/Uficast.app/Contents/MacOS/Uficast --preview-launcher .build/previews/argum
 dist/Uficast.app/Contents/MacOS/Uficast --preview-settings .build/previews/settings.png
 ```
 
-Previews verify layout; desktop keyboard delivery, focus, paste and browser behavior require the manual checklist.
+Regenerate the README images from these public fixtures:
+
+```sh
+scripts/screenshots.sh
+# Or pass an isolated build:
+# scripts/screenshots.sh .build/readme-app/Uficast.app
+```
+
+The preview path does not construct AppController, load personal configuration, register hotkeys, run scripts or change keyboard/login/power settings. It loads icons only from the fixed standard-app paths. Previews verify layout; desktop keyboard delivery, focus, paste and browser behavior require the manual checklist.
 
 ## Caps Lock and multiple keyboards
 
 In **General**, enable **Map Caps Lock to F19**. For each keyboard, open macOS **Keyboard → Keyboard Shortcuts → Modifier Keys** and leave the source key as **Caps Lock → Caps Lock**. A system assignment such as Caps Lock → Option or No Action can override the intended source, even when hidutil reports the correct F19 table. Uficast diagnoses conflicting modifier profiles without rewriting them automatically.
 
 Assign **F19** to **Select the previous input source** under macOS **Input Sources**. With two layouts, that switches between them. Keep Uficast running: normal Quit restores its owned mapping; optional start-at-login reapplies the saved preference. Wake and device/service notifications re-publish an owned global table for newly connected keyboard services. Existing identical mappings stay externally managed; competing mappings are preserved and reported. Ownership recovery is local to this Mac and excluded from configuration export.
-
-The owner confirmed physical Caps Lock switching after the current keyboard's system modifier assignment was restored from Option to Caps Lock. Simultaneous external-keyboard and relogin checks are still pending.
 
 ## Keep Awake
 

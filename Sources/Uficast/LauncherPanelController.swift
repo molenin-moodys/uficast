@@ -171,13 +171,13 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     }
 
     func renderPreview(to url: URL, argumentMode: Bool) throws {
-        let command = ScriptCommand(name: "Kibana", alias: "k", path: "/tmp/kibana-example.py",
-                                    requiresArgument: true, argumentPlaceholder: "log_stream")
-        field.stringValue = "k"
-        setEntries([command.entry,
-                    LauncherEntry(id: "fixture-kitty", name: "kitty", fileURL: URL(fileURLWithPath: "/tmp/kitty.app")),
-                    LauncherEntry(id: "fixture-keyboard", name: "Keyboard", fileURL: URL(fileURLWithPath: "/tmp/Keyboard.app"))])
-        if argumentMode { enterArgument(command) }
+        field.stringValue = ""
+        setEntries(ViewPreview.applications)
+        if argumentMode {
+            enterArgument(ViewPreview.command)
+            argumentInput.string = "release notes"
+            placeholder.isHidden = true
+        }
         guard let view = panel.contentView else { return }
         try ViewPreview.write(view, to: url)
     }
