@@ -29,7 +29,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         NSApp.setActivationPolicy(.accessory)
         installMainMenu()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "command.square", accessibilityDescription: "Uficast")
+        statusItem.button?.image = NSImage(systemSymbolName: "zzz", accessibilityDescription: "Uficast — Keep Awake off")
         let menu = NSMenu()
         menu.addItem(item("Open Launcher", #selector(openLauncher)))
         menu.addItem(item("Settings…", #selector(openSettings), key: ","))
@@ -178,8 +178,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         } else { detail = "Automatic idle sleep is allowed." }
         keepAwakeDetail.title = detail
         settingsModel.keepAwakeStatus = error.map { "\(detail) \($0)" } ?? detail
-        statusItem.button?.image = NSImage(systemSymbolName: state.isActive ? "cup.and.saucer.fill" : "command.square",
-                                          accessibilityDescription: state.isActive ? "Uficast — Keep Awake on" : "Uficast")
+        statusItem.button?.image = NSImage(systemSymbolName: state.isActive ? "cup.and.saucer.fill" : "zzz",
+                                          accessibilityDescription: state.isActive ? "Uficast — Keep Awake on" : "Uficast — Keep Awake off")
     }
 
     private func reconcileKeyboard(reapplyOwned: Bool = false) {

@@ -4,7 +4,7 @@ Last updated: November 18, 2026 (America/Los_Angeles).
 
 ## Current state
 
-Requested personal-use features through Stage 6f are implemented. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. The current increment adds inline hotkey editing/removal and built-in caffeine commands; screenshots use only neutral standard-app fixtures.
+Requested personal-use features through Stage 6f are implemented. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. The current polish changes inactive Keep Awake icons to zzz; screenshots use only neutral standard-app fixtures.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
@@ -69,6 +69,12 @@ The README checkpoint **2db8863** is pushed. The canonical `dist/Uficast.app` ha
 - BuiltInCommand appends stable command entries to launcher search, with cafe/decafe aliases and cup icons. Execution routes directly to the shared native power service: enable indefinitely / disable. Explicit user aliases override conflicting abbreviations. Built-ins are not stored as editable script/app records.
 - Current release build and strict signature verification passed; the native recorder check passed on that final bundle. **42 core tests passed**, including exact/abbreviated/fuzzy/wrong-layout built-in searches and alias precedence. Real power effects remain covered by the existing manual acceptance gap, not inferred from search.
 - README/requirements/architecture/stages/manual checklist updated. The Commands screenshot was regenerated from public fixtures and visually inspected: real standard-app icons and × controls appear in both places, with no personal data.
+
+## Decaf icon polish
+
+- Owner requested a sleep zzz icon in decaf mode. The status item now uses SF Symbol `zzz` both at initial startup and whenever Keep Awake is inactive; active sessions keep the filled cup. Inactive accessibility text explicitly says Keep Awake off. The decaffeine launcher command also uses zzz.
+- `scripts/build.sh` passed release compilation and strict signature verification. The canonical app was normally quit before replacing its bundle and successfully reopened. Its AX tree recognized the decaffeine symbol as Snooze. The menu bar appearance itself was not separately captured, and no power session was toggled for verification.
+- No power logic or configuration changed. Existing 42-test results are from the preceding feature checkpoint; the suite was not rerun for this symbol-only edit. README, requirements, architecture and the plan were updated.
 
 Next product work is the remaining owner-led daily-use acceptance above; do not mark it complete from automated/preview results. No new feature implementation is implied by this handoff.
 

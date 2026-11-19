@@ -163,7 +163,7 @@ Double-click an application's Hotkey cell to record inline. Escape cancels witho
 
 ## Stage 6f — Built-in caffeine commands (owner addition)
 
-Add caffeine / decaffeine entries and cafe / decafe abbreviations to launcher search. Use the existing native power service for indefinite enable and disable; do not spawn scripts. Cover exact/short/fuzzy/wrong-layout searches and user-alias precedence. Keep real power acceptance separate from fixture tests.
+Add caffeine / decaffeine entries and cafe / decafe abbreviations to launcher search. Show a cup while active and zzz in decaf mode, including startup and the decaffeine result icon. Use the existing native power service for indefinite enable and disable; do not spawn scripts. Cover exact/short/fuzzy/wrong-layout searches and user-alias precedence. Keep real power acceptance separate from fixture tests.
 
 ## Stage 7 — Daily-use verification and source-build handoff
 

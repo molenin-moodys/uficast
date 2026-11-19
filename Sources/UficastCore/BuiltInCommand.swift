@@ -9,7 +9,7 @@ public enum BuiltInCommand: String, CaseIterable, Sendable {
     }
 
     public var keepsAwake: Bool { self == .caffeine }
-    public var symbolName: String { keepsAwake ? "cup.and.saucer.fill" : "cup.and.saucer" }
+    public var symbolName: String { keepsAwake ? "cup.and.saucer.fill" : "zzz" }
     public var entry: LauncherEntry {
         LauncherEntry(id: "builtin:\(rawValue)", name: rawValue, kind: .builtIn,
                       fileURL: URL(string: "uficast://command/\(rawValue)")!,
