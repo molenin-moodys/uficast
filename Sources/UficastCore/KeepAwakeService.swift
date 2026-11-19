@@ -10,7 +10,9 @@ public struct SystemSleepAssertions: SleepAssertionBackend {
     public init() {}
     public func acquire() async throws -> UInt32 {
         var id: IOPMAssertionID = 0
-        let result = IOPMAssertionCreateWithName(kIOPMAssertPreventUserIdleSystemSleep as CFString,
+        // Keeping the display awake also prevents idle system sleep. A system-
+        // only assertion allows the screen to turn off while caffeine is active.
+        let result = IOPMAssertionCreateWithName(kIOPMAssertPreventUserIdleDisplaySleep as CFString,
                                                 IOPMAssertionLevel(kIOPMAssertionLevelOn),
                                                 "Uficast Keep Awake" as CFString, &id)
         guard result == kIOReturnSuccess else { throw KeepAwakeError.system(result) }

@@ -12,7 +12,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 | 1–3 — Native launcher, catalog, aliases/settings | Implemented | Packaged desktop launch, settings navigation and icons observed. Broader shortcut/focus acceptance remains pending. |
 | 4–5 — Scripts, inline argument and URL contract | Implemented | Exact-argv, subprocess, timeout/cancel and URL fixture tests pass; private script/browser workflow still pending. |
 | 6 — Caps Lock and login | Implemented; Caps owner-confirmed | Owner confirmed physical Caps switches layouts after correcting a conflicting system modifier assignment. Relogin/multiple physical keyboards remain pending. |
-| 6b — Keep Awake | Implemented | Native power assertion with injected-backend tests; real idle-sleep session pending. |
+| 6b — Keep Awake | Implemented; display behavior corrected | Native display-sleep assertion now also keeps the screen on. 51 core tests pass; live assertion/restored active state observed. Long idle acceptance remains pending. |
 | 6c — Lifecycle, app shortcuts and icons | Implemented | Real startup/gear/singleton and launcher/Settings icon observations; core shortcut/lock fixtures pass. |
 | 6d — Wrong-layout search | Implemented | Both U.S./Russian directions, alias ordering, mixed input and ё/й fixtures pass. |
 | 6e — Inline hotkey editing/removal | Implemented | Native fixture checks pass; actual Settings double-click and Escape observed without saving an assignment. Assigned shortcuts have × controls in the cell and inspector. |
@@ -35,7 +35,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 - ScriptRunner wraps the C posix_spawn/poll process-group worker: exact argv, one unchanged argument, concurrent bounded pipe draining, cancellation/timeout and managed descendant cleanup. Strict single HTTP(S) stdout URL opens only after success. Deliberately detached daemons are outside cleanup guarantees.
 - IconStore serially renders 64px PNGs, transfers Data across actors and retains a bounded 256-image cache. Each launcher EntryRow receives its own guarded completion; no icon-triggered table reload. Settings observes cache updates.
 - Caps ownership/recovery preserves unrelated/external mappings. Device/service lifecycle and wake re-publish owned mappings without observing input. ModifierMappingDiagnostics detects macOS Caps modifier conflicts across keyboard profiles without automatically rewriting them.
-- Native SMAppService startup checkbox is at the top of General and shows actual authorization state. KeepAwakeService owns one IOPM idle-system-sleep assertion, supports timed/indefinite renewal and releases on stop/quit. The app restores the last local mode/deadline; a fresh installation starts off.
+- Native SMAppService startup checkbox is at the top of General and shows actual authorization state. KeepAwakeService owns one IOPM idle-display-sleep assertion (also preventing idle system sleep), supports timed/indefinite renewal and releases on stop/quit. The app restores the last local mode/deadline; a fresh installation starts off.
 
 ## Actual verification
 
@@ -155,7 +155,15 @@ Stage 6l owner-requested calendar work is recorded below; the earlier daily-use 
 - Updated README and continuity documents to reflect approved integration. Existing release/signature, 51-core-test and native menu/clock evidence applies to the unchanged implementation; no redundant build/test or app restart was needed for this merge/documentation-only step. Manual acceptance gaps remain open.
 - Integration checkpoint **9d0f615** was successfully pushed to origin/main; local HEAD and origin/main matched afterward. Publication used existing gh HTTPS credentials via command-scoped settings, without changing the configured remote/global Git settings. The source experiment branch is retained.
 
-**Exact next step:** continue owner-led daily use on main: compare the running status menu with Day-O, check month navigation/Today, seconds and preference persistence. If automatic system sleep recurs while caffeine is on, record the time and inspect the system sleep reason. Do not mark these manual checks complete from merge approval.
+### Caffeine display-sleep correction
+
+- Owner clarified the symptom: the screen turns off while caffeine is enabled, and asked to continue checking. Read-only pmset showed Uficast owned PreventUserIdleSystemSleep while PreventUserIdleDisplaySleep was 0. The earlier activation check established system-sleep blocking only; it did not establish screen-on behavior.
+- Verified the distinction in the installed IOPMLib.h and primary Apple documentation. Changed the shared SystemSleepAssertions backend to kIOPMAssertPreventUserIdleDisplaySleep: it prevents idle display sleep and consequently idle system sleep. This supersedes the earlier display-may-sleep implementation default. Timers, renewal, stop/expiry, remembered mode and per-process ownership stay on the same service. No new option or additional assertion is needed.
+- Updated General guidance, README, requirements, architecture, Stage 6b, manual checklist and AGENTS. Explicit Sleep/lid/low-power handling remains under macOS. No simulated input, external caffeinate process, privacy access or system sleep-timer changes.
+- **51 core tests passed**, including fake-backend acquire/renew/release, expiry, failure and restore checks; warm search p95 **20.03 ms**. Isolated/canonical release builds and strict ad-hoc signature checks passed. The canonical app was normally quit before replacement and reopened through the desktop tool.
+- The owner's already-active caffeine session restored after relaunch. General visibly showed Keep Mac awake checked, Awake until stopped and the revised screen-and-Mac guidance. Read-only pmset then showed a live Uficast-owned **PreventUserIdleDisplaySleep** assertion and global PreventUserIdleDisplaySleep = 1. No extra manual power toggle was performed. This verifies actual native assertion creation/restoration, not a controlled long idle, battery/lid or stop/expiry session.
+
+**Exact next step:** owner checks normal idle use with caffeine active and confirms the screen stays on, then verifies stop/expiry restores normal idle behavior. If it still goes black, record the time and distinguish an automatic display-off event from screen saver/lock or explicit system sleep in the system log. Other daily-use/manual gaps remain open.
 
 
 ### Earlier cursor report checkpoint

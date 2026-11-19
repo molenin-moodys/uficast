@@ -135,7 +135,7 @@ Suggested commit: `feat: add caps-lock remapping and launch-at-login`.
 
 ## Stage 6b — Built-in Keep Awake (owner addition)
 
-Use a native IOPM PreventUserIdleSystemSleep assertion owned by this app. Provide a menu toggle, 30-minute / one-hour / indefinite sessions, visible state and General settings controls. Original default-off-on-every-launch behavior is superseded by Stage 6k; first installation still starts off; release on stop, expiry and normal quit. macOS releases a process-owned assertion on exit. Idle system sleep is prevented; display sleep, explicit Sleep and lid behavior remain governed by macOS. No Accessibility, Input Monitoring or caffeinate subprocess.
+Use a native IOPM PreventUserIdleDisplaySleep assertion owned by this app. The owner clarified that caffeine must also keep the screen on, superseding the initial system-only default. Provide a menu toggle, 30-minute / one-hour / indefinite sessions, visible state and General settings controls. Original default-off-on-every-launch behavior is superseded by Stage 6k; first installation still starts off; release on stop, expiry and normal quit. macOS releases a process-owned assertion on exit. Idle display and system sleep are prevented; explicit Sleep and lid behavior remain governed by macOS. No Accessibility, Input Monitoring or caffeinate subprocess.
 
 Validate acquire/renew/stop ownership, expiry and backend failures using a fake backend without changing actual power assertions. Real idle-sleep acceptance remains a manual check initiated by the owner.
 

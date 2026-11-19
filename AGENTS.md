@@ -22,3 +22,5 @@
 - Local Settings shortcuts: Cmd+, and owner-requested Cmd+P; Esc cancels an inline edit first, otherwise closes Settings. Remember caffeine mode/deadline locally across normal exits. Hiding the launcher clears its error/input and invalidates late completion; never show that stale error on reopen.
 
 - Calendar work was developed on `codex/day0-calendar-experiment` and the owner authorized merging it into main. Uficast uses the clock as the single upper-menu-bar Uficast button. Match Day-O with native NSDatePicker, compact menus centered against the actual menu window, format/Show Icon settings and seconds aligned to system boundaries. Keep a zzz/cup state indicator left of the optional calendar within the same button. No Dock addition.
+
+- Caffeine must keep the screen on as well as prevent idle system sleep. Use the shared native PreventUserIdleDisplaySleep assertion for launcher/menu/General sessions; the earlier system-only/display-may-sleep default is superseded. Preserve timed expiry, remembered state and release ownership.

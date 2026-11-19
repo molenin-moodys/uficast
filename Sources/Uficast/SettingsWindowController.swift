@@ -342,7 +342,7 @@ private struct SettingsView: View {
                 Toggle("Keep Mac awake", isOn: Binding(get: { model.keepAwakeActive }, set: { model.onSetKeepAwake?($0) }))
                     .disabled(model.isKeepAwakeBusy)
                 Text(model.keepAwakeStatus).font(.callout)
-                Text("Prevents automatic idle system sleep while active. The display may turn off. Remembers the last mode on relaunch; timed sessions keep their original end time.")
+                Text("Keeps the display and Mac awake while active. Remembers the last mode on relaunch; timed sessions keep their original end time.")
                     .font(.caption).foregroundStyle(.secondary)
                 HStack {
                     Button("30 Minutes") { model.onKeepAwakeFor?(1800) }
