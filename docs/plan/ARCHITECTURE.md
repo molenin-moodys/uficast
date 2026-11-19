@@ -78,7 +78,7 @@ Conceptual configuration fields:
 
 ```text
 schemaVersion
-general: launcherShortcut, applicationRoots
+applicationRoots
 applications: stableID -> alias?, enabled, fallbackURL?
 scripts: id, name, alias?, enabled, fileURL, interpreter?,
          requiresArgument, argumentPlaceholder, resultMode,
@@ -86,7 +86,7 @@ scripts: id, name, alias?, enabled, fileURL, interpreter?,
 keyboard: capsLockToF19Enabled, mappingOwnership/recoveryState
 ```
 
-This is a contract sketch, not a final serialized schema. Persist only preferences; query actual login-item/permission/remap status from macOS. Back up/export configuration without treating it as executable shell source. Logs and local state are gitignored.
+The implemented schemaVersion 1 currently contains applicationRoots, applications (including lastKnownName/fallbackPath), and scripts; launcher Cmd+Space is fixed. Keyboard preferences will be added with compatible decoding when implemented. The sketch above records future fields too. Persist only preferences; query actual login-item/permission/remap status from macOS. Back up/export configuration without treating it as executable shell source. Logs and local state are gitignored.
 
 ## Script execution
 
@@ -124,3 +124,5 @@ TN2450 is archival documentation. Its reboot/device-service lifetime and privile
 - [Foundation Process](https://developer.apple.com/documentation/foundation/process): executable and argv execution.
 - [SMAppService](https://developer.apple.com/documentation/servicemanagement/smappservice): login-item integration.
 - [macOS input-source settings](https://support.apple.com/en-sa/guide/mac-help/-mchl84525d76/mac): built-in switching options.
+
+Stage 3 uses an actor ConfigStore plus a main-actor ObservableObject for a SwiftUI-hosted Settings window. Store tests inject a temporary directory and never write personal configuration. The optional Testing/Foundation cross-import module is absent from this CLT installation; test.sh disables cross-import overlays only in that incomplete setup.

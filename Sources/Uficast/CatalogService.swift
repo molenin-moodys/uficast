@@ -9,6 +9,7 @@ final class CatalogService {
     var roots = ApplicationCatalog.defaultRoots
     var onChange: (() -> Void)?
     private var refreshTask: Task<Void, Never>?
+    private var debounceTask: Task<Void, Never>?
     private var watchers: [DispatchSourceFileSystemObject] = []
     private var lastRefresh = Date.distantPast
 
@@ -42,11 +43,19 @@ final class CatalogService {
                 fileDescriptor: descriptor, eventMask: [.write, .rename, .delete], queue: .main
             )
             source.setEventHandler { [weak self] in
-                Task { @MainActor in self?.refresh() }
+                Task { @MainActor in self?.scheduleRefresh() }
             }
             source.setCancelHandler { close(descriptor) }
             source.resume()
             return source
+        }
+    }
+
+    private func scheduleRefresh() {
+        debounceTask?.cancel()
+        debounceTask = Task { [weak self] in
+            do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+            self?.refresh()
         }
     }
 }

@@ -2,7 +2,7 @@
 
 A personal, native macOS launcher for applications and local scripts, inspired by the small subset of Raycast its owner uses.
 
-**Status:** native app catalog and fuzzy search implemented; settings/aliases and scripts are next. Global shortcut delivery and desktop UI acceptance remain pending manual verification.
+**Status:** native app catalog and fuzzy search implemented; persistent settings/aliases are implemented; scripts are next. Global shortcut delivery and desktop UI acceptance remain pending manual verification.
 
 ## Agreed scope
 
@@ -47,3 +47,9 @@ dist/Uficast.app/Contents/MacOS/Uficast --diagnostics
 See [manual verification](docs/MANUAL_TESTS.md). Pure tests and signing checks do not prove real desktop shortcut delivery.
 
 Application discovery uses `/Applications`, `/System/Applications` and `~/Applications`. Use **Refresh Applications** after installing an app; default root changes are also observed. Search supports fuzzy abbreviations, Up/Down selection and Enter to launch/activate. Usage ordering is currently in memory. `--catalog-summary` prints a read-only discovery count/timing without launching apps.
+
+## Settings and aliases
+
+Open **Settings… → Commands**, select an app, enter an alias and click **Apply**. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General contains application roots, refresh, import/export and backup recovery.
+
+Private JSON lives in `~/Library/Application Support/Uficast/config.json`, with `config.backup.json`. Saves are atomic. Corrupt/unsupported files are preserved and editing is disabled; explicit backup recovery preserves the replaced file as `config.recovered-<id>.json`. A future schema cannot be overwritten by this older app. Export/import preserves machine-specific paths; locate missing scripts/apps on the new Mac.

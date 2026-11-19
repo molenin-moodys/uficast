@@ -11,7 +11,7 @@ The owner requested autonomous implementation while context permits. Native scaf
 | 0 — Plan | Complete | Initial planning commit a5021c5; updated by subsequent steering. |
 | 1 — Native app and global shortcut | Implemented; manual acceptance pending | SwiftPM/AppKit app, Carbon registration, menu/Edit actions, panel and settings scaffold. Real shortcut delivery/focus still pending. |
 | 2 — Application catalog/search | Implemented; desktop acceptance pending | Catalog fixtures and ranking tests pass; actual app activation and UI still require desktop checks. |
-| 3 — Settings/persistence/aliases | Not started | Depends on models/catalog. |
+| 3 — Settings/persistence/aliases | Implemented; desktop acceptance pending | 11 tests pass; release builds. Manual UI/restart flow remains pending. |
 | 4 — Script runner | Not started | Depends on persistence/settings. |
 | 5 — Inline argument/URL workflow | Not started | Depends on runner/panel. |
 | 6 — Caps Lock/login lifecycle | Not started | Depends on lifecycle/settings. |
@@ -43,9 +43,17 @@ The owner requested autonomous implementation while context permits. Native scaf
 - Launcher now renders search results with icons/types/aliases, selection and Enter/double-click activation. NSWorkspace activation and focus behavior remain unverified manually.
 - CLT lacks the optional _Testing_Foundation Swift module despite shipping its binary. test.sh disables automatic cross-import overlays only for that incomplete CLT setup; generic Testing assertions pass.
 
+## Stage 3 validation
+
+- ConfigStore actor uses versioned/validated JSON, atomic writes, private directory/file permissions, first-save backup, last-known-good backup on subsequent saves, and explicit backup restoration with preservation of the replaced original.
+- Tests cover app/script alias conflicts, disabled alias reuse, round trips, missing app fallback records, corrupt-file save protection, backup recovery and unsupported future versions during load/save/recovery.
+- Settings now has General/Commands navigation, searchable All/Apps/Scripts table, selection/alias inspector, Enabled checkboxes, application folders/add-app, import/export/recovery. Normal startup loads config without writing defaults; errors preserve the file and disable edits.
+- All 11 tests passed after final Stage 3 changes; latest debug search p95 9.85 ms. Release build and strict signature verification passed. UI interaction/restart testing is still pending.
+- Catalog root-change notifications are now debounced. Paths are preserved on import; missing files are not silently remapped.
+
 ## Next action
 
-Implement Stage 3: versioned configuration with atomic persistence/backup and validation, real Commands settings for aliases/enabled state, application roots, add-app and import/export. Preserve the no-Accessibility requirement and pending desktop checks.
+Implement Stage 4 script editor and robust asynchronous runner, then Stage 5 inline one-argument workflow. No Accessibility/Input Monitoring, automatic keyboard mapping, system shortcut changes, or login-item changes.
 
 ## Remaining evidence gaps
 
