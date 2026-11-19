@@ -10,7 +10,14 @@ import UficastCore
     let first = try #require(firstAttempt)
     #expect(try InstanceLock.acquire(at: url) == nil)
     first.release()
-    let nextAttempt = try InstanceLock.acquire(at: url)
+    // A process that another test spawns at this moment briefly holds a kernel copy of the
+    // descriptor until exec closes it (O_CLOEXEC), so the lock may free a moment later.
+    var nextAttempt = try InstanceLock.acquire(at: url)
+    let deadline = Date().addingTimeInterval(1)
+    while nextAttempt == nil, Date() < deadline {
+        usleep(10_000)
+        nextAttempt = try InstanceLock.acquire(at: url)
+    }
     let next = try #require(nextAttempt)
     #expect(try InstanceLock.acquire(at: url) == nil)
     next.release()

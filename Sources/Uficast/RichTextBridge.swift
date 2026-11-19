@@ -17,7 +17,12 @@ enum RichTextBridge {
         if let data = pasteboard.data(forType: .rtf), let text = NSAttributedString(rtf: data, documentAttributes: nil), hasText(text) {
             return text
         }
-        if let data = pasteboard.data(forType: .html), let text = NSAttributedString(html: data, documentAttributes: nil), hasText(text) {
+        // Pasteboard HTML is UTF-8; without this the importer guesses and garbles Cyrillic
+        // when the snippet has no charset declaration.
+        if let data = pasteboard.data(forType: .html),
+           let text = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html,
+                                                                     .characterEncoding: String.Encoding.utf8.rawValue],
+                                              documentAttributes: nil), hasText(text) {
             return text
         }
         if let string = pasteboard.string(forType: .string), !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -69,7 +74,9 @@ enum RichTextBridge {
         pasteboard.setString(text.string, forType: .string)
     }
 
+    /// Images arrive as attachment characters (U+FFFC); a selection of only those is not text.
     private static func hasText(_ text: NSAttributedString) -> Bool {
-        !text.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let attachment = String(Character(UnicodeScalar(NSTextAttachment.character)!))
+        return !text.string.replacingOccurrences(of: attachment, with: "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

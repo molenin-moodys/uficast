@@ -241,7 +241,19 @@ Checks actually performed (all with `SDKROOT=…MacOSX26.5.sdk`):
   - Dark appearance of the panel, and a Codex command (Codex is not installed).
 - The owner's running copy was not replaced.
 
-**Exact next step:** final whole-branch review of `feat/ai-text`, then merge into main with the owner's agreement. Then the owner installs the build (quit Uficast first) and runs the AI text items in `docs/MANUAL_TESTS.md`; Services may need logging out and in or `/System/Library/CoreServices/pbs -update` before they appear. Also still open: the Launcher shortcut and two-display placement checks; decide whether `build.sh`/`test.sh` should adapt to the new toolchain. The caffeine idle check (screen stays on while active; stop/expiry restores idle behavior) and other daily-use gaps remain open.
+Final whole-branch review: a fresh reviewer on Opus (Fable was unavailable to this account) found no critical issues. Five problems were fixed, each with a native check that failed first:
+1. A Service delivered from a main-queue block never received its result. Results now return through `RunLoop.main.perform` from a detached task.
+2. An image-only selection (U+FFFC) counted as text.
+3. An answer that is empty after cleaning was offered as a result, so Enter would have deleted the selection.
+4. HTML without a charset garbled Cyrillic; it is now decoded as UTF-8.
+5. The pre-existing `InstanceLock` test was flaky: concurrent spawns briefly hold the descriptor, and the test now waits up to 1 s.
+
+After the fixes the suite passed 6 runs in a row (78 tests), and all 7 native checks pass. Deferred minors:
+- A rare cancel-ordering race can leave a new request on "Working…" until Esc.
+- The default command is written to the config.
+- The message for an app/AI hotkey conflict mentions only the launcher.
+
+**Exact next step:** merge `feat/ai-text` into main with the owner's agreement. Then the owner installs the build (quit Uficast first) and runs the AI text items in `docs/MANUAL_TESTS.md`; Services may need logging out and in or `/System/Library/CoreServices/pbs -update` before they appear. Also still open: the Launcher shortcut and two-display placement checks; decide whether `build.sh`/`test.sh` should adapt to the new toolchain. The caffeine idle check (screen stays on while active; stop/expiry restores idle behavior) and other daily-use gaps remain open.
 
 
 ### Earlier cursor report checkpoint

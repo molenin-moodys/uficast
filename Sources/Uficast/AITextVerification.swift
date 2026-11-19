@@ -9,6 +9,7 @@ enum AITextVerification {
         try richTextRoundTrip()
         try panelControls()
         try coordinatorFlows()
+        try reviewRegressions()
     }
 
     private static func require(_ condition: Bool, _ message: String) throws {
@@ -249,6 +250,86 @@ enum AITextVerification {
             try require(service.string(forType: .string) == "Kindly review" && general.string(forType: .string) == "Kindly review",
                         "Fallback writes text without markers")
         }
+    }
+}
+
+extension AITextVerification {
+    /// Findings from the final review; each check failed before its fix.
+    fileprivate static func reviewRegressions() throws {
+        func check(_ condition: Bool, _ message: String) throws { if !condition { throw ConfigError.invalid(message) } }
+        let replace = "↩ Replace  ·  Esc Cancel"
+        do { // A Service delivered from a main-queue block must still receive the result.
+            let panel = AITextPanelController()
+            panel.presentsWindow = false
+            let general = privatePasteboard()
+            let coordinator = AITextCoordinator(panel: panel, runner: FakeRunnerForReview(answer: "Fixed."), general: general,
+                                                serviceDeadline: 3, timeout: 5)
+            let service = privatePasteboard()
+            defer { service.releaseGlobally() }
+            RichTextBridge.write(NSAttributedString(string: "fix me"), rich: false, to: service)
+            let timer = Timer.scheduledTimer(withTimeInterval: 0.02, repeats: true) { timer in
+                let fired = MainActor.assumeIsolated { () -> Bool in
+                    guard panel.hint == replace else { return false }
+                    panel.performConfirm()
+                    return true
+                }
+                if fired { timer.invalidate() }
+            }
+            var done = false
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    var message: NSString = ""
+                    coordinator.rewriteText(service, userData: "", error: &message)
+                    done = true
+                }
+            }
+            let deadline = Date().addingTimeInterval(5)
+            while !done, Date() < deadline { RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.01)) }
+            timer.invalidate()
+            try check(service.string(forType: .string) == "Fixed.", "Service called from a main-queue block never got its result")
+        }
+        do { // An attachment-only selection (an image) is not text.
+            let pixel = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 1, pixelsHigh: 1, bitsPerSample: 8, samplesPerPixel: 4,
+                                         hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+            let png = pixel.representation(using: .png, properties: [:])!.base64EncodedString()
+            let board = privatePasteboard()
+            defer { board.releaseGlobally() }
+            board.clearContents()
+            board.setData(Data("<img src=\"data:image/png;base64,\(png)\">".utf8), forType: .html)
+            try check(RichTextBridge.read(board) == nil, "An image-only HTML selection must read as no text")
+        }
+        do { // An answer that is empty after cleaning is a failure, not an empty result.
+            let panel = AITextPanelController()
+            panel.presentsWindow = false
+            let general = privatePasteboard()
+            let coordinator = AITextCoordinator(panel: panel, runner: FakeRunnerForReview(answer: "<text></text>"), general: general,
+                                                serviceDeadline: 3, timeout: 5)
+            general.clearContents()
+            general.setString("text", forType: .string)
+            coordinator.runFromClipboard(.rewrite)
+            let deadline = Date().addingTimeInterval(2)
+            while panel.hint == "Working…  ·  Esc Cancel", Date() < deadline { RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.01)) }
+            try check(panel.hint == "↩ Retry  ·  Esc Close" && panel.shownText == AITextError.emptyOutput.localizedDescription,
+                      "An empty cleaned answer must be shown as a failure")
+        }
+        do { // Pasteboard HTML is UTF-8 even without a charset declaration.
+            let board = privatePasteboard()
+            defer { board.releaseGlobally() }
+            board.clearContents()
+            board.setData(Data("<p>Привет, мир</p>".utf8), forType: .html)
+            try check(RichTextBridge.read(board)?.string.trimmingCharacters(in: .whitespacesAndNewlines) == "Привет, мир",
+                      "HTML without a charset must decode as UTF-8")
+        }
+    }
+
+    private actor FakeRunnerForReview: AITextRunning {
+        let answer: String
+        init(answer: String) { self.answer = answer }
+        func run(command: String, prompt: String, timeout: Double) async throws -> String {
+            try? await Task.sleep(for: .milliseconds(50))
+            return answer
+        }
+        func cancel() {}
     }
 }
 

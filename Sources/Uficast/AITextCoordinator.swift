@@ -116,12 +116,20 @@ final class AITextCoordinator: NSObject {
         let prompt = AITextPrompt.build(action: request.action, text: encoded.text, hasMarkers: encoded.hasMarkers)
         let styleCount = encoded.hasMarkers ? request.source.styles.count : 0
         let (runner, command, timeout, id) = (self.runner, self.command, self.timeout, request.id)
-        Task { @MainActor [weak self] in
-            do {
-                let output = try await runner.run(command: command, prompt: prompt, timeout: timeout)
-                self?.finish(id, output: output, styleCount: styleCount)
-            } catch {
-                self?.fail(id, error)
+        // AppKit may deliver a Service request from a main-queue block. Inside that block the
+        // main queue (and with it MainActor jobs) is not serviced by our nested event loop, so
+        // the result comes back as a run-loop block, which every run of the default mode performs.
+        Task.detached { [weak self] in
+            let outcome: Result<String, Error>
+            do { outcome = .success(try await runner.run(command: command, prompt: prompt, timeout: timeout)) }
+            catch { outcome = .failure(error) }
+            RunLoop.main.perform(inModes: [.default, .eventTracking, .modalPanel]) {
+                MainActor.assumeIsolated {
+                    switch outcome {
+                    case .success(let output): self?.finish(id, output: output, styleCount: styleCount)
+                    case .failure(let error): self?.fail(id, error)
+                    }
+                }
             }
         }
     }
@@ -136,6 +144,11 @@ final class AITextCoordinator: NSObject {
         } else {
             segments = [StyledSegment(text: Self.withoutMarkers(cleaned), style: nil)]
             note = "Formatting could not be kept."
+        }
+        // Never offer an empty result: Enter in a Service would delete the selection.
+        guard segments.contains(where: { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
+            panel.showFailure(AITextError.emptyOutput.localizedDescription)
+            return
         }
         panel.showResult(RichTextBridge.join(segments, from: request.source), note: note)
     }
