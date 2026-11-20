@@ -111,3 +111,11 @@ private func pullRequest(_ number: Int, _ title: String, _ iso: String = "2026-1
     #expect(entry.alias == "org/api #412 · Draft")
     #expect(LauncherEntry.pullRequest(pullRequest(7, "Plain")).alias == "org/repo #7")
 }
+
+@Test func errorsHaveTheDocumentedTexts() {
+    #expect(PullRequestError.notInstalled.errorDescription
+            == "GitHub CLI (gh) is not installed. Install it (brew install gh), then run gh auth login.")
+    #expect(PullRequestError.unexpectedOutput.errorDescription == "Unexpected output from gh.")
+    #expect(PullRequestError.failed("boom").errorDescription == "boom")
+    #expect(PullRequestError.cancelled.errorDescription == "Cancelled.")
+}

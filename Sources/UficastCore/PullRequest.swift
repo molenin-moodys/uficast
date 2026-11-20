@@ -25,8 +25,8 @@ public enum PullRequestError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .notInstalled: "GitHub CLI (gh) is not installed. Install it with: brew install gh"
-        case .unexpectedOutput: "GitHub CLI returned output Uficast could not read."
+        case .notInstalled: "GitHub CLI (gh) is not installed. Install it (brew install gh), then run gh auth login."
+        case .unexpectedOutput: "Unexpected output from gh."
         case .failed(let message): message
         case .cancelled: "Cancelled."
         }
