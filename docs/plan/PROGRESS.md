@@ -26,7 +26,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 | 6m — Launcher shortcut, focus display, clock contrast | Implemented; clock owner-confirmed | 57 core tests, six native checks and light/dark previews pass. Owner confirmed the clock is readable on an inactive display. Physical shortcut delivery and two-display placement are not yet observed. |
 | 6n — AI text rewrite and translation | Implemented and merged; owner reported it works | 78 core tests and `--verify-ai-text` (fakes, private pasteboards) pass. Real Services replacement, formatting in Mail/Notes and clipboard use in Electron apps are not yet observed. |
 | 6o — Calculator | Implemented and merged into main (fast-forward) at the owner's request; installed locally | 93 core tests and `--verify-calculator` (private pasteboard) pass. Physical typing, paste into another app and relaunch persistence not yet observed by the owner. |
-| 6p — Persistent frequency ordering | Implemented on branch `feat/usage-ranking`; installed locally | 99 core tests and `--verify-usage-order` pass. Real relaunch ordering not yet observed by the owner. |
+| 6p — Persistent frequency ordering | Implemented and merged into main (fast-forward) at the owner's request; installed locally | 99 core tests and `--verify-usage-order` pass. Real relaunch ordering not yet observed by the owner. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -284,12 +284,13 @@ Owner check (November 19, 2026): the build from `feat/ai-text` (891df35) was ins
 - Installed: the running app was quit normally, rebuilt into the owner's local output folder and reopened.
 - Not performed: typing in the real launcher, paste into another app, relaunch persistence with a real draft, and anything with the owner's real history. Items are in `docs/MANUAL_TESTS.md` under Calculator.
 
-## Stage 6p — Persistent frequency ordering (branch `feat/usage-ranking`)
+## Stage 6p — Persistent frequency ordering
 
 - Owner request (November 20, 2026): sort launcher applications by frequency of use. The ranking already used counts inside a session (empty search and ties), but `launcher.usage` was in memory only, so every restart returned to alphabetical order.
 - Builder calls: keep the match tiers (an exact alias must still win) and only persist and widen what counts. Counts live in UserDefaults `usage.v1` through the new `UsageStore` (identifiers, counts and dates only; 1,000 most recent entries; corrupt or non-positive data is ignored). `LauncherPanelController.recordUse` is the single counting point, now also used when an app hotkey activates a running app. Hiding an app does not count. No time decay.
 - Checks actually performed (with `SDKROOT=…MacOSX26.5.sdk`): `scripts/test.sh --build-system native` **99 core tests passed** (6 new, first seen failing to compile). `--verify-usage-order` (written first, seen failing to compile) passes: alphabetical without history, reordering after recorded uses, a save report per use, and the same order in a second controller loaded from the encoded data. `--verify-calculator` still passes.
 - Not performed: relaunching the real app and observing the order, and the app-hotkey counting. Items are in `docs/MANUAL_TESTS.md` under Frequency ordering.
+- Integration: `feat/usage-ranking` was fast-forward merged into local main at the owner's request and the branch was deleted. Not pushed yet.
 - Also this session: the merged `feat/calculator` branch was deleted locally and in the fork, and `AGENTS.md` (which `CLAUDE.md` links to) gained the rule to quit and relaunch the app after every build.
 
 ### Earlier cursor report checkpoint
