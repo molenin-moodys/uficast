@@ -29,7 +29,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 | 6p — Persistent frequency ordering | Implemented and merged into main (fast-forward) at the owner's request; installed locally | 99 core tests and `--verify-usage-order` pass. Real relaunch ordering not yet observed by the owner. |
 | 6q — Shortcuts instead of Services | Implemented on main; file import failed, replaced by guided manual steps; owner reported it works | 107 core tests and `--verify-ai-text` pass. Shortcuts refused the generated file as unsigned. The owner built the shortcut by hand and it works from Cmd+Ctrl+Shift+R (Ctrl+Cmd+R did nothing). Selection input in each app and Electron apps are not individually reported. |
 | 6r — Compact settings | Implemented on main; installed locally; owner look pending | 107 core tests and all native checks pass; light/dark previews inspected. Hands-on use not yet reported. |
-| 6s — GitHub pull requests | Implemented on main; manual acceptance pending | 133 core tests and `--verify-pull-requests` pass (fake `gh`, fake clock, fixtures). A real `gh` run, the browser opening and the physical Tab/Enter flow are not yet observed. |
+| 6s — GitHub pull requests | Implemented on main; manual acceptance pending | 136 core tests and `--verify-pull-requests` pass (fake `gh`, fake clock, fixtures). A real `gh` run, the browser opening and the physical Tab/Enter flow are not yet observed. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -350,18 +350,20 @@ Commit 62e8296 preserved an unrelated stationary-cursor report. Its source/disap
 ## Stage 6s: GitHub pull requests
 
 - Owner request (November 20, 2026): reach one of the owner's open pull requests from the launcher: `gh` -> Tab -> type to filter -> Enter opens it in the browser. Approved design `docs/superpowers/specs/2026-11-20-github-pull-requests-design.md` (the owner changed two things: `gh` is found on `PATH`, and a missing `gh` only shows an install message; the 5-minute cache lifetime was added at the owner's request). Requirements: REQUIREMENTS "GitHub pull requests"; architecture: ARCHITECTURE "GitHub pull requests (Stage 6s)".
-- Built (Tasks 1-6, on main, last commit "feat: open pull-request mode from the gh command"):
+- Built (Tasks 1-6 and one fix wave after the final whole-branch review, all on main):
   - `PullRequest`, `PullRequestParser` and `PullRequestFilter` in `Sources/UficastCore/PullRequest.swift`.
   - `GitHubPullRequestLoader` and `GitHubCLI` (finds `gh` on `PATH` plus the standard directories).
   - `PullRequestStore`: shares one load, caches success for 5 minutes, `invalidate()`, `cancel()`.
   - `BuiltInCommand.pullRequests` (alias `gh`).
   - The pull-request mode in `LauncherPanelController` and the routing in `AppController`.
 - Builder calls: pull-request mode is its own mode that reuses the token, field and table; Enter on the entry behaves like Tab; a late success is cached and a late failure is dropped; only the command's usage counter is recorded (no pull request data on disk); drafts included and labelled; 100 newest open pull requests; no refresh control.
+- Final-review rulings: the `gh` command matches its alias only exactly (`LauncherEntry.matchesAliasByPrefix` is false for it), so typing `g` alone no longer ranks the command by alias (it can still match by its name, ordered by use frequency) while `cafe`/`decafe` keep prefix matching; `enterPullRequests` returns nil when the panel is hidden or the mode is already on; a catalog refresh no longer replaces the mode's empty text.
 
 Checks actually performed (with `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk`, the unresolved toolchain note above):
 
-- `scripts/test.sh --build-system native`: **133 core tests passed**. New tests cover the pull-request model, parser and filter, the loader (with a fake `gh` script), the store (with a fake clock) and the built-in command.
-- Native checks `--verify-pull-requests`, `--verify-calculator`, `--verify-usage-order`, `--verify-script-feedback` and `--verify-native-icons` print PASS.
+- `scripts/test.sh --build-system native`: **136 core tests passed** (exit 0). New tests cover the pull-request model, parser and filter, the loader (with a fake `gh` script), the store (with a fake clock), the built-in command and the exact-alias ranking of `gh`.
+- A staging build (`UFICAST_OUTPUT_ROOT=.build/staging`) succeeded, and the native checks `--verify-pull-requests`, `--verify-calculator`, `--verify-usage-order`, `--verify-script-feedback` and `--verify-native-icons` each exited 0 with their PASS line (exit codes read directly).
+- Every task had a spec-compliance and quality review (all approved, no Critical or Important findings); the final whole-branch review and a scoped re-review of its fix wave were also run.
 
 Not observed (pending, none of these is recorded as passed):
 
@@ -372,6 +374,8 @@ Not observed (pending, none of these is recorded as passed):
 - A signed-out `gh`; the not-installed message is covered by unit tests only.
 - Cache expiry in real time (it is unit-tested with a fake clock only).
 - AppController routing (no automated test).
+
+Known gaps accepted after review (Minor, not fixed): store tests do not pin the slot-id guard or a loader that ignores cancellation; the Tab check in `--verify-pull-requests` would also pass without the Tab swallow; Cmd+F does not leave the mode; quitting cancels a running `gh` but does not wait for the child to stop; the cache age uses the wall clock; a timed-out `gh` shows no stderr; the parser drops rows with fractional-second dates; `LauncherPanelController.swift` grew to about 1,100 lines because the native check lives in the production file (existing pattern).
 
 Documented limitations: at most the 100 newest open pull requests; `gh`'s default host only; `GH_HOST` set in a terminal profile is not visible to a GUI app; a `gh` that is only in a directory added by a terminal profile (for example `~/.local/bin`) counts as not installed; pull requests in SSO-restricted organizations may be missing without any error; no manual refresh control (the list is reloaded on the first entry after 5 minutes).
 
