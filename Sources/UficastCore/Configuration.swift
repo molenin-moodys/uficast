@@ -66,10 +66,17 @@ public struct Configuration: Codable, Equatable, Sendable {
     public var scriptDirectories: [String] = []
     public var capsLockToF19Enabled = false
     public var menuBarClock = MenuBarClockPreferences()
+    /// nil keeps the default Command+Space and is not written to disk.
+    public var launcherHotkey: GlobalShortcut?
+    public var aiText = AITextPreferences()
+
+    public var effectiveLauncherHotkey: GlobalShortcut { launcherHotkey ?? .launcher }
 
     public init() {}
 
-    private enum CodingKeys: String, CodingKey { case schemaVersion, applicationRoots, applications, scripts, scriptDirectories, capsLockToF19Enabled, menuBarClock }
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, applicationRoots, applications, scripts, scriptDirectories, capsLockToF19Enabled, menuBarClock, launcherHotkey, aiText
+    }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -80,6 +87,8 @@ public struct Configuration: Codable, Equatable, Sendable {
         scriptDirectories = try values.decodeIfPresent([String].self, forKey: .scriptDirectories) ?? []
         capsLockToF19Enabled = try values.decodeIfPresent(Bool.self, forKey: .capsLockToF19Enabled) ?? false
         menuBarClock = try values.decodeIfPresent(MenuBarClockPreferences.self, forKey: .menuBarClock) ?? MenuBarClockPreferences()
+        launcherHotkey = try values.decodeIfPresent(GlobalShortcut.self, forKey: .launcherHotkey)
+        aiText = try values.decodeIfPresent(AITextPreferences.self, forKey: .aiText) ?? AITextPreferences()
     }
 
     public static func fileURL(_ path: String) -> URL {
@@ -122,7 +131,14 @@ public struct Configuration: Codable, Equatable, Sendable {
         }
         for path in applicationRoots { try checkPath(path) }
         for path in scriptDirectories { try checkPath(path) }
-        var shortcuts: Set<UInt64> = [GlobalShortcut.launcher.signature]
+        try launcherHotkey?.validate()
+        try aiText.validate()
+        var shortcuts: Set<UInt64> = [effectiveLauncherHotkey.signature]
+        for action in AITextAction.allCases {
+            if let hotkey = aiText.hotkey(for: action), !shortcuts.insert(hotkey.signature).inserted {
+                throw ConfigError.invalid("That shortcut is already assigned or reserved.")
+            }
+        }
         for (id, app) in applications {
             guard id.hasPrefix("app:") || id.hasPrefix("app-path:") else { throw ConfigError.invalid("Invalid application identity.") }
             try checkAlias(app.alias, enabled: app.isEnabled)

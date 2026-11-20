@@ -8,12 +8,14 @@ Uficast includes a Day-O-style clock and native calendar in its single menu-bar 
 
 ## Features
 
-- **Cmd+Space launcher** with application icons, fuzzy search and aliases that rank first.
+- **Cmd+Space launcher** (or another shortcut you choose) with application icons, fuzzy search and aliases that rank first. It opens on the display of the window you are working in.
 - **Wrong-layout search** for U.S./Russian keyboards: type `сркщьу` to find Chrome without changing layouts.
+- **Calculator**: type a formula such as `24*3+10` or `200+10%` and Enter copies the result. Past calculations appear below as you type or after `calc`, and an unfinished formula is still there when you reopen the launcher.
 - **Script folders** to discover local shell, Python and AppleScript commands, including Raycast title/argument headers.
 - **Local scripts** using shell, AppleScript or another configured interpreter. Pass one unchanged text argument and optionally open a generated URL.
 - **Per-app shortcuts** to show, hide or launch an application.
 - **Keep Awake** with timed or indefinite sessions, plus optional start at login.
+- **AI text**: rewrite copied or selected English into correct, simple English, or translate it between English and Russian, using `claude -p` (Claude Haiku 5.5) or any CLI you configure. The result is shown first, Enter inserts or copies it, and inline formatting is kept.
 - **Menu-bar clock and calendar** using the same standard AppKit calendar control as Day-O, with month browsing, Today and customizable format.
 - **Caps Lock → F19** remapping for macOS input-source switching, with mapping ownership and keyboard-conflict diagnostics.
 - **Native menu bar app** with light/dark appearance, a Settings gear in the launcher and one running instance per user.
@@ -59,7 +61,7 @@ scripts/build.sh
 open dist/Uficast.app
 ```
 
-Opening the app shows the launcher immediately. Its gear button opens Settings; **Cmd+,** and **Cmd+P** also open Settings. The menu bar includes the native calendar, **Open Launcher**, **Settings…**, **Date & Time…**, **Keep Awake** and **Quit**. **Retry Shortcut** and application refresh are available in General. The global shortcut uses Carbon registration and never requests Accessibility or Input Monitoring. Release conflicting Cmd+Space shortcuts in Spotlight/Raycast yourself; Uficast does not change their settings. A successful registration does not prove a system shortcut yields the chord.
+Opening the app shows the launcher immediately. Its gear button opens Settings; **Cmd+,** and **Cmd+P** also open Settings. The menu bar includes the native calendar, **Open Launcher**, **Settings…**, **Date & Time…**, **Keep Awake** and **Quit**. **Retry Shortcut** and application refresh are available in General. The global shortcut uses Carbon registration and never requests Accessibility or Input Monitoring. To use another launcher shortcut, open **General → Launcher**, click **Shortcut** and press the new combination (it must include Command, Control or Option); **Reset** restores Cmd+Space. A combination Uficast cannot register is not saved. Release conflicting shortcuts in Spotlight/Raycast yourself; Uficast does not change their settings. A successful registration does not prove a system shortcut yields the chord.
 
 Build output is `dist/Uficast.app`, locally ad-hoc signed. `scripts/build.sh debug` builds a debug bundle. Optionally set `UFICAST_SIGN_IDENTITY` to an existing signing identity. Quit the running copy before rebuilding or replacing it. Opening a rebuilt bundle while an older copy is still running reveals that existing process; it does not reload its executable. For an isolated build, set `UFICAST_OUTPUT_ROOT` to another output directory. Script Automation consent may need renewal after ad-hoc rebuilds; a stable installation path is recommended.
 
@@ -75,11 +77,11 @@ Application discovery uses `/Applications`, `/System/Applications` and `~/Applic
 
 ## Keyboard shortcuts
 
-These shortcuts work while Uficast has keyboard focus; only Cmd+Space and assigned app hotkeys are global.
+These shortcuts work while Uficast has keyboard focus; only the launcher shortcut and assigned app hotkeys are global.
 
 | Shortcut | Action |
 | --- | --- |
-| Cmd+Space | Toggle launcher globally |
+| Cmd+Space (configurable) | Toggle launcher globally |
 | Cmd+, or Cmd+P | Open Settings |
 | Esc in Settings | Cancel an inline alias/hotkey edit first; otherwise close Settings (sheets keep their own Cancel action) |
 | Cmd+W | Close the current window or launcher |
@@ -97,7 +99,7 @@ Apple's [standard Mac shortcuts](https://support.apple.com/en-us/102650) use Cmd
 
 In **Settings… → Commands**, double-click an **Alias** cell (or the alias in the inspector), type a value and press **Enter** to save. **Escape** cancels without saving; click **×** to remove an assigned alias. Invalid or duplicate aliases keep the draft open and show an error. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General starts with **Start Uficast at login** and also contains Menu Bar Calendar, Keep Awake, Caps Lock, application roots, refresh, import/export and backup recovery.
 
-In **Settings → Commands**, double-click an application’s **Hotkey** cell (the current shortcut or **Add Hotkey**) to open its inline recorder. A single click only selects the row. **Escape** closes recording without saving and keeps the previous shortcut. Click the **×** beside an assigned shortcut to remove it. You can also select an application and click **Record Hotkey** under **Show / Hide**. Press a combination containing Command, Control or Option; Escape cancels and Delete clears it. Enabled app shortcuts must be unique, and Cmd+Space is reserved for the launcher. The table shows assigned shortcuts and registration errors. If another app claims a chord, release it there first. Script-specific global hotkeys remain deferred.
+In **Settings → Commands**, double-click an application’s **Hotkey** cell (the current shortcut or **Add Hotkey**) to open its inline recorder. A single click only selects the row. **Escape** closes recording without saving and keeps the previous shortcut. Click the **×** beside an assigned shortcut to remove it. You can also select an application and click **Record Hotkey** under **Show / Hide**. Press a combination containing Command, Control or Option; Escape cancels and Delete clears it. Enabled app shortcuts must be unique, and the launcher shortcut (Cmd+Space unless changed) is reserved. The table shows assigned shortcuts and registration errors. If another app claims a chord, release it there first. Script-specific global hotkeys remain deferred.
 
 Private JSON lives in `~/Library/Application Support/Uficast/config.json`, with `config.backup.json`. Saves are atomic. Corrupt/unsupported files are preserved and editing is disabled; explicit backup recovery preserves the replaced file as `config.recovered-<id>.json`. A future schema cannot be overwritten by this older app. Export/import preserves machine-specific paths; locate missing scripts/apps on the new Mac.
 
@@ -120,6 +122,24 @@ Default result handling runs for side effects and ignores stdout (the script can
 While a script runs, the launcher stays open with a running status. Success closes it; failure shows the exit/timeout error in the lower section, preferring stderr and falling back to stdout. **Edit Input** restores the exact submitted argument for correction; only an explicit Enter retries. The latest failure and argument stay in memory only. Hiding the launcher for any reason clears its error and remembered input. A late result cannot bring that error back or replace newer input. Each deliberate reopen starts clean.
 
 General → Recent Runs shows active commands, Cancel controls and the ten most recent outcomes in memory. Each command can run once concurrently; different commands can overlap. Output capture is bounded to 1 MiB per stream while both pipes continue draining. Normal quit cancels managed process groups; deliberately detached daemons and force-quit/crash cleanup are outside that guarantee. AppleScript controlling other applications may need **Automation** consent; scripts depending on Accessibility are unsupported under the no-Accessibility requirement.
+
+## AI text
+
+**General → AI Text** holds the command and two clipboard shortcuts. The default command is:
+
+```sh
+claude -p --model claude-haiku-5-5 --tools "" --strict-mcp-config --disable-slash-commands --no-session-persistence --setting-sources project,local
+```
+
+The command gets the prompt on stdin and must print only the answer. You can change the model or use another CLI. It runs in your login shell from an empty private folder. The selected text never becomes part of the command line.
+
+- **Clipboard.** Copy text, press **Rewrite from clipboard** or **Translate from clipboard**, and check the result. **Enter** copies it for Cmd+V and **Esc** cancels. This works in any app.
+- **Services.** Select text and choose **Rewrite with Uficast** or **Translate with Uficast** from the Services menu. Assign their shortcuts in System Settings → Keyboard → Keyboard Shortcuts → Services. **Enter** replaces the selection and also copies the result.
+  - macOS offers these Services only where the selection can be edited. Some Electron apps and terminals do not support them; use the clipboard there.
+- **Formatting.** Bold, italics, links and other inline styles are carried through the model with markers and restored. If the model breaks them, the result keeps the selection's main style and the panel says so.
+- **Privacy.** The text goes to the program the command runs: Anthropic for `claude`. Uficast stores no text, but that program may keep data under its own settings.
+
+`--verify-ai-text` checks the rich-text bridge, panel and request handling offscreen with a fake command and private pasteboards; it never runs a real AI command.
 
 ## Development previews
 

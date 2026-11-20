@@ -44,6 +44,10 @@ final class SettingsModel: ObservableObject {
     var onSetKeepAwake: ((Bool) -> Void)?
     var onKeepAwakeFor: ((TimeInterval) -> Void)?
     @Published var hotkeyErrors: [String: String] = [:]
+    var onSetLauncherHotkey: ((GlobalShortcut?) -> Void)?
+    var onSetAICommand: ((String) -> Void)?
+    var onSetAIHotkey: ((AITextAction, GlobalShortcut?) -> Void)?
+    @Published var aiHotkeyErrors: [AITextAction: String] = [:]
     var onBeginShortcutRecording: (() -> Void)?
     var onEndShortcutRecording: (() -> Void)?
 
@@ -326,7 +330,20 @@ private struct SettingsView: View {
                 MenuBarClockSettings(model: model)
                 Divider()
                 Text("Launcher").font(.title2.bold())
-                Text("Command + Space · Either Command key")
+                HStack {
+                    Text("Shortcut")
+                    ShortcutRecorder(shortcut: model.configuration.effectiveLauncherHotkey,
+                        accessibilityName: "Record launcher shortcut",
+                        onCapture: { model.onSetLauncherHotkey?($0) },
+                        onBegin: { model.onBeginShortcutRecording?() },
+                        onEnd: { model.onEndShortcutRecording?() })
+                        .frame(width: 180)
+                    if model.configuration.launcherHotkey != nil {
+                        Button("Reset to \(GlobalShortcut.launcher.display)") { model.onSetLauncherHotkey?(nil) }
+                    }
+                }.disabled(model.isBusy || model.isReadOnly)
+                Text("Click, then press a new shortcut with ⌘, ⌃ or ⌥. Escape cancels; Delete restores \(GlobalShortcut.launcher.display). Left and right modifier keys both work.")
+                    .font(.caption).foregroundStyle(.secondary)
                 Text("No Accessibility or Input Monitoring access is required.").foregroundStyle(.secondary)
                 Text(model.shortcutStatus).font(.callout)
                 HStack {
@@ -337,6 +354,8 @@ private struct SettingsView: View {
                 }
                 Text("If Spotlight or Raycast uses the same shortcut, release it in their settings. Uficast does not change those assignments.")
                     .font(.caption).foregroundStyle(.secondary)
+                Divider()
+                AITextSettings(model: model)
                 Divider()
                 Text("Keep Awake").font(.title2.bold())
                 Toggle("Keep Mac awake", isOn: Binding(get: { model.keepAwakeActive }, set: { model.onSetKeepAwake?($0) }))

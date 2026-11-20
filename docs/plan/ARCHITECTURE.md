@@ -58,11 +58,15 @@ The owner changed the original right-only requirement to ordinary Cmd+Space and 
 - Unregister on quit/retry; retry after wake. Carbon registration is main-thread-only. Secure Input/fullscreen behavior and delivery still require actual desktop evidence.
 - The packaged `--diagnostics` mode reports bundle identity and the no-Accessibility design without registering a hotkey or asking for permissions.
 
+The launcher combination is configurable (owner request, November 19, 2026). HotkeyService registers `Configuration.effectiveLauncherHotkey` as binding 1; its status text names the actual combination. General embeds the app-hotkey recorder: recording suspends Uficast's registrations as before, Delete or Reset stores nil (Cmd+Space). Before saving, AppController validates the configuration and probes the candidate with a register-then-unregister call; a failure is reported and the previous shortcut stays saved and registered. A probe does not prove that a system shortcut will deliver the chord.
+
 The authoritative installed SDK `CarbonEvents.h` documents RegisterEventHotKey and exclusive conflicts. Apple's [developer forum explanation](https://developer.apple.com/forums/thread/763878) confirms current modifier restrictions; Cmd is an accepted modifier. Do not infer runtime delivery from registration success.
 
 ## Panel and focus
 
 Use a borderless, floating `NSPanel` with `.nonactivatingPanel`, a key-capable subclass, and appropriate Space/full-screen collection behavior. The panel must accept keyboard input without unnecessarily activating the owning app. Treat focus behavior as something to test, not something implied by the style mask alone.
+
+Display choice (owner change, November 19, 2026): `show()` takes the frontmost application, reads the system window list (`CGWindowListCopyWindowInfo`, on-screen only, desktop elements excluded) and uses that application's frontmost layer-0 window that is visible and at least 80×80 points. Only owner PID, layer, alpha and bounds are read; these need no Screen Recording or Accessibility grant, and titles/contents are never requested. `DisplayPlacement` (UficastCore, unit-tested) converts Quartz top-left bounds to Cocoa coordinates and picks the screen with the largest overlap, falling back to the screen under the pointer, then `NSScreen.main`. The panel is centered horizontally in that screen's visible frame at 65% height, as before.
 
 Keep explicit states: `hidden`, `search(query, selection)`, and `argument(commandID, value, previousQuery)`. Execution is a separate service state so hiding the panel does not terminate a run. On success, allow the launched destination to receive focus; on cancellation, restore the previously active app when still valid.
 
@@ -93,7 +97,7 @@ capsLockToF19Enabled
 keyboard-recovery.json: separate local versioned ownership state
 ```
 
-Schema version 1 contains applicationRoots, applications (including optional hotkey), scripts and capsLockToF19Enabled. The latter defaults off when decoding older schema-1 files; app hotkeys are optional. Launcher Cmd+Space is fixed. Persist only preferences; query actual login-item/permission/remap status from macOS. Back up/export configuration without treating it as executable shell source. Logs and local state are gitignored.
+Schema version 1 contains applicationRoots, applications (including optional hotkey), scripts, capsLockToF19Enabled and an optional launcherHotkey. Absent fields decode as defaults: Caps remapping off, no app hotkeys and Cmd+Space for the launcher. The default launcher shortcut is stored as an absent field, so untouched files keep their shape. Persist only preferences; query actual login-item/permission/remap status from macOS. Back up/export configuration without treating it as executable shell source. Logs and local state are gitignored.
 
 ## Script execution
 
@@ -144,7 +148,7 @@ InstanceLock owns an open O_CLOEXEC file descriptor under Application Support/Uf
 
 ## App-specific global shortcuts
 
-Application overrides persist keyCode, Carbon modifier bits and a display label. Validation compares physical combinations, reserves Cmd+Space and rejects duplicate enabled app bindings. Carbon uses a per-binding pressed/released state. A launcher conflict does not prevent independent app shortcuts from registering; errors appear against the affected item. The Hotkey table column embeds the same native recorder as the inspector, with double-click activation and a border only while recording. Single clicks retain table selection. Escape cancels without invoking the save callback; only a valid chord commits, and explicit Delete or the adjacent × button clears. Focus loss, window deactivation/close and cell removal end recording and restore registrations. The local NSButton recorder uses ordinary responder events, temporarily suspending Uficast's registrations while focused. It does not observe global keys. App show/hide uses NSRunningApplication hide/unhide/activate and NSWorkspace launch, requiring no Accessibility.
+Application overrides persist keyCode, Carbon modifier bits and a display label. Validation compares physical combinations, reserves the effective launcher shortcut (Cmd+Space unless configured) and rejects duplicate enabled app bindings. Carbon uses a per-binding pressed/released state. A launcher conflict does not prevent independent app shortcuts from registering; errors appear against the affected item. The Hotkey table column embeds the same native recorder as the inspector, with double-click activation and a border only while recording. Single clicks retain table selection. Escape cancels without invoking the save callback; only a valid chord commits, and explicit Delete or the adjacent × button clears. Focus loss, window deactivation/close and cell removal end recording and restore registrations. The local NSButton recorder uses ordinary responder events, temporarily suspending Uficast's registrations while focused. It does not observe global keys. App show/hide uses NSRunningApplication hide/unhide/activate and NSWorkspace launch, requiring no Accessibility.
 
 ## Icon loading and regression
 
@@ -184,6 +188,40 @@ Owner steering supersedes closing the launcher on accepted execution: scripts ke
 
 AppMenu builds standard application/File/Edit/Window menus and a hidden-but-active Cmd+P Settings alias while preserving visible Cmd+,. Cmd+F focuses launcher search or requests Commands search focus through SwiftUI FocusState. Cmd+W uses native performClose; the launcher routes it through dismiss for cleanup. SettingsWindow handles only window-local Esc events: attached sheets keep native dispatch, active inline edits cancel first, otherwise Settings closes. Native view key equivalents continue to handle recorded chords before menus. Menu actions do not register more global shortcuts. References: [Apple shortcuts](https://support.apple.com/en-us/102650), [Cocoa key-equivalent routing](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/EventOverview/HandlingKeyEvents/HandlingKeyEvents.html).
 
+## AI text (Stage 6n)
+
+- **stdin.** The native worker accepts optional stdin bytes (`uf_process_run_input`). They are written while stdout/stderr are drained, on a non-blocking pipe with `F_SETNOSIGPIPE`. EPIPE or child exit stops writing quietly, and stop/timeout closes the pipe. `uf_process_run` keeps `/dev/null`.
+- **AITextRunner** (UficastCore actor) runs `/bin/zsh -lc <command>` in the private empty folder `~/Library/Application Support/Uficast/ai-workdir` (0700). The login shell provides the owner's PATH. The prompt goes to stdin only.
+  - It enforces the 60 s timeout and a 1 MiB output limit.
+  - Errors map to `AITextError`: a non-zero exit carries the stderr text, empty output and over-limit output have their own cases, and cancellation is reported as cancelled.
+  - One run at a time; `cancel()` stops the current one.
+- **AITextPrompt** wraps the text in `<text>` tags as data, with rewrite or translate instructions and, when needed, the marker rule. `clean` trims the answer and drops echoed `<text>` tags.
+- **SpanMarkup** encodes styled runs as `<sN>…</sN>`, escaping `&`, `<` and `>` only when markers exist. Decoding is a strict scanner: an unknown, nested or unbalanced marker, or any other `<`, means "fall back".
+- **RichTextBridge** (app):
+  - Reads RTF, then HTML, then plain text.
+  - Splits attributed text into runs against the base style (the attributes at index 0); equal attribute sets share a style index.
+  - Rebuilds the result with each run's original attributes.
+  - Writes RTF only for a rich source and plain text always.
+- **AITextPanelController** is a separate non-activating panel with the launcher's material and placement.
+  - Builder decision: it is separate so the launcher's script run and stale-result state never mixes with AI requests.
+  - The result view is read-only and selectable. Return/Enter confirms (or retries after a failure), and Esc, an outside click or losing key cancels.
+  - The shown copy drops source text colors for readability; the inserted or copied result keeps them.
+- **AITextCoordinator** owns one request at a time, identified by UUID. Results for any other UUID are ignored, and starting or cancelling a request cancels the runner.
+  - Clipboard entry point: an empty or non-text clipboard shows "Copy text first."; Enter writes to the general pasteboard.
+  - The Services provider methods `rewriteText:userData:error:` and `translateText:userData:error:` run a nested `nextEvent`/`sendEvent` loop in the default mode until Enter, Esc or the 85 s deadline. Info.plist sets `NSTimeout` to 90000 ms.
+  - Enter writes the result to the Service pasteboard and to the general pasteboard. Esc returns without writing.
+  - At the deadline the panel switches to copy mode ("Time ran out for replacing.").
+  - A second Service request during a wait returns at once with an error.
+- **HotkeyService** registers the two clipboard actions as Carbon IDs 1000/1001. Configuration reserves them against the launcher, enabled app hotkeys and each other, and AppController probes a new one before saving it. `--verify-ai-text` checks the bridge, panel and coordinator with fakes and private pasteboards. Real Services delivery and replacement in other apps are owner-verified, not inferred.
+
+## Calculator (Stage 6o)
+
+- **Calculator** (UficastCore) is a total recursive-descent evaluator: no `NSExpression`, nothing is executed, and invalid or incomplete input returns nil. Limits: 200 characters, 64 nesting levels, non-finite results rejected. A comma with exactly three fraction digits is refused as an ambiguous thousands separator.
+- **CalculatorQuery** decides whether launcher text is a calculation: only formula characters with a digit and an operator, or a `calc` word. Everything else (`1password`, `7-zip`, `calculator`) stays an application search.
+- **CalculatorState** holds up to 50 history entries and the draft. It is stored by AppController in UserDefaults key `calculator.v1`, like the remembered Keep Awake session, outside the exported configuration.
+- The launcher composes rows in `searchResults(for:)`: live result, then (for `calc`) application matches, then history suggestions. These rows are `LauncherEntry` kinds `.calculator` and `.history`, so they never enter SearchIndex. Result text travels in `name` and the expression in `alias`.
+- `dismiss()` remembers the draft only when the panel was visible. `copyCalculation` clears the field before dismissing so a completed calculation is not kept as a draft. The pasteboard is injectable for verification.
+
 ## Menu-bar calendar
 
 MenuBarClockController updates the existing NSStatusItem, never creating a second permanent button. Clock enabled/Show Icon/format live in schema-1 menuBarClock with default decoding for older files. Turning off the clock restores the existing cup/zzz state. The clock's tooltip and menu still expose Keep Awake; power behavior does not change.
@@ -194,10 +232,12 @@ The root menu contains the calendar, Open Launcher, Settings, Date & Time, a Kee
 
 The clock uses one-shot Timer deadlines on the next integral Unix second, registered for common and event-tracking run-loop modes, with zero tolerance. Every tick redraws from current Date and computes a fresh boundary. System-clock/locale/time-zone notifications and AppController's existing wake handler resynchronize it. Stop invalidates the timer and unregisters observers. This avoids launch-phase drift and missed updates during menu tracking; it is not a real-time rendering guarantee if the main thread is blocked.
 
-Development-only --preview-calendar renders a deterministic July 2027 NSDatePicker in either appearance without AppController/configuration/services. --verify-menu-clock temporarily creates and removes a status item, checks native sizing, reopening reset, icon/fallback settings, three actual tick phases in menu-tracking mode and a synthetic clock-change notification; it does not alter the machine's date, hotkeys, mappings, login items or power state.
+Development-only --preview-calendar renders a deterministic July 2027 NSDatePicker in either appearance without AppController/configuration/services. --verify-menu-clock temporarily creates and removes a status item, checks native sizing, reopening reset, icon/fallback settings, the non-template status image and its full-contrast ink in light and dark appearances, three actual tick phases in menu-tracking mode and a synthetic clock-change notification; it does not alter the machine's date, hotkeys, mappings, login items or power state.
 
 Calendar menu polish: status-menu Settings/Quit items have no key equivalents, avoiding a trailing shortcut column; AppMenu still supplies Cmd+, / Cmd+P and Cmd+Q. The status icon now matches the owner-authorized Day-O reference: 22×18-point calendar geometry, three rounded top bindings, no header rule, 2-point horizontal image padding and a centered 9-point bold system date at y=3. Resolution-independent NSImage drawing replaces lockFocus. Geometry and drawing constants were inspected read-only; no Day-O PDF/binary is bundled or required at runtime.
 
-The status button composes the power symbol (zzz or filled cup) to the left of the optional calendar/day icon, with preserved symbol aspect ratio. It remains one NSStatusItem. Show Icon hides only the calendar; the power indicator remains. The cached icon identity includes both day and active state, so a power change updates immediately on the same date. Native fixture verification injects the UI state without changing a real assertion.
+The status button composes the power symbol (zzz or filled cup) to the left of the optional calendar/day icon, with preserved symbol aspect ratio. It remains one NSStatusItem. Show Icon hides only the calendar; the power indicator remains. Native fixture verification injects the UI state without changing a real assertion.
+
+Clock contrast experiment (owner choice, November 19, 2026): the button title stays empty and the clock text is drawn into the same image as the icons, 4 points after them, in the former monospaced-digit 13-point medium system font. The image is not a template. Its drawing handler draws everything in black and then recolors the drawn pixels with `sourceAtop`: black under an aqua drawing appearance, white under dark aqua. The color is chosen at draw time, so it follows the menu bar's appearance. The image is rebuilt on each tick. Accessibility label, image description and tooltip carry the clock text and Keep Awake state. The owner confirmed on November 19, 2026 that this image stays readable on an inactive display; --preview-status-clock renders a fixed-text light/dark comparison for review.
 
 --preview-calendar-menu is an interactive developer-only NSMenu fixture with public labels, a 190-point minimum width and delayed measurement during menu tracking. It prints the calendar's left/right margins in the actual menu content coordinates. It bypasses AppController, private configuration, primary-instance coordination and keyboard/login/power services. Use this complete-menu fixture for spacing checks; an isolated calendar-view PNG cannot establish placement inside a real menu.

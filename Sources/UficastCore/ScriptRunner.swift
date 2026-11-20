@@ -90,7 +90,7 @@ public actor ScriptRunner {
 }
 
 /// The pointer is worker-confined, except for C's atomic cancellation flag.
-private final class NativeRun: @unchecked Sendable {
+final class NativeRun: @unchecked Sendable {
     private let process: OpaquePointer
     init() throws {
         guard let process = uf_process_create() else { throw ScriptRunError.system(ENOMEM) }
@@ -113,13 +113,15 @@ private final class NativeRun: @unchecked Sendable {
     }
 
     func execute(executable: String, arguments: [String], environment: [String: String],
-                 directory: String, timeout: Double) async throws -> ScriptResult {
+                 directory: String, timeout: Double, input: Data? = nil) async throws -> ScriptResult {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .utility).async { [self] in
                 let arguments = [executable] + arguments
                 let code = Self.withCStringArray(arguments) { argv in
                     Self.withCStringArray(environment.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }) { env in
-                        uf_process_run(process, executable, argv, env, directory, timeout, 1024 * 1024)
+                        Self.withInput(input) { bytes, count in
+                            uf_process_run_input(process, executable, argv, env, directory, timeout, 1024 * 1024, bytes, count)
+                        }
                     }
                 }
                 guard code == 0 else { continuation.resume(throwing: ScriptRunError.system(code)); return }
@@ -136,6 +138,13 @@ private final class NativeRun: @unchecked Sendable {
                 ))
             }
         }
+    }
+
+    /// A nil input keeps /dev/null as stdin; empty input gives an immediately closed pipe.
+    private static func withInput(_ input: Data?, body: (UnsafePointer<UInt8>?, Int) -> Int32) -> Int32 {
+        guard let input else { return body(nil, 0) }
+        if input.isEmpty { return withUnsafePointer(to: UInt8(0)) { body($0, 0) } }
+        return input.withUnsafeBytes { body($0.bindMemory(to: UInt8.self).baseAddress, input.count) }
     }
 
     private static func data(_ pointer: UnsafePointer<UInt8>?, count: Int) -> Data {
@@ -164,6 +173,22 @@ public enum LocalProcess {
         return try await withTaskCancellationHandler {
             try await session.execute(executable: executable, arguments: arguments,
                                       environment: ProcessInfo.processInfo.environment, directory: "/", timeout: timeout)
+        } onCancel: { session.cancel() }
+    }
+
+    /// Same, with `input` written to the child's stdin.
+    public static func run(executable: String, arguments: [String], input: Data,
+                           directory: String = "/", timeout: Double = 5) async throws -> ScriptResult {
+        try Task.checkCancellation()
+        guard executable.hasPrefix("/"), !executable.contains("\0"), directory.hasPrefix("/"),
+              !arguments.contains(where: { $0.contains("\0") }), timeout.isFinite, timeout > 0 else {
+            throw ConfigError.invalid("Invalid utility process parameters.")
+        }
+        let session = try NativeRun()
+        return try await withTaskCancellationHandler {
+            try await session.execute(executable: executable, arguments: arguments,
+                                      environment: ProcessInfo.processInfo.environment, directory: directory,
+                                      timeout: timeout, input: input)
         } onCancel: { session.cancel() }
     }
 }

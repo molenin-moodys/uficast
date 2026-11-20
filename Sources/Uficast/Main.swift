@@ -21,6 +21,16 @@ struct UficastMain {
             catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
             return
         }
+        if let index = CommandLine.arguments.firstIndex(of: "--preview-status-clock"), CommandLine.arguments.indices.contains(index + 1) {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try StatusClockPreview.write(to: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
+                print("Wrote light/dark status clock preview.")
+            } catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
+            return
+        }
         if let index = CommandLine.arguments.firstIndex(of: "--preview-calendar"), CommandLine.arguments.indices.contains(index + 1) {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)
@@ -36,6 +46,19 @@ struct UficastMain {
                 try ViewPreview.write(calendar, to: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
                 print("Wrote native NSDatePicker calendar preview (\(calendar.frame.width) × \(calendar.frame.height) points).")
             } catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
+            return
+        }
+        if CommandLine.arguments.contains("--verify-ai-text") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try AITextVerification.run()
+                print("PASS: AI text rich-text round trip, pasteboards, panel controls and clipboard/Service flows (cancel, retry, deadline, fallback).")
+            } catch {
+                FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
             return
         }
         if CommandLine.arguments.contains("--verify-keyboard-shortcuts") {
@@ -58,6 +81,19 @@ struct UficastMain {
             do {
                 try LauncherPanelController().verifyScriptRunFeedback()
                 print("PASS: script failure feedback, exact argument restoration, explicit retry and stale-result handling.")
+            } catch {
+                FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
+            return
+        }
+        if CommandLine.arguments.contains("--verify-calculator") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try LauncherPanelController().verifyCalculator()
+                print("PASS: calculator rows, copy on Enter, history suggestions, Tab edit and remembered draft.")
             } catch {
                 FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
                 exit(1)
@@ -116,7 +152,8 @@ struct UficastMain {
             do {
                 if CommandLine.arguments[flag] == "--preview-launcher" {
                     try LauncherPanelController().renderPreview(to: path, argumentMode: CommandLine.arguments.contains("--argument"),
-                        emptyArgument: CommandLine.arguments.contains("--empty-argument"), failure: CommandLine.arguments.contains("--failure"))
+                        emptyArgument: CommandLine.arguments.contains("--empty-argument"), failure: CommandLine.arguments.contains("--failure"),
+                        calculation: CommandLine.arguments.contains("--calculation"))
                 } else {
                     let model = ViewPreview.settingsModel()
                     if CommandLine.arguments.contains("--general") { model.section = "General" }
@@ -130,7 +167,15 @@ struct UficastMain {
                                               styleMask: [.borderless], backing: .buffered, defer: false)
                         window.contentView = NSHostingView(rootView: ScriptEditor(model: model, script: command))
                         try ViewPreview.write(window.contentView!, to: path)
-                    } else { try SettingsWindowController(model: model).renderPreview(to: path) }
+                    } else {
+                        let controller = SettingsWindowController(model: model)
+                        // Development-only: a taller window shows sections further down General.
+                        if let index = CommandLine.arguments.firstIndex(of: "--height"), CommandLine.arguments.indices.contains(index + 1),
+                           let height = Double(CommandLine.arguments[index + 1]) {
+                            controller.window?.setContentSize(NSSize(width: 980, height: height))
+                        }
+                        try controller.renderPreview(to: path)
+                    }
                 }
                 print("Wrote offscreen preview: \(path.path)")
             } catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
@@ -146,7 +191,7 @@ struct UficastMain {
             let values: [String: Any] = [
                 "bundleIdentifier": Bundle.main.bundleIdentifier ?? "unbundled",
                 "bundlePath": Bundle.main.bundlePath,
-                "shortcut": "Command + Space",
+                "shortcut": "Command + Space by default; configurable in Settings",
                 "requiresAccessibility": false,
                 "osVersion": ProcessInfo.processInfo.operatingSystemVersionString,
             ]

@@ -9,8 +9,12 @@ All items are pending unless a dated result is recorded in PROGRESS. No Accessib
 - Release matching Spotlight/Raycast shortcuts yourself for this test. Automation must not change these settings.
 - Cmd+Space toggles once using either Command key. Holding Space must not repeatedly toggle or insert spaces in the previous app.
 - Test both Command keys, extra modifiers, releasing Command before Space, retry, sleep/wake, fullscreen and multiple monitors when available.
+- General → Launcher: record another shortcut (for example Ctrl+Space), press it from another app, quit and reopen Uficast, and confirm it persists. Cmd+Space must then be free. Try a combination already used by an enabled app hotkey: it must be rejected. Press Escape while recording: nothing changes. Use Reset (or Delete while recording) to restore Cmd+Space.
+- Two displays: focus a window on each display in turn and open the launcher; it must appear on the focused window's display even when the pointer is on the other one. With a windowless app frontmost (for example Finder with no windows), it opens on the pointer's display.
 - Escape and outside clicks dismiss; cancellation restores prior focus when appropriate. Opening a destination must let it take focus.
 - Record actual Secure Input behavior and known limitations; do not bypass system protection.
+
+- Inactive display: with two displays, focus a window on one display and look at the Uficast clock on the other. Record whether the clock text and icons are readable compared with other menu-bar items. Check both light and dark menu bars and the open-menu highlight.
 
 ## Added features
 
@@ -59,6 +63,27 @@ Follow [requirements](plan/REQUIREMENTS.md). Caps Lock remapping, login items, o
 - Cmd+F focuses/selects search; from General it switches to Commands. Cmd+W closes Settings or launcher, Cmd+M minimizes Settings, Cmd+H hides the app, Option+Cmd+H hides others and Cmd+Q quits normally. Don't invoke hide-others/quit in unrelated apps for verification.
 - During an owner-initiated power test: enable caffeine, quit/reopen and confirm active restoration with one fresh owned assertion. Stop, quit/reopen and confirm decaf stays off. A timed session resumes only its remaining time; let it expire while closed and confirm it stays off. Tests use fake assertions, not the actual machine's sleep policy.
 - --verify-keyboard-shortcuts checks native menu equivalence, Esc priority and hotkey capture with fixtures and no global registration. Core restoration tests round-trip the saved session and verify release/reacquire/expiry using fake backends.
+
+## AI text
+
+- **Command.** General → AI Text shows the default command. Change the model name, Apply, run a rewrite, then Reset to Default. A wrong model name or a missing CLI shows the error text in the panel. Enter retries; there is no automatic retry.
+- **Clipboard.** Record "Rewrite from clipboard" and "Translate from clipboard" shortcuts.
+  - In an Electron app (for example Teams or Slack), copy English text, press the rewrite shortcut and check the result. Enter, then Cmd+V pastes it.
+  - Repeat with Russian and English text for translate.
+  - With an empty clipboard or an image, the panel says "Copy text first."
+- **Services.** Assign shortcuts to "Rewrite with Uficast" and "Translate with Uficast" in Keyboard Shortcuts → Services. In Notes, Mail and a Safari text field, select text and use each Service; Enter replaces the selection. Esc while "Working…" and while the result is shown leaves the text unchanged.
+- **Formatting.** Select text that contains bold, italics and a link, then rewrite it through the Service. The replacement keeps them. Do the same through the clipboard and paste into Mail.
+- **Timeout.** Leave a Service result open for more than about 85 s. The panel switches to "Time ran out for replacing." and Enter only copies.
+- **Codex.** If Codex is installed, enter its command and check that only the answer appears.
+
+## Calculator
+
+- [ ] Type `2+2*3`: the first row shows `= 8`. Enter closes the launcher, focus returns to the previous app and Cmd+V pastes `8`.
+- [ ] Type `200+10%` (220), `1,5*2` (3), `(1+2)*3` (9). `1/0`, `2+` and `1,000+1` show no result row.
+- [ ] Open the launcher and type `calc`: the Calculator app is first and earlier calculations are listed below. Type the start of an earlier formula: it appears below the live result. Enter on it copies its result; Tab moves its expression into the field.
+- [ ] Type `7*`, press Esc and reopen: `7*` is back and selected. Typing `notes` replaces it; after closing with `notes` typed, the launcher reopens empty. Quit and relaunch with an unfinished formula: it is restored.
+- [ ] `1password`, `7-zip` and `calendar` still behave as application searches.
+- [ ] Native `--verify-calculator` uses a private pasteboard and fixtures; it does not prove physical typing or paste into another app.
 
 ## Day-O calendar experiment
 

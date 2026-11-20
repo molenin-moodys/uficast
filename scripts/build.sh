@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Optional git-ignored local overrides (e.g. UFICAST_OUTPUT_ROOT).
+[ -f local/build.env ] && . local/build.env
 configuration="${1:-release}"
 case "$configuration" in debug|release) ;; *) echo "Usage: scripts/build.sh [debug|release]" >&2; exit 2 ;; esac
 export CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-module-cache"

@@ -14,7 +14,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     private let table = NSTableView()
     private let emptyLabel = NSTextField(labelWithString: "Discovering applications…")
     private let icons = IconStore()
-    private let hint = NSTextField(labelWithString: "↑↓ Select  ·  ↩ Open  ·  Tab Argument  ·  Esc Close")
+    private static let defaultHint = "↑↓ Select  ·  ↩ Open  ·  Tab Argument  ·  Esc Close"
+    private static let calculatorHint = "↑↓ Select  ·  ↩ Copy Result  ·  Tab Edit  ·  Esc Close"
+    private let hint = NSTextField(labelWithString: LauncherPanelController.defaultHint)
     private let token = NSButton()
     private let argumentScroll = ArgumentScrollView()
     private let argumentInput = NSTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 38))
@@ -33,6 +35,13 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     private var index = SearchIndex()
     private var results: [LauncherEntry] = []
     var usage: [String: UsageRecord] = [:]
+    /// Remembered calculations and the unfinished formula. The owner of the
+    /// controller persists it through `onCalculatorChange`.
+    var calculator = CalculatorState() {
+        didSet { if calculator != oldValue { onCalculatorChange?(calculator) } }
+    }
+    var onCalculatorChange: ((CalculatorState) -> Void)?
+    var pasteboard = NSPasteboard.general
     var onSelect: ((LauncherEntry) -> Void)?
     var onArgumentSelection: ((LauncherEntry) -> Void)?
     var onArgumentSubmit: ((String, String) -> Void)?
@@ -202,9 +211,21 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         if results.isEmpty && refreshing { emptyLabel.stringValue = "Discovering applications…" }
     }
 
-    func renderPreview(to url: URL, argumentMode: Bool, emptyArgument: Bool = false, failure: Bool = false) throws {
+    func renderPreview(to url: URL, argumentMode: Bool, emptyArgument: Bool = false, failure: Bool = false,
+                       calculation: Bool = false) throws {
         field.stringValue = ""
         setEntries(ViewPreview.applications)
+        if calculation {
+            // Public fixtures only: a live result with remembered formulas below it.
+            calculator = CalculatorState(history: [
+                .init(expression: "24*3+10", result: "82", date: .distantPast),
+                .init(expression: "24*60", result: "1440", date: .distantPast),
+                .init(expression: "(5+5)*2", result: "20", date: .distantPast),
+            ])
+            field.stringValue = "24*3"
+            reloadResults(preserveSelection: false)
+            refreshHint()
+        }
         if argumentMode {
             enterArgument(ViewPreview.command)
             if !emptyArgument {
@@ -262,6 +283,89 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
                   "Hiding retained an error/input or allowed a late result to restore it.")
     }
 
+    /// Offscreen check of the calculator rows, copy-on-Enter, history suggestions and
+    /// the remembered draft, using a private pasteboard so the real clipboard is untouched.
+    func verifyCalculator() throws {
+        func check(_ condition: Bool, _ message: String) throws {
+            if !condition { throw ConfigError.invalid(message) }
+        }
+        func type(_ text: String) {
+            field.stringValue = text
+            controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: field))
+        }
+        let board = NSPasteboard(name: NSPasteboard.Name("com.uficast.verify-calculator"))
+        pasteboard = board
+        let generalChanges = NSPasteboard.general.changeCount
+        calculator = CalculatorState(history: [
+            .init(expression: "12*12", result: "144", date: Date(timeIntervalSince1970: 20)),
+            .init(expression: "12 + 30", result: "42", date: Date(timeIntervalSince1970: 10)),
+        ])
+        var persisted: [CalculatorState] = []
+        onCalculatorChange = { persisted.append($0) }
+        setEntries([
+            LauncherEntry(id: "app:notes", name: "Notes", fileURL: URL(fileURLWithPath: "/fixture/Notes.app")),
+            LauncherEntry(id: "app:calculator", name: "Calculator", fileURL: URL(fileURLWithPath: "/fixture/Calculator.app")),
+        ])
+        show()
+        try check(panel.isVisible, "The launcher did not become visible for the calculator check.")
+        try check(field.stringValue.isEmpty, "A launcher without a draft must open empty.")
+
+        type("12")
+        try check(!results.contains { $0.kind == .calculator || $0.kind == .history }, "A bare number was treated as a calculation.")
+        type("12+")
+        try check(results.map(\.kind) == [.history] && results.first?.alias == "12 + 30",
+                  "Typing a formula start did not suggest the matching history entry.")
+        try check(hint.stringValue.contains("Copy"), "The hint does not say that Enter copies the result.")
+        type("calc")
+        try check(results.map(\.kind) == [.application, .history, .history] && results.first?.name == "Calculator"
+                  && table.selectedRow == 0, "calc did not keep the Calculator app first with history below it.")
+        try check(hint.stringValue.contains("Open"), "The hint should say Open while the application row is selected.")
+        type("calc 12*12")
+        try check(results.map(\.kind) == [.calculator] && results.first?.name == "144" && results.first?.alias == "12*12",
+                  "A valid formula did not produce exactly one live result row.")
+        try check(hint.stringValue.contains("Copy"), "The hint does not say that Enter copies the result.")
+
+        type("calc")
+        table.selectRowIndexes(IndexSet(integer: 1), byExtendingSelection: false)
+        _ = control(field, textView: NSTextView(), doCommandBy: #selector(NSResponder.insertTab(_:)))
+        try check(field.stringValue == "12*12" && results.first?.kind == .calculator,
+                  "Tab did not move a history expression into the search field.")
+
+        type("12+")
+        table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        activateSelected()
+        try check(board.string(forType: .string) == "42", "Enter on a history row did not copy its result.")
+        try check(calculator.history.first?.expression == "12 + 30" && calculator.draft == nil && field.stringValue.isEmpty
+                  && !panel.isVisible, "Copying a history entry did not bump it, clear the field and close the launcher.")
+
+        show()
+        type("2+2*3")
+        try check(results.first?.name == "8", "2+2*3 did not give 8.")
+        activateSelected()
+        try check(board.string(forType: .string) == "8", "Enter did not copy the live result.")
+        try check(calculator.history.first == CalculatorState.Entry(expression: "2+2*3", result: "8",
+                                                                     date: calculator.history[0].date)
+                  && calculator.draft == nil && !panel.isVisible, "Enter did not record the calculation and close.")
+
+        show()
+        type("7*")
+        dismiss(restoreFocus: false)
+        try check(calculator.draft == "7*", "Closing with an unfinished formula did not remember it.")
+        show()
+        try check(field.stringValue == "7*" && field.currentEditor()?.selectedRange.length == 2,
+                  "The unfinished formula was not restored and selected on reopen.")
+        type("notes")
+        dismiss(restoreFocus: false)
+        try check(calculator.draft == nil, "An ordinary search was remembered as a draft.")
+        show()
+        try check(field.stringValue.isEmpty, "The launcher reopened with a stale search.")
+        dismiss(restoreFocus: false)
+
+        try check(persisted.last == calculator && persisted.count >= 4, "State changes were not reported for saving.")
+        try check(NSPasteboard.general.changeCount == generalChanges, "The check touched the real clipboard.")
+        board.releaseGlobally()
+    }
+
     /// Offscreen regression check: asynchronous icon completion must update the
     /// existing AppKit cell without replacing rows or changing scroll position.
     func verifyNativeIconRefresh() throws {
@@ -291,7 +395,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
 
     private func reloadResults(preserveSelection: Bool = true) {
         let previousID = preserveSelection && results.indices.contains(table.selectedRow) ? results[table.selectedRow].id : nil
-        results = argumentCommand.map { [$0.entry] } ?? index.search(field.stringValue, usage: usage)
+        results = argumentCommand.map { [$0.entry] } ?? searchResults(for: field.stringValue)
         table.reloadData()
         emptyLabel.isHidden = !results.isEmpty
         emptyLabel.stringValue = "No matching applications or commands"
@@ -301,12 +405,35 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         }
     }
 
+    /// Application search, plus a live result and remembered calculations when the
+    /// text looks like a formula or starts with `calc`. `calc` keeps the Calculator
+    /// app first and lists history below it.
+    private func searchResults(for text: String) -> [LauncherEntry] {
+        guard let query = CalculatorQuery.parse(text) else { return index.search(text, usage: usage) }
+        var live: [LauncherEntry] = []
+        if let value = Calculator.evaluate(query.expression) {
+            live = [.calculatorResult(expression: query.expression, result: Calculator.format(value))]
+        }
+        let applications = query.mode == .keyword ? index.search(text, usage: usage) : []
+        return live + applications + calculator.suggestions(for: query.expression).map(LauncherEntry.calculatorHistory)
+    }
+
+    private func refreshHint() {
+        guard argumentCommand == nil, failureBox.isHidden else { return }
+        let kind = results.indices.contains(table.selectedRow) ? results[table.selectedRow].kind : nil
+        hint.stringValue = kind == .calculator || kind == .history ? Self.calculatorHint : Self.defaultHint
+        hint.textColor = .secondaryLabelColor
+    }
+
+    func tableViewSelectionDidChange(_ notification: Notification) { refreshHint() }
+
     func controlTextDidChange(_ notification: Notification) {
         activeRunID = nil
         hideFailure()
-        hint.stringValue = "↑↓ Select  ·  ↩ Open  ·  Tab Argument  ·  Esc Close"
+        hint.stringValue = Self.defaultHint
         hint.textColor = .secondaryLabelColor
         reloadResults(preserveSelection: false)
+        refreshHint()
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int { results.count }
@@ -324,7 +451,22 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         guard activeRunID == nil else { showInputError("This script is still running."); return }
         if argumentCommand != nil { submitArgument(); return }
         guard results.indices.contains(table.selectedRow) else { return }
-        onSelect?(results[table.selectedRow])
+        let entry = results[table.selectedRow]
+        if entry.kind == .calculator || entry.kind == .history { copyCalculation(entry); return }
+        onSelect?(entry)
+    }
+
+    /// Enter on a result copies it, remembers the calculation and returns focus
+    /// to the previous app so the result can be pasted right away.
+    private func copyCalculation(_ entry: LauncherEntry) {
+        pasteboard.clearContents()
+        guard pasteboard.setString(entry.name, forType: .string) else {
+            showInputError("Could not copy the result.")
+            return
+        }
+        calculator.record(expression: entry.alias ?? "", result: entry.name)
+        field.stringValue = ""
+        dismiss()
     }
 
     func toggle() {
@@ -336,22 +478,53 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         NSApp.unhideWithoutActivation()
         beforeShow?()
         previousApplication = NSWorkspace.shared.frontmostApplication
-        let point = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
-        if let frame = screen?.visibleFrame {
+        if let frame = Self.targetScreen(for: previousApplication)?.visibleFrame {
             panel.setFrameOrigin(NSPoint(x: frame.midX - panel.frame.width / 2,
                                          y: frame.minY + frame.height * 0.65 - panel.frame.height / 2))
         }
-        field.stringValue = ""
+        field.stringValue = calculator.draft ?? ""
         reloadResults(preserveSelection: false)
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)
+        // Selected, so typing a new search simply replaces the remembered formula.
+        if calculator.draft != nil { field.selectText(nil) }
         startMonitors()
     }
 
+    /// The display of the focused app's front window, else the one under the pointer.
+    static func targetScreen(for application: NSRunningApplication?) -> NSScreen? {
+        let screens = NSScreen.screens
+        guard let primary = screens.first else { return NSScreen.main }
+        let window = application.flatMap { frontWindowBounds(pid: $0.processIdentifier) }
+            .map { DisplayPlacement.cocoaRect(fromQuartz: $0, primaryScreenHeight: primary.frame.height) }
+        let index = DisplayPlacement.screenIndex(window: window, pointer: NSEvent.mouseLocation, screens: screens.map(\.frame))
+        return index.map { screens[$0] } ?? NSScreen.main
+    }
+
+    /// Window owner, layer and bounds are readable without Screen Recording or
+    /// Accessibility; titles and contents are neither requested nor used.
+    private static func frontWindowBounds(pid: pid_t) -> CGRect? {
+        guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]] else { return nil }
+        // The list is ordered front to back; skip menus, panels and tiny helper windows.
+        for info in windows {
+            guard (info[kCGWindowOwnerPID as String] as? Int32) == pid,
+                  (info[kCGWindowLayer as String] as? Int) == 0,
+                  (info[kCGWindowAlpha as String] as? Double ?? 1) > 0,
+                  let dictionary = info[kCGWindowBounds as String] as? NSDictionary,
+                  let bounds = CGRect(dictionaryRepresentation: dictionary as CFDictionary),
+                  bounds.width >= 80, bounds.height >= 80 else { continue }
+            return bounds
+        }
+        return nil
+    }
+
     func dismiss(restoreFocus: Bool = true) {
+        let query = argumentCommand != nil ? previousQuery : field.stringValue
         clearArgument()
         guard panel.isVisible, !isDismissing else { return }
+        // An unfinished formula survives hiding; every other input is dropped.
+        calculator.draft = CalculatorQuery.isDraft(query) ? query.trimmingCharacters(in: .whitespacesAndNewlines) : nil
         isDismissing = true
         defer { isDismissing = false }
         stopMonitors()
@@ -390,7 +563,14 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
             return true
         }
         if commandSelector == #selector(NSResponder.insertTab(_:)) {
-            if results.indices.contains(table.selectedRow) { onArgumentSelection?(results[table.selectedRow]) }
+            guard results.indices.contains(table.selectedRow) else { return true }
+            let entry = results[table.selectedRow]
+            if entry.kind == .calculator || entry.kind == .history {
+                // Edit the expression: put it in the field and recalculate.
+                field.stringValue = entry.alias ?? ""
+                controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: field))
+                if let editor = field.currentEditor() { editor.selectedRange = NSRange(location: field.stringValue.utf16.count, length: 0) }
+            } else { onArgumentSelection?(entry) }
             return true
         }
         return false
@@ -496,7 +676,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         token.isHidden = true
         argumentScroll.isHidden = true
         placeholder.isHidden = true
-        hint.stringValue = "↑↓ Select  ·  ↩ Open  ·  Tab Argument  ·  Esc Close"
+        hint.stringValue = Self.defaultHint
         hint.textColor = .secondaryLabelColor
     }
 
@@ -603,16 +783,21 @@ private final class EntryRow: NSTableCellView {
         representedURL = entry.fileURL
         if let command = BuiltInCommand(entryID: entry.id), entry.kind == .builtIn {
             icon.image = NSImage(systemSymbolName: command.symbolName, accessibilityDescription: nil)
+        } else if entry.kind == .calculator || entry.kind == .history {
+            icon.image = NSImage(systemSymbolName: entry.kind == .calculator ? "equal.circle.fill" : "clock.arrow.circlepath",
+                                 accessibilityDescription: nil)
         } else {
             icon.image = icons.icon(for: entry.fileURL) { [weak self] image in
                 guard let self, self.representedURL == entry.fileURL else { return }
                 self.icon.image = image ?? NSImage(systemSymbolName: "app", accessibilityDescription: nil)
             }
         }
-        name.stringValue = entry.name
+        let isCalculation = entry.kind == .calculator || entry.kind == .history
+        name.stringValue = isCalculation ? "= \(entry.name)" : entry.name
         alias.stringValue = entry.alias ?? ""
         kind.stringValue = entry.kind.title
-        setAccessibilityLabel("\(entry.name), \(kind.stringValue)")
+        setAccessibilityLabel(isCalculation ? "\(entry.alias ?? "") equals \(entry.name), \(kind.stringValue)"
+                                            : "\(entry.name), \(kind.stringValue)")
     }
 }
 

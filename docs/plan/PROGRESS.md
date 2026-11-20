@@ -1,10 +1,10 @@
 # Progress and handoff
 
-Last updated: November 18, 2026 (America/Los_Angeles).
+Last updated: November 19, 2026 (America/Los_Angeles).
 
 ## Current state
 
-Requested personal-use features through Stage 6k are implemented; Stage 6l is integrated into main at the owner’s request, with remaining manual acceptance pending. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. Window-shortcut/power checkpoint 7ebcf04 is pushed to origin/main. The calendar increment was developed on codex/day0-calendar-experiment and has now been fast-forward merged into main through 72d765c at the owner’s explicit request.
+Requested personal-use features through Stage 6k are implemented; Stage 6l is integrated into main at the owner’s request, with remaining manual acceptance pending. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. Window-shortcut/power checkpoint 7ebcf04 is pushed to origin/main. The calendar increment was developed on codex/day0-calendar-experiment and has now been fast-forward merged into main through 72d765c at the owner’s explicit request. Stage 6m (configurable launcher shortcut, focus-display placement and a clock-contrast experiment) is implemented on main and awaits the owner's hands-on checks. Stage 6n (AI text rewrite and translation) is implemented on branch `feat/ai-text` and awaits review and the owner's checks.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
@@ -23,12 +23,15 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 | 6j — Window keyboard conventions | Implemented | Native menu/Esc-priority checks pass; desktop Cmd+P and Cmd+, opened Settings. Broader physical focus/minimize/hide acceptance remains pending. |
 | 6k — Remembered caffeine / transient errors | Implemented | 50 core tests pass with fake power restoration; native feedback check confirms hide clears retained errors and rejects late completion. |
 | 6l — Day-O calendar | Integrated into main by owner request | 51 core tests and native clock/menu-mode checks pass; compact NSDatePicker previews inspected. Real menu navigation, side-by-side seconds and preference persistence acceptance pending. |
+| 6m — Launcher shortcut, focus display, clock contrast | Implemented; clock owner-confirmed | 57 core tests, six native checks and light/dark previews pass. Owner confirmed the clock is readable on an inactive display. Physical shortcut delivery and two-display placement are not yet observed. |
+| 6n — AI text rewrite and translation | Implemented and merged; owner reported it works | 78 core tests and `--verify-ai-text` (fakes, private pasteboards) pass. Real Services replacement, formatting in Mail/Notes and clipboard use in Electron apps are not yet observed. |
+| 6o — Calculator | Implemented and merged into main (fast-forward) at the owner's request; installed locally | 93 core tests and `--verify-calculator` (private pasteboard) pass. Physical typing, paste into another app and relaunch persistence not yet observed by the owner. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
 
-- Swift 6.2.3 / macOS 26.6.2 arm64 with Command Line Tools; no external packages or full Xcode required. `scripts/build.sh` creates an ad-hoc signed app; `UFICAST_OUTPUT_ROOT` isolates output. Quit before replacing a running bundle.
-- Carbon RegisterEventHotKey handles fixed launcher Cmd+Space and configurable app bindings. Local recorder releases/restores Uficast registrations; duplicate/reserved chords are rejected. Native NSRunningApplication activate/hide/unhide launches closed apps without AX.
+- Originally Swift 6.2.3 / macOS 26.6.2 arm64 with Command Line Tools; no external packages or full Xcode required. Since an update the machine has Swift 6.4, macOS 26.7.3 and a default MacOSX27.0 SDK; see the Stage 6m toolchain note. `scripts/build.sh` creates an ad-hoc signed app; `UFICAST_OUTPUT_ROOT` isolates output. Quit before replacing a running bundle.
+- Carbon RegisterEventHotKey handles the configurable launcher shortcut (default Cmd+Space) and configurable app bindings. Local recorder releases/restores Uficast registrations; duplicate/reserved chords are rejected. Native NSRunningApplication activate/hide/unhide launches closed apps without AX.
 - InstanceLock uses process-held flock, never unlinks its inode, and InstanceCoordinator reveals the primary process via a user-scoped distributed notification. Ordinary launch/reopen reveals the panel; footer gear opens Settings.
 - ApplicationCatalog discovers configured roots in the background. SearchIndex preserves exact-alias priority and stable ranking/history. KeyboardLayoutSearch expands queries using U.S./Russian physical keys before folding diacritics; literal variants win ties. Arguments and visible input remain unchanged.
 - ConfigStore validates versioned private JSON, writes atomically, protects corrupt/future files and maintains recoverable backups. Optional app hotkeys and default-off Caps preference decode existing schema-1 files. Never commit personal config.
@@ -49,7 +52,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 
 ## Remaining manual/platform checks
 
-- Cmd+Space repeat/release and system conflict behavior, Secure Input, fullscreen/multiple monitors, editing/paste/focus across destinations and sleep/wake.
+- Launcher shortcut (default and a custom one) repeat/release and system conflict behavior, two-display focus placement, clock readability on an inactive display, Secure Input, fullscreen/multiple monitors, editing/paste/focus across destinations and sleep/wake.
 - App show/hide/closed-launch cycles with physical assigned shortcuts; persistence/restart acceptance.
 - Owner's real script/environment and full paste → script → browser flow; Automation consent across ad-hoc rebuilds.
 - Actual relogin at the stable app path, multiple physical keyboards/reconnect/wake, preservation under external mapping changes and perceived switching latency.
@@ -170,8 +173,115 @@ Stage 6l owner-requested calendar work is recorded below; the earlier daily-use 
 - The current AC profile already had displaysleep=0 and sleep=0; these settings were only read. Recent user activity was also present, so this is continued-running/log evidence, not a controlled idle-prevention acceptance test. IODisplayWrangler did not expose matching power-state properties on this Mac; no success is claimed for that optional query.
 - No new code change, rebuild, restart, power toggle or test rerun was needed. The corrected implementation remains checkpoint 8d18892. The remaining exact next step below is unchanged.
 
-**Exact next step:** owner checks normal idle use with caffeine active and confirms the screen stays on, then verifies stop/expiry restores normal idle behavior. If it still goes black, record the time and distinguish an automatic display-off event from screen saver/lock or explicit system sleep in the system log. Other daily-use/manual gaps remain open.
+The caffeine idle check from this section is still open; it is carried into the next step of Stage 6m below.
 
+## Stage 6m — launcher shortcut, focus display and clock contrast
+
+- Owner requests (November 19, 2026): make Cmd+Space configurable, open the launcher on the display that has focus, and keep the menu bar clock readable on an inactive display. macOS dims the whole menu bar there; no public setting turns that off. The owner chose an experiment (option B): draw the clock as one explicit-contrast image. The owner approved the design `docs/superpowers/specs/2026-11-19-launcher-hotkey-display-clock-design.md` (commit c4334cb).
+- Launcher shortcut: optional `launcherHotkey` in schema 1 (absent = Cmd+Space, default not written). Validation reserves the effective launcher shortcut against enabled app hotkeys in both directions. HotkeyService registers the configured combination; status text names it. General → Launcher has the native recorder (Escape cancels; Delete or Reset restores Cmd+Space). AppController validates and probes a candidate with register/unregister before saving; an unavailable combination is reported and not saved.
+- Display: `show()` reads owner PID, layer, alpha and bounds of the frontmost app's front layer-0 window from the system window list (no Screen Recording/Accessibility), and `DisplayPlacement` chooses the screen with the largest overlap; fallback is the pointer's screen, then `NSScreen.main`.
+- Clock: the button title is empty; text, power symbol and calendar are drawn into one non-template image, recolored black (aqua) or white (dark aqua) at draw time. Accessibility label/description and tooltip carry the clock text. `--preview-status-clock <png>` renders a fixed-text light/dark comparison.
+- Separate earlier commits today: bc3117d lets `scripts/build.sh` read an optional git-ignored `local/build.env` (the owner's local output path is there, not in Git).
+
+**Toolchain note (unresolved).** After the machine's update, `scripts/build.sh` fails with the default MacOSX27.0 SDK: Command Line Tools have no `SwiftUIMacros` plugin, so SwiftUI `@State` does not expand. `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk` builds successfully. `scripts/test.sh` also fails under the new default `swiftbuild` system (TestingMacros is not passed to the compiler); `scripts/test.sh --build-system native` works, with a deprecation warning. The scripts are unchanged; adapting them needs the owner's decision.
+
+Checks actually performed (all with `SDKROOT=…MacOSX26.5.sdk`):
+
+- `scripts/test.sh --build-system native`: **57 core tests passed** (6 new: legacy decode keeps Cmd+Space and writes no field, custom round trip and validation, conflicts both ways including relabeled and disabled bindings, Quartz→Cocoa conversion, overlap choice, pointer fallback). Warm search p95 **18.02 ms** over 2,000 synthetic apps. The new tests were first seen failing to compile before the implementation existed.
+- Isolated release build (`UFICAST_OUTPUT_ROOT=.build/check`) and strict signature verification passed. After a full rebuild only the pre-existing `AppController.swift:99` capture warning and linker search-path warnings remain.
+- Native checks on that bundle passed: `--verify-menu-clock` (now also: non-template image, empty title, text inside the image, full-contrast ink brightness in aqua and dark aqua; tick phases 5, 7, 6 ms on the final build), `--verify-shortcut-recorder`, `--verify-keyboard-shortcuts`, `--verify-alias-editor`, `--verify-script-feedback`, `--verify-native-icons`.
+- Offscreen previews inspected: status clock light/dark (black on light, white on dark, zzz/cup, calendar and text aligned) and General in light, which shows the new Launcher Shortcut row. The Reset button (shown only with a custom shortcut) was not rendered.
+- Not performed: pressing a real recorded shortcut, relaunch persistence, the availability probe against a real conflict, placement on two displays, the clock on an actual inactive display, and the open-menu highlight look. The owner's running copy in the local output folder was not replaced; it requires a normal Quit first.
+
+Owner-installed build and result (November 19, 2026):
+
+- The owner quit Uficast normally; the build was then rebuilt into the owner's local output folder with `SDKROOT=…MacOSX26.5.sdk scripts/build.sh`, the strict signature check passed and the app was reopened.
+- **Owner confirmed: the clock is readable on an inactive display.** The clock-contrast change is kept. Light/dark bar variants and the open-menu highlight were not reported separately.
+
+## Stage 6n — AI text rewrite and translation (branch `feat/ai-text`)
+
+- Owner request (November 19, 2026): rewrite English into correct, simple English and translate EN↔RU by keyboard, using `claude -p` with Haiku 5.5 or another CLI the owner configures.
+  - The result is shown first; Enter inserts it where possible, otherwise copies it; Esc cancels.
+  - Clipboard and macOS Services entry points; inline formatting kept.
+  - Approved design `docs/superpowers/specs/2026-11-19-ai-text-rewrite-translate-design.md`; plan `docs/superpowers/plans/2026-11-19-ai-text-rewrite-translate.md`.
+- Spike (owner-approved, two Haiku calls through `/bin/zsh -lc`): 5.14 s with the base flags and 2.78 s adding `--setting-sources project,local`. In both, stdout held only the answer and the markers were kept. No sample text reached files under `~/.claude`. The second variant is the default command.
+- Implementation by task:
+  1. Native worker stdin with no SIGPIPE.
+  2. `AITextRunner`, `AITextPrompt`, `AITextPreferences` and `Configuration.aiText`.
+  3. `SpanMarkup`.
+  4. `RichTextBridge` and a separate `AITextPanelController` with the launcher's look.
+  5. `AITextCoordinator`, Services in Info.plist and a nested event loop for Services.
+  6. Carbon IDs 1000/1001 for clipboard shortcuts, the General → AI Text section and `NSApp.servicesProvider`.
+- Builder rulings (details in the design and ARCHITECTURE):
+  - Separate result panel.
+  - The shown copy drops source text colors.
+  - A second Service request during a wait returns an error.
+  - The timeout note is kept through a retry.
+  - Dev-only `--preview-settings … --height N`.
+
+Checks actually performed (all with `SDKROOT=…MacOSX26.5.sdk`):
+
+- `scripts/test.sh --build-system native`: **78 core tests passed**. New tests cover:
+  - stdin: large input, early exit, timeout and exact bytes.
+  - Runner: trimmed output, missing CLI with stderr, empty output, cancel and no shell injection.
+  - Configuration: legacy defaults, command limits, conflicts and round trip.
+  - Prompt and clean.
+  - Markers: escaping, round trip, moved markers, broken markers and entities.
+  - Each new test was first seen failing (missing API).
+- Release build into `.build/check` with strict signature check. No new warnings; only the pre-existing `AppController` capture warning, now at line 109.
+- `--verify-ai-text` passed:
+  - Rich round trip with bold and link, and pasteboard types.
+  - Panel hints and Enter/Esc behavior.
+  - With a fake runner: empty and image clipboard, clipboard rewrite, Esc during work with a late result, failure then retry, Service replacement keeping bold, Service cancel, Service deadline then copy mode, broken-marker fallback.
+- All other native checks still pass.
+- Settings preview (light) visually inspected: the AI Text section with command, Apply/Reset, recorders and captions.
+- Not performed:
+  - Any real Service invocation from another app, or pbs/System Settings registration of the Services.
+  - Replacement and formatting in Mail/Notes/Safari.
+  - The clipboard flow with a real `claude` call through the app, and real global shortcut delivery.
+  - Dark appearance of the panel, and a Codex command (Codex is not installed).
+- The owner's running copy was not replaced.
+
+Final whole-branch review: a fresh reviewer on Opus (Fable was unavailable to this account) found no critical issues. Five problems were fixed, each with a native check that failed first:
+1. A Service delivered from a main-queue block never received its result. Results now return through `RunLoop.main.perform` from a detached task.
+2. An image-only selection (U+FFFC) counted as text.
+3. An answer that is empty after cleaning was offered as a result, so Enter would have deleted the selection.
+4. HTML without a charset garbled Cyrillic; it is now decoded as UTF-8.
+5. The pre-existing `InstanceLock` test was flaky: concurrent spawns briefly hold the descriptor, and the test now waits up to 1 s.
+
+After the fixes the suite passed 6 runs in a row (78 tests), and all 7 native checks pass. Deferred minors:
+- A rare cancel-ordering race can leave a new request on "Working…" until Esc.
+- The default command is written to the config.
+- The message for an app/AI hotkey conflict mentions only the launcher.
+
+Owner check (November 19, 2026): the build from `feat/ai-text` (891df35) was installed after a normal Quit and `pbs -update`. **The owner reported that AI text works** and asked to merge. Which individual checklist items were tried was not reported; items not named stay open in `docs/MANUAL_TESTS.md`. Merged into main afterwards.
+
+**Exact next step:** the owner tries the Calculator checklist in `docs/MANUAL_TESTS.md`. Then the items below.
+
+**Earlier next step (still open):** remaining AI text checklist items the owner has not named (formatting in Mail/Notes, Service timeout, Codex), the Launcher shortcut and two-display placement checks; decide whether `build.sh`/`test.sh` should adapt to the new toolchain; the caffeine idle check and other daily-use gaps remain open. Then the owner installs the build (quit Uficast first) and runs the AI text items in `docs/MANUAL_TESTS.md`; Services may need logging out and in or `/System/Library/CoreServices/pbs -update` before they appear. Also still open: the Launcher shortcut and two-display placement checks; decide whether `build.sh`/`test.sh` should adapt to the new toolchain. The caffeine idle check (screen stays on while active; stop/expiry restores idle behavior) and other daily-use gaps remain open.
+
+
+## Stage 6o — Calculator
+
+- Owner request (November 19, 2026): calculate in the launcher search; Enter copies the result; remember calculations and show them as suggestions below when a formula is started or `calc` is typed; restore an unfinished formula when the launcher reopens. The owner declined further questions, so scope and defaults below are the builder's calls (see REQUIREMENTS "Calculator").
+- Builder calls:
+  - A custom evaluator with `+ - * / ^ %`, `× ÷ −`, parentheses and `.`/`,` decimals. No functions, units or currencies.
+  - Result copied with a dot decimal and at most 15 significant digits.
+  - `1,000` is refused as ambiguous instead of read as 1.
+  - History is the last 50 distinct calculations, kept in UserDefaults `calculator.v1`, outside the exported config.
+  - Enter on a history row copies its result; Tab moves its expression into the field.
+  - Enter closes the launcher and returns focus to the previous app so Cmd+V works at once.
+  - The restored draft is selected, so typing replaces it. This is the single exception to the clear-on-hide rule; errors and script input are still cleared.
+  - `calc` keeps the Calculator app first, with history below it.
+- Implementation: `Calculator`, `CalculatorQuery` and `CalculatorState` in `Sources/UficastCore/Calculator.swift`; `LauncherEntry.Kind` gains `.calculator` and `.history`; `LauncherPanelController` composes rows in `searchResults(for:)`; AppController loads/saves the state.
+- Checks actually performed (with `SDKROOT=…MacOSX26.5.sdk`):
+  - `scripts/test.sh --build-system native`: **93 core tests passed** (15 new, each first seen failing to compile before the API existed). Warm search p95 **17.75 ms**.
+  - `--verify-calculator` (written before the controller code and first seen failing to compile) passes: live row, bare number stays an app search, `calc` ordering, Tab edit, Enter on live and history rows, history bump, draft save/restore/selection/clear, state-change reporting, and the real clipboard's change count unchanged.
+  - Isolated and canonical release builds and strict signature checks pass. The other seven native checks still pass on the isolated build.
+  - Light and dark launcher previews (`--preview-launcher … --calculation`, public fixtures) were inspected.
+- Integration: the owner asked for the calculator in main before any upstream pull request; `feat/calculator` was fast-forward merged into main (no divergence) and pushed to the fork, then a main-to-main pull request was opened against the original repository.
+- Installed: the running app was quit normally, rebuilt into the owner's local output folder and reopened.
+- Not performed: typing in the real launcher, paste into another app, relaunch persistence with a real draft, and anything with the owner's real history. Items are in `docs/MANUAL_TESTS.md` under Calculator.
 
 ### Earlier cursor report checkpoint
 

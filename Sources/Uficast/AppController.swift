@@ -19,11 +19,16 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     private var powerRevision: UInt64 = 0
     private var restoringPower = true
     private let savedPowerKey = "keepAwakeSession.v1"
+    private let calculatorKey = "calculator.v1"
     private var didLoadConfiguration = false
     private var didReconcileKeyboard = false
     private var isTerminating = false
     private var cancelledScripts: Set<String> = []
     private let settingsModel = SettingsModel()
+    private let aiPanel = AITextPanelController()
+    private lazy var aiText = AITextCoordinator(
+        panel: aiPanel, runner: AITextRunner(workingDirectory: FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Uficast/ai-workdir", isDirectory: true)))
     private lazy var settings = SettingsWindowController(model: settingsModel)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -55,6 +60,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         menuBarClock = MenuBarClockController(statusItem: statusItem, menu: menu)
         hotkey.onToggle = { [weak self] in self?.launcher.toggle() }
         hotkey.onAppToggle = { [weak self] in self?.toggleApplication($0) }
+        hotkey.onAIAction = { [weak self] in self?.aiText.runFromClipboard($0) }
+        aiText.beforePresent = { [weak self] in self?.launcher.dismiss(restoreFocus: false) }
+        NSApp.servicesProvider = aiText
+        NSUpdateDynamicServices()
         hotkey.onStatusChange = { [weak self] in self?.updateStatus() }
         hotkey.start()
         catalog.onChange = { [weak self] in
@@ -62,6 +71,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
             self.updateEntries()
         }
         launcher.beforeShow = { [weak self] in self?.catalog.refreshIfStale() }
+        launcher.calculator = CalculatorState.decode(UserDefaults.standard.data(forKey: calculatorKey))
+        launcher.onCalculatorChange = { [weak self] state in self?.rememberCalculator(state) }
         launcher.onSelect = { [weak self] entry in self?.launch(entry) }
         launcher.onArgumentSelection = { [weak self] entry in self?.selectArgumentCommand(entry) }
         launcher.onArgumentSubmit = { [weak self] id, argument in self?.runScript(id: id, argument: argument) }
@@ -87,6 +98,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         }
         settingsModel.onCheckKeyboard = { [weak self] in self?.checkKeyboard() }
         settingsModel.onSetLoginItem = { [weak self] in self?.setLoginItem($0) }
+        settingsModel.onSetLauncherHotkey = { [weak self] in self?.setLauncherHotkey($0) }
+        settingsModel.onSetAICommand = { [weak self] in self?.setAICommand($0) }
+        settingsModel.onSetAIHotkey = { [weak self] in self?.setAIHotkey($0, $1) }
         settingsModel.onBeginShortcutRecording = { [weak self] in self?.hotkey.stop() }
         settingsModel.onEndShortcutRecording = { [weak self] in self?.hotkey.start() }
         settingsModel.onSetKeepAwake = { [weak self] in self?.changeKeepAwake(enabled: $0) }
@@ -200,6 +214,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         keepAwakeDetail.title = detail
         settingsModel.keepAwakeStatus = error.map { "\(detail) \($0)" } ?? detail
         menuBarClock?.setKeepAwake(active: state.isActive)
+    }
+
+    /// Local, like the remembered Keep Awake session; never part of the exported configuration.
+    private func rememberCalculator(_ state: CalculatorState) {
+        if let data = try? JSONEncoder().encode(state) { UserDefaults.standard.set(data, forKey: calculatorKey) }
     }
 
     private func rememberPower(_ state: KeepAwakeState) {
@@ -335,9 +354,54 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         }
     }
 
+    /// nil restores Command+Space. An unavailable combination is reported and
+    /// never saved, so the launcher keeps a working shortcut.
+    private func setLauncherHotkey(_ shortcut: GlobalShortcut?) {
+        guard !settingsModel.isBusy, !settingsModel.isReadOnly else { return }
+        let current = settingsModel.configuration.effectiveLauncherHotkey
+        var config = settingsModel.configuration
+        config.launcherHotkey = shortcut?.signature == GlobalShortcut.launcher.signature ? nil : shortcut
+        guard config.effectiveLauncherHotkey.signature != current.signature else { return }
+        do { _ = try config.validated() } catch { settingsModel.status = error.localizedDescription; return }
+        let candidate = config.effectiveLauncherHotkey
+        if let error = hotkey.availabilityError(for: candidate) {
+            settingsModel.status = "\(candidate.display) is unavailable (error \(error)). The launcher keeps \(current.display)."
+            return
+        }
+        saveConfiguration(config)
+    }
+
+    private func setAICommand(_ command: String) {
+        guard !settingsModel.isBusy, !settingsModel.isReadOnly else { return }
+        var config = settingsModel.configuration
+        config.aiText.command = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard config != settingsModel.configuration else { return }
+        do { _ = try config.validated() } catch { settingsModel.status = error.localizedDescription; return }
+        saveConfiguration(config)
+    }
+
+    /// Like the launcher shortcut: validated and probed before it is saved.
+    private func setAIHotkey(_ action: AITextAction, _ shortcut: GlobalShortcut?) {
+        guard !settingsModel.isBusy, !settingsModel.isReadOnly else { return }
+        let current = settingsModel.configuration.aiText.hotkey(for: action)
+        guard shortcut?.signature != current?.signature else { return }
+        var config = settingsModel.configuration
+        switch action {
+        case .rewrite: config.aiText.rewriteHotkey = shortcut
+        case .translate: config.aiText.translateHotkey = shortcut
+        }
+        do { _ = try config.validated() } catch { settingsModel.status = error.localizedDescription; return }
+        if let shortcut, let error = hotkey.availabilityError(for: shortcut) {
+            settingsModel.status = "\(shortcut.display) is unavailable (error \(error)). The previous shortcut is kept."
+            return
+        }
+        saveConfiguration(config)
+    }
+
     private func updateStatus() {
         settingsModel.shortcutStatus = hotkey.status
         settingsModel.hotkeyErrors = hotkey.appErrors
+        settingsModel.aiHotkeyErrors = hotkey.aiErrors
     }
 
     private func toggleApplication(_ id: String) {
@@ -370,7 +434,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         let remapChanged = settingsModel.configuration.capsLockToF19Enabled != configuration.capsLockToF19Enabled
         settingsModel.configuration = configuration
         menuBarClock?.configure(configuration.menuBarClock)
-        hotkey.configure(appShortcuts: configuration.applications.compactMapValues { $0.isEnabled ? $0.hotkey : nil })
+        aiText.command = configuration.aiText.command
+        var aiShortcuts: [AITextAction: GlobalShortcut] = [:]
+        for action in AITextAction.allCases { aiShortcuts[action] = configuration.aiText.hotkey(for: action) }
+        hotkey.configure(launcher: configuration.effectiveLauncherHotkey, ai: aiShortcuts,
+                         appShortcuts: configuration.applications.compactMapValues { $0.isEnabled ? $0.hotkey : nil })
         let roots = configuration.applicationRoots.map(Configuration.fileURL)
         if roots != catalog.roots || catalog.entries.isEmpty { catalog.roots = roots; catalog.refresh() }
         updateEntries()
