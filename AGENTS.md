@@ -7,7 +7,12 @@
 - At each session boundary, update `PROGRESS.md` with actual changes, checks and results, unresolved issues, and the exact next step. Never mark an unperformed manual check as passed.
 - Keep stages small enough to resume without chat history. Record architectural changes in `ARCHITECTURE.md` and adjust the remaining plan when evidence requires it.
 - The owner explicitly requested committing the plan and work for continuity. Commit completed increments after appropriate verification; stage only relevant project files. Do not commit private configuration, real internal URLs, credentials, or build artifacts.
-- After building the app (`scripts/build.sh`), quit the currently running Uficast normally and launch the freshly built bundle again, so the owner always runs the latest build. Quit before the build replaces the bundle, never overwrite a running executable, and prefer a normal quit over `kill` because it saves the remembered caffeine state.
+- After a change to the app, run the latest build in this order, so the owner always runs it:
+  1. Build, into a staging folder (`UFICAST_OUTPUT_ROOT="$PWD/.build/staging" scripts/build.sh`), so the running bundle is untouched.
+  2. Close the old app with a normal quit, not `kill`, because a normal quit saves the remembered caffeine state.
+  3. Copy the staged bundle over the owner's bundle (the output path in `local/build.env`) and open the new app.
+
+  Never overwrite the executable of a running app.
 - Do not change the machine's hotkeys, keyboard mappings, login items, or privacy grants merely to verify code. Interactive setup must be clearly tied to an explicit user action in the app or an authorized manual test.
 
 - Mandatory updated requirement: Uficast must not require or request Accessibility or Input Monitoring. The launcher uses RegisterEventHotKey with Cmd+Space (either Command key) by default; the owner can choose another combination in General. Do not restore the earlier side-specific event-tap design.
