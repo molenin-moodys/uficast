@@ -25,7 +25,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 | 6l — Day-O calendar | Integrated into main by owner request | 51 core tests and native clock/menu-mode checks pass; compact NSDatePicker previews inspected. Real menu navigation, side-by-side seconds and preference persistence acceptance pending. |
 | 6m — Launcher shortcut, focus display, clock contrast | Implemented; clock owner-confirmed | 57 core tests, six native checks and light/dark previews pass. Owner confirmed the clock is readable on an inactive display. Physical shortcut delivery and two-display placement are not yet observed. |
 | 6n — AI text rewrite and translation | Implemented and merged; owner reported it works | 78 core tests and `--verify-ai-text` (fakes, private pasteboards) pass. Real Services replacement, formatting in Mail/Notes and clipboard use in Electron apps are not yet observed. |
-| 6o — Calculator | Implemented on branch `feat/calculator`; installed locally | 93 core tests and `--verify-calculator` (private pasteboard) pass. Physical typing, paste into another app and relaunch persistence not yet observed by the owner. |
+| 6o — Calculator | Implemented and merged into main (fast-forward) at the owner's request; installed locally | 93 core tests and `--verify-calculator` (private pasteboard) pass. Physical typing, paste into another app and relaunch persistence not yet observed by the owner. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -256,12 +256,12 @@ After the fixes the suite passed 6 runs in a row (78 tests), and all 7 native ch
 
 Owner check (November 19, 2026): the build from `feat/ai-text` (891df35) was installed after a normal Quit and `pbs -update`. **The owner reported that AI text works** and asked to merge. Which individual checklist items were tried was not reported; items not named stay open in `docs/MANUAL_TESTS.md`. Merged into main afterwards.
 
-**Exact next step:** the owner tries the Calculator checklist in `docs/MANUAL_TESTS.md`; decide whether `feat/calculator` is merged into main. Then the items below.
+**Exact next step:** the owner tries the Calculator checklist in `docs/MANUAL_TESTS.md`. Then the items below.
 
 **Earlier next step (still open):** remaining AI text checklist items the owner has not named (formatting in Mail/Notes, Service timeout, Codex), the Launcher shortcut and two-display placement checks; decide whether `build.sh`/`test.sh` should adapt to the new toolchain; the caffeine idle check and other daily-use gaps remain open. Then the owner installs the build (quit Uficast first) and runs the AI text items in `docs/MANUAL_TESTS.md`; Services may need logging out and in or `/System/Library/CoreServices/pbs -update` before they appear. Also still open: the Launcher shortcut and two-display placement checks; decide whether `build.sh`/`test.sh` should adapt to the new toolchain. The caffeine idle check (screen stays on while active; stop/expiry restores idle behavior) and other daily-use gaps remain open.
 
 
-## Stage 6o — Calculator (branch `feat/calculator`)
+## Stage 6o — Calculator
 
 - Owner request (November 19, 2026): calculate in the launcher search; Enter copies the result; remember calculations and show them as suggestions below when a formula is started or `calc` is typed; restore an unfinished formula when the launcher reopens. The owner declined further questions, so scope and defaults below are the builder's calls (see REQUIREMENTS "Calculator").
 - Builder calls:
@@ -279,6 +279,7 @@ Owner check (November 19, 2026): the build from `feat/ai-text` (891df35) was ins
   - `--verify-calculator` (written before the controller code and first seen failing to compile) passes: live row, bare number stays an app search, `calc` ordering, Tab edit, Enter on live and history rows, history bump, draft save/restore/selection/clear, state-change reporting, and the real clipboard's change count unchanged.
   - Isolated and canonical release builds and strict signature checks pass. The other seven native checks still pass on the isolated build.
   - Light and dark launcher previews (`--preview-launcher … --calculation`, public fixtures) were inspected.
+- Integration: the owner asked for the calculator in main before any upstream pull request; `feat/calculator` was fast-forward merged into main (no divergence) and pushed to the fork, then a main-to-main pull request was opened against the original repository.
 - Installed: the running app was quit normally, rebuilt into the owner's local output folder and reopened.
 - Not performed: typing in the real launcher, paste into another app, relaunch persistence with a real draft, and anything with the owner's real history. Items are in `docs/MANUAL_TESTS.md` under Calculator.
 
