@@ -59,5 +59,7 @@ private func link(from script: String, stdin text: String) throws -> String? {
         #expect(steps[2].contains("Text") && steps[2].contains("Get Clipboard"))
         #expect(steps[3].contains("Run Shell Script") && steps[3].contains("stdin"))
         #expect(steps[4].contains("Add Keyboard Shortcut"))
+        // A plain combination such as ⌃⌘R was silently taken by another app on the owner's Mac.
+        #expect(steps[4].contains("⌃⌘⇧R") && steps[4].contains("another app"))
     }
 }
