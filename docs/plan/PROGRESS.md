@@ -27,7 +27,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 | 6n — AI text rewrite and translation | Implemented and merged; owner reported it works | 78 core tests and `--verify-ai-text` (fakes, private pasteboards) pass. Real Services replacement, formatting in Mail/Notes and clipboard use in Electron apps are not yet observed. |
 | 6o — Calculator | Implemented and merged into main (fast-forward) at the owner's request; installed locally | 93 core tests and `--verify-calculator` (private pasteboard) pass. Physical typing, paste into another app and relaunch persistence not yet observed by the owner. |
 | 6p — Persistent frequency ordering | Implemented and merged into main (fast-forward) at the owner's request; installed locally | 99 core tests and `--verify-usage-order` pass. Real relaunch ordering not yet observed by the owner. |
-| 6q — Shortcuts instead of Services | Implemented on main; installed locally; import into Shortcuts untested | 107 core tests and `--verify-ai-text` pass. The owner has not yet pressed Create Shortcut or run a generated shortcut. Redo if Shortcuts refuses the file. |
+| 6q — Shortcuts instead of Services | Implemented on main; file import failed, replaced by guided manual steps | 107 core tests and `--verify-ai-text` pass. Owner saw Shortcuts refuse the generated file as unsigned. The guided path is not yet tried by the owner. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -301,13 +301,18 @@ Owner check (November 19, 2026): the build from `feat/ai-text` (891df35) was ins
 - Builder calls:
   - A `uficast://rewrite|translate?text=…` link is the hand-off (plain text, one way). Enter copies; replacement of the selection and formatting for linked text are gone.
   - Any app or page can open such a link, so a link only starts a request: no copy until Enter, 20,000-character limit, a link without text uses the clipboard.
-  - The generated file has URL Encode, URL and Open URLs actions chained by UUID; the Services machinery (nested event loop, replace mode, `NSServices`, `servicesProvider`) was deleted rather than kept dormant.
-  - No signing; if import fails the README documents the manual shortcut.
+  - The Services machinery (nested event loop, replace mode, `NSServices`, `servicesProvider`) was deleted rather than kept dormant.
+  - First try: a generated `.shortcut` file with URL Encode, URL and Open URLs actions. It failed on the owner's Mac; see "Redo" below.
 - Checks actually performed (with `SDKROOT=…MacOSX26.5.sdk`):
   - `scripts/test.sh --build-system native`: **107 core tests passed** (8 new for link parsing and the shortcut plist structure and UUID chain, first seen failing to compile). Warm search p95 **18.23 ms**.
   - `--verify-ai-text` was rewritten first (it failed to compile) and passes: panel hints (Copy only), clipboard rewrite, Esc during work, failure and retry, link text instead of clipboard, link without text, overlong and unknown links refused, rich clipboard keeping bold, broken-marker fallback. All other native checks pass on the isolated release build, whose Info.plist has the `uficast` scheme and no `NSServices`.
   - The General settings preview (light) was inspected: the AI Text section shows the two Create buttons and the explanation.
-- Not performed: pressing Create Shortcut, whether Shortcuts accepts the unsigned file, running the shortcut, the selection input in real apps, the Shortcut's own keyboard shortcut, and real link delivery by `open "uficast://…"`. Items are in `docs/MANUAL_TESTS.md` under AI text.
+- Owner result (November 20, 2026): Create Shortcut opened Shortcuts, which answered **"Importing unsigned shortcut files is not supported. Please use another sharing option."** The file route is closed on this Mac (`shortcuts sign` also needs an iCloud sign-in).
+- Redo (same day): `ShortcutFile` and its tests were deleted. New `ShortcutGuide` (UficastCore) holds the name, five steps and a one-line Run Shell Script script. The buttons now copy that script, open `shortcuts://create-shortcut` and make General → AI Text show the steps (`SettingsModel.shortcutGuide`).
+  - 3 core tests run the script in zsh with a stub `open` and read the recorded link back through `AITextURL`, including quotes, `$`, backticks, `&`, `+`, `%`, Cyrillic, newlines and empty input.
+  - 107 core tests pass in total. The General preview with the steps (`--preview-settings … --general --ai-guide`) was inspected. The `uficast` scheme is registered with Launch Services (read-only `lsregister -dump`).
+- Not performed: building the shortcut by hand, the real wording of Shortcuts' controls versus the steps, the selection input in real apps, the shortcut's own keyboard shortcut, and real link delivery by `open "uficast://…"` (it would start a real AI request). Items are in `docs/MANUAL_TESTS.md` under AI text.
+- The deploy order rule in `AGENTS.md` changed the same day: build to a staging folder, quit the old app, copy the build over the owner's bundle, open the new app.
 - The hotkey-delivery check in `AITextVerification.swift` (`hotkeyDelivery`, from another session) was already in the working tree; it passes and was left as it was.
 
 ### Earlier cursor report checkpoint

@@ -170,6 +170,7 @@ struct UficastMain {
                 } else {
                     let model = ViewPreview.settingsModel()
                     if CommandLine.arguments.contains("--general") { model.section = "General" }
+                    if CommandLine.arguments.contains("--ai-guide") { model.shortcutGuide = .rewrite }
                     if CommandLine.arguments[flag] == "--preview-script-editor" {
                         var command = model.configuration.scripts[0]
                         command.requiresArgument = true

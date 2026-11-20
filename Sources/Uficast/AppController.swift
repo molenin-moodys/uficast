@@ -403,27 +403,21 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         saveConfiguration(config)
     }
 
-    /// Writes the Shortcut file and hands it to Shortcuts, which asks the owner to add it.
-    /// Nothing is added without that confirmation.
+    /// Shortcuts refuses unsigned shortcut files, so this opens an empty shortcut, puts the script
+    /// for its Run Shell Script action on the clipboard (on the owner's click) and lets Settings
+    /// show the remaining steps.
     private func createShortcut(_ action: AITextAction) {
-        let file = ShortcutFile.aiText(action)
-        guard let data = file.data else { settingsModel.status = "Could not build the shortcut file."; return }
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("uficast-shortcuts", isDirectory: true)
-        let url = folder.appendingPathComponent(file.fileName)
-        do {
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try data.write(to: url, options: .atomic)
-        } catch { settingsModel.status = "Could not write the shortcut file: \(error.localizedDescription)"; return }
-        guard let shortcuts = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.shortcuts") else {
-            settingsModel.status = "The Shortcuts app was not found."
+        let board = NSPasteboard.general
+        board.clearContents()
+        guard board.setString(ShortcutGuide.script(for: action), forType: .string) else {
+            settingsModel.status = "Could not copy the shortcut script."
             return
         }
-        NSWorkspace.shared.open([url], withApplicationAt: shortcuts, configuration: NSWorkspace.OpenConfiguration()) { [weak self] _, error in
-            Task { @MainActor in
-                self?.settingsModel.status = error.map { "Shortcuts could not open “\(file.fileName)”: \($0.localizedDescription)" }
-                    ?? "Shortcuts opened “\(file.fileName)”. Choose Add Shortcut there."
-            }
-        }
+        settingsModel.shortcutGuide = action
+        let opened = URL(string: "shortcuts://create-shortcut").map { NSWorkspace.shared.open($0) } ?? false
+        settingsModel.status = opened
+            ? "Shortcuts opened a new shortcut. The script is on your clipboard; follow the steps under AI Text."
+            : "Could not open Shortcuts. The script is on your clipboard; follow the steps under AI Text."
     }
 
     private func updateStatus() {

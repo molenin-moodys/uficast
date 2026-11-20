@@ -51,12 +51,36 @@ struct AITextSettings: View {
                     Button("Create \(action.title) Shortcut") { model.onCreateShortcut?(action) }
                 }
             }
-            Text("Opens the Shortcuts app so you can add “Rewrite with Uficast” or “Translate with Uficast”. They use the selected text where the app offers it, otherwise the clipboard, and show the result here; ↩ copies it. Assign a keyboard shortcut in the shortcut's details in Shortcuts.")
+            Text("Opens a new shortcut in the Shortcuts app and copies the script for it; follow the steps below. The shortcut uses the selected text where the app offers it, otherwise the clipboard, and shows the result here; ↩ copies it.")
                 .font(.caption).foregroundStyle(.secondary)
+            if let action = model.shortcutGuide { guide(action) }
             Text("The text is sent to the program the command runs (Anthropic for claude). Uficast stores no text; the program may keep data under its own settings.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .onAppear { draft = model.configuration.aiText.command }
         .onChange(of: model.configuration.aiText.command) { _, command in draft = command }
+    }
+
+    /// Steps for building the shortcut by hand, since Shortcuts refuses to import unsigned files.
+    private func guide(_ action: AITextAction) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Steps for “\(ShortcutGuide.shortcutName(for: action))”").fontWeight(.medium)
+            ForEach(Array(ShortcutGuide.steps(for: action).enumerated()), id: \.offset) { index, step in
+                Text("\(index + 1). \(step)").font(.callout).fixedSize(horizontal: false, vertical: true)
+            }
+            Text(ShortcutGuide.script(for: action))
+                .font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                .padding(8).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 6))
+            HStack {
+                Button("Copy Script") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(ShortcutGuide.script(for: action), forType: .string)
+                }
+                Button("Hide Steps") { model.shortcutGuide = nil }
+            }
+        }
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
     }
 }

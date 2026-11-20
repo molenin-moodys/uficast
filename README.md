@@ -134,11 +134,10 @@ claude -p --model claude-haiku-5-5 --tools "" --strict-mcp-config --disable-slas
 The command gets the prompt on stdin and must print only the answer. You can change the model or use another CLI. It runs in your login shell from an empty private folder. The selected text never becomes part of the command line.
 
 - **Clipboard.** Copy text, press **Rewrite from clipboard** or **Translate from clipboard**, and check the result. **Enter** copies it for Cmd+V and **Esc** cancels. This works in any app.
-- **Shortcuts.** **Create Rewrite Shortcut** and **Create Translate Shortcut** open the Shortcuts app with a ready shortcut; choose **Add Shortcut** there, then assign a keyboard shortcut in its details.
+- **Shortcuts.** **Create Rewrite Shortcut** and **Create Translate Shortcut** open a new shortcut in the Shortcuts app, copy a one-line script to the clipboard and list the remaining steps in Settings: name it, use it as a Quick Action, receive Text with Get Clipboard as the fallback, add **Run Shell Script** (input on stdin) with the script, and assign a keyboard shortcut. Shortcuts refuses to import generated files ("Importing unsigned shortcut files is not supported"), so the shortcut is built by hand.
   - It takes the selected text where the app offers it as a Quick Action (the Services menu), otherwise the clipboard, and opens `uficast://rewrite?text=…` (or `translate`). The result appears in Uficast and **Enter** copies it; nothing replaces the selection.
   - Some apps, such as many Electron apps and terminals, do not offer their selection, so the clipboard is used there.
   - Any app or web page can open a `uficast://` link. It only starts a request and shows the result; nothing is copied until you press Enter. Text over 20,000 characters is refused.
-  - The shortcut file format is undocumented and Shortcuts may refuse it. If adding fails, create the shortcut by hand: receive Text from Quick Actions with Get Clipboard when there is no input, URL Encode the input, then Open URL on `uficast://rewrite?text=` followed by the encoded text.
 - **Formatting.** Bold, italics, links and other inline styles are carried through the model with markers and restored. If the model breaks them, the result keeps the selection's main style and the panel says so.
 - **Privacy.** The text goes to the program the command runs: Anthropic for `claude`. Uficast stores no text, but that program may keep data under its own settings.
 
