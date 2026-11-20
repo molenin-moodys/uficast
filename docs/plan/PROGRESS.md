@@ -336,7 +336,7 @@ Owner check (November 19, 2026): the build from `feat/ai-text` (891df35) was ins
 
 ### AI result panel text size
 
-The owner found the translation in the AI result panel too small: results without a source font were drawn as 12 pt Helvetica. The shown copy now raises every run to at least 17 pt and keeps its traits (the copied result is unchanged), the failure text is 15 pt, and the panel grew from 720×340 to 760×420. `--verify-ai-text` passes. The build needed `SDKROOT=…/MacOSX26.5.sdk` (the unresolved toolchain note above). The panel itself is not previewed offscreen, so the owner's look at a real translation is pending. The new build is installed and running.
+The owner found the translation in the AI result panel too small: results without a source font were drawn as 12 pt Helvetica. At the owner's request the shown copy now uses the font of the owner's iTerm profile (Meslo LG S NF Mono, 16 pt, vertical spacing 1.0, so the natural line height), with the system monospaced font as the fallback when Meslo is not installed. Source fonts only contribute bold/italic; source paragraph styles are dropped for display. The copied result is unchanged. Failure/working text uses the same font, and the panel grew from 720×340 to 760×420. `--verify-ai-text` passes. The build needed `SDKROOT=…/MacOSX26.5.sdk` (the unresolved toolchain note above). The panel itself is not previewed offscreen, so the owner's look at a real translation is pending. The new build is installed and running.
 
 ### Earlier cursor report checkpoint
 

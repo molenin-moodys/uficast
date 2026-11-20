@@ -134,7 +134,7 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
     }
 
     func showFailure(_ message: String) {
-        display(.failure, text: NSAttributedString(string: message, attributes: [.font: NSFont.systemFont(ofSize: 15), .foregroundColor: NSColor.systemRed]),
+        display(.failure, text: NSAttributedString(string: message, attributes: [.font: Self.resultFont(), .foregroundColor: NSColor.systemRed]),
                 note: "", hint: "↩ Retry  ·  Esc Close")
     }
 
@@ -167,7 +167,7 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
 
     private let resultHint = "↩ Copy  ·  Esc Cancel"
     private var secondaryText: [NSAttributedString.Key: Any] {
-        [.font: NSFont.systemFont(ofSize: 15), .foregroundColor: NSColor.secondaryLabelColor]
+        [.font: Self.resultFont(), .foregroundColor: NSColor.secondaryLabelColor]
     }
 
     private func display(_ state: State, text: NSAttributedString, note: String, hint: String) {
@@ -200,19 +200,26 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
         copy.removeAttribute(.foregroundColor, range: range)
         copy.removeAttribute(.backgroundColor, range: range)
         copy.addAttribute(.foregroundColor, value: NSColor.labelColor, range: range)
-        // Source fonts are often small (or missing, which AppKit draws as 12 pt Helvetica),
-        // so the shown copy raises every run to a readable minimum and keeps its traits.
+        // Show the result like the terminal does: the iTerm font at its natural line height.
+        // Source fonts only contribute bold/italic; source paragraph styles are dropped.
+        copy.removeAttribute(.paragraphStyle, range: range)
+        copy.addAttribute(.paragraphStyle, value: NSParagraphStyle.default, range: range)
         copy.enumerateAttribute(.font, in: range) { value, runRange, _ in
-            guard let font = value as? NSFont else {
-                copy.addAttribute(.font, value: NSFont.systemFont(ofSize: minimumResultFontSize), range: runRange)
-                return
-            }
-            guard font.pointSize < minimumResultFontSize else { return }
-            let resized = NSFont(descriptor: font.fontDescriptor, size: minimumResultFontSize) ?? font
-            copy.addAttribute(.font, value: resized, range: runRange)
+            let traits = (value as? NSFont)?.fontDescriptor.symbolicTraits ?? []
+            copy.addAttribute(.font, value: resultFont(traits: traits), range: runRange)
         }
         return copy
     }
 
-    private static let minimumResultFontSize: CGFloat = 17
+    /// Same family and size as the owner's iTerm profile (Meslo LG S NF Mono, 16 pt,
+    /// vertical spacing 1.0); falls back to the system monospaced font when it is missing.
+    static let resultFontSize: CGFloat = 16
+    static func resultFont(traits: NSFontDescriptor.SymbolicTraits = []) -> NSFont {
+        let wanted = traits.intersection([.bold, .italic])
+        let suffix = wanted == [.bold, .italic] ? "BoldItalic" : wanted == .bold ? "Bold" : wanted == .italic ? "Italic" : "Regular"
+        if let font = NSFont(name: "MesloLGSNFM-\(suffix)", size: resultFontSize) { return font }
+        let base = NSFont.monospacedSystemFont(ofSize: resultFontSize, weight: .regular)
+        guard !wanted.isEmpty else { return base }
+        return NSFont(descriptor: base.fontDescriptor.withSymbolicTraits(wanted), size: resultFontSize) ?? base
+    }
 }
