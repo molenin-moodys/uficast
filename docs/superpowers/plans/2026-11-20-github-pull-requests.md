@@ -46,6 +46,7 @@
 - Produces:
   - `public struct PullRequest: Identifiable, Hashable, Sendable` with `number: Int`, `title: String`, `url: URL`, `repository: String` (`owner/repo`), `createdAt: Date`, `isDraft: Bool`, `id: String { url.absoluteString }`, and a public memberwise `init(number:title:url:repository:createdAt:isDraft:)`.
   - `public enum PullRequestError: Error, LocalizedError, Equatable { case notInstalled, unexpectedOutput, failed(String), cancelled }` with the exact texts from Global Constraints (`failed` shows its message; `cancelled` shows `Cancelled.`).
+  - `public protocol PullRequestLoading: Sendable { func load() async throws -> [PullRequest] }` (declared here, not in Task 2, so Tasks 2 and 3 can be built independently; no test of its own)
   - `public enum PullRequestParser { public static func parse(_ json: Data) throws -> [PullRequest] }`
   - `public enum PullRequestFilter { public static func apply(_ query: String, to pullRequests: [PullRequest]) -> [PullRequest] }`
   - `extension LauncherEntry { public static func pullRequest(_ pullRequest: PullRequest) -> LauncherEntry }`: id `"pr:" + url`, `name` = title, `kind` `.pullRequest`, `fileURL` = the PR URL, `alias` = `"<repository> #<number>"` plus `" · Draft"` for drafts.
@@ -80,9 +81,8 @@ git push origin main
 - Test: `Tests/UficastCoreTests/GitHubPullRequestLoaderTests.swift` (use `@testable import UficastCore`, because `ScriptResult`'s memberwise init is internal)
 
 **Interfaces:**
-- Consumes: `PullRequest`, `PullRequestParser`, `PullRequestError` (Task 1); `ScriptResult`, `NativeRun` (existing, same module).
+- Consumes: `PullRequest`, `PullRequestParser`, `PullRequestError`, `PullRequestLoading` (Task 1); `ScriptResult`, `NativeRun` (existing, same module).
 - Produces:
-  - `public protocol PullRequestLoading: Sendable { func load() async throws -> [PullRequest] }`
   - `public enum GitHubCLI` with `static let standardDirectories: [String]`, `static let arguments: [String]` (the exact argv), `static func searchDirectories(path: String?) -> [String]` (app `PATH` entries first, then standard ones; absolute and non-empty only; de-duplicated keeping first position), `static func isRegularExecutable(_ path: String) -> Bool` (an existing regular file with an execute bit; a directory is false), `static func locate(in directories: [String], isExecutable: (String) -> Bool = GitHubCLI.isRegularExecutable) -> String?`.
   - `public struct GitHubPullRequestLoader: PullRequestLoading` with `typealias RunProcess = @Sendable (_ executable: String, _ arguments: [String], _ environment: [String: String], _ directory: String, _ timeout: Double) async throws -> ScriptResult` and `init(environment: [String: String] = ProcessInfo.processInfo.environment, isExecutable: @escaping @Sendable (String) -> Bool = GitHubCLI.isRegularExecutable, run: @escaping RunProcess = GitHubPullRequestLoader.runNative)`.
 
@@ -113,7 +113,7 @@ git push origin main
 - Test: `Tests/UficastCoreTests/PullRequestStoreTests.swift`
 
 **Interfaces:**
-- Consumes: `PullRequestLoading`, `PullRequest`, `PullRequestError` (Tasks 1–2).
+- Consumes: `PullRequestLoading`, `PullRequest`, `PullRequestError` (Task 1).
 - Produces: `public actor PullRequestStore` with `static let defaultLifetime: TimeInterval = 300`, `init(loader: any PullRequestLoading, lifetime: TimeInterval = PullRequestStore.defaultLifetime, now: @escaping @Sendable () -> Date = { Date() })`, `var cached: [PullRequest]? { get }` (nil when nothing is cached or the list is older than the lifetime), `func list() async throws -> [PullRequest]` (returns the cache, otherwise awaits one shared in-flight load; success is cached with the time the load finished, failure is not and the next call starts a fresh load), `func invalidate()` (drops the cached list at once; a load already running still caches its fresh result), `func cancel()` (cancels the in-flight load; nothing is cached).
 
 - [ ] **Step 1: Write the failing tests** with a test-only `GatedLoader` actor (counts `load()` calls, suspends until the test releases a success or failure, throws `.cancelled` when its task is cancelled):
