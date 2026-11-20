@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import UficastCore
 
 /// Development-only native checks for AI text. Uses private pasteboards and fakes;
@@ -10,6 +11,35 @@ enum AITextVerification {
         try panelControls()
         try coordinatorFlows()
         try reviewRegressions()
+        try hotkeyDelivery()
+    }
+
+    /// A registered AI shortcut must reach `onAIAction`, press by press. The Carbon event is
+    /// sent to the application target, so no key is typed and no privacy grant is involved.
+    private static func hotkeyDelivery() throws {
+        let service = HotkeyService()
+        defer { service.stop() }
+        let rewrite = GlobalShortcut(keyCode: 79, modifiers: GlobalShortcut.control | GlobalShortcut.option | GlobalShortcut.command, keyLabel: "F18")
+        let translate = GlobalShortcut(keyCode: 80, modifiers: GlobalShortcut.control | GlobalShortcut.option | GlobalShortcut.command, keyLabel: "F19")
+        var received: [AITextAction] = []
+        service.onAIAction = { received.append($0) }
+        service.configure(launcher: GlobalShortcut(keyCode: 64, modifiers: GlobalShortcut.control | GlobalShortcut.option | GlobalShortcut.command, keyLabel: "F17"),
+                          ai: [.rewrite: rewrite, .translate: translate], appShortcuts: [:])
+        try require(service.aiErrors.isEmpty, "AI shortcuts were not registered: \(service.aiErrors)")
+        func send(_ kind: Int, id: UInt32) throws {
+            var event: EventRef?
+            try require(CreateEvent(nil, OSType(kEventClassKeyboard), UInt32(kind), 0, EventAttributes(kEventAttributeNone), &event) == noErr, "event")
+            var identity = EventHotKeyID(signature: 0x55464943, id: id)
+            try require(SetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                                          MemoryLayout<EventHotKeyID>.size, &identity) == noErr, "parameter")
+            _ = SendEventToEventTarget(event, GetApplicationEventTarget())
+            ReleaseEvent(event)
+        }
+        try send(kEventHotKeyPressed, id: 1000)
+        try send(kEventHotKeyReleased, id: 1000)
+        try send(kEventHotKeyPressed, id: 1001)
+        try send(kEventHotKeyReleased, id: 1001)
+        try require(received == [.rewrite, .translate], "AI shortcut presses were not delivered: \(received)")
     }
 
     private static func require(_ condition: Bool, _ message: String) throws {

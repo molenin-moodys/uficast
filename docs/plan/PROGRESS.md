@@ -320,7 +320,7 @@ Owner check (November 19, 2026): the build from `feat/ai-text` (891df35) was ins
   - **Resolved:** the owner changed the combination to Cmd+Ctrl+Shift+R and everything worked. Because nothing else changed, hypotheses 1, 2 and 4 do not explain it; Ctrl+Cmd+R was most likely taken by another app. Which app was not identified. The guide's last step now recommends a ⌃⌘⇧ combination and says why. The diagnostics stay: they are cheap and text-free.
   - Diagnostics added so the next test discriminates: Recent Runs now records "<Action> link received (N characters)." when a link arrives and "The result panel closed because it lost focus." when the panel closes that way. No link text is recorded. `--verify-ai-text` covers both and the absence of a false report after Enter.
 - The deploy order rule in `AGENTS.md` changed the same day: build to a staging folder, quit the old app, copy the build over the owner's bundle, open the new app.
-- The hotkey-delivery check in `AITextVerification.swift` (`hotkeyDelivery`, from another session) was already in the working tree; it passes and was left as it was.
+- The hotkey-delivery check in `AITextVerification.swift` (`hotkeyDelivery`, written by another session) was in the working tree throughout; it passes inside `--verify-ai-text` and was committed on November 20, 2026 at the owner's request. It sends the Carbon hotkey events to the application target, so no key is typed and no privacy grant is involved.
 
 ## Stage 6r — Compact settings
 
