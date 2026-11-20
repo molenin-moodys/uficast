@@ -71,7 +71,7 @@ public struct SearchIndex: Sendable {
         return left.indexed.entry.id < right.indexed.entry.id
     }
 
-    private static func fuzzyScore(query: [Character], name: [Character]) -> Int? {
+    static func fuzzyScore(query: [Character], name: [Character]) -> Int? {
         var next = 0
         var previous = -2
         var score = 0
