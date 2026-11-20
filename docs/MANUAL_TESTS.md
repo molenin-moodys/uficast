@@ -80,6 +80,21 @@ Follow [requirements](plan/REQUIREMENTS.md). Caps Lock remapping, login items, o
 - **Formatting.** Select text that contains bold, italics and a link, copy it and use the clipboard shortcut, then paste into Mail. The bold and link are kept. Text that arrives through a Shortcut link is plain.
 - **Codex.** If Codex is installed, enter its command and check that only the answer appears.
 
+## GitHub pull requests
+
+Owner-led. Quit Uficast normally before installing the build. The not-installed message is covered by unit tests only; it is not on this list because it needs `gh` to be absent from the app's `PATH`.
+
+- [ ] With the real `gh` signed in and a few real open pull requests: type `gh`, press Tab. After "Loading pull requests…" the list shows your open pull requests, newest first, each with its repository and number, and drafts marked "Draft".
+- [ ] Type a few letters of a title: the list narrows by fuzzy match and the first row is selected. Type a Russian-layout version of the same letters: the same rows appear. Up/Down move the selection.
+- [ ] Press Enter on a row: the pull request opens in the default browser, the launcher closes and the browser comes forward. Check that it is the selected one.
+- [ ] Sign `gh` out (`gh auth logout`, owner-initiated) and enter the mode after the 5-minute lifetime has passed or after a relaunch: the lower area shows a failure text, not a frozen launcher. Sign in again; leaving and entering the mode retries. There must be no automatic retry.
+- [ ] First Tab latency: note how long the first load takes with the real `gh`, and that a second entry within 5 minutes shows the list at once.
+- [ ] Wait more than 5 minutes (leave Uficast running), open a new pull request on the web, then enter the mode again: the new pull request appears after the reload.
+- [ ] Press Tab and Enter on `gh` while Keep Awake is active and while it is off: its state, the cup/zzz icon and any assertion never change.
+- [ ] Esc returns to the normal search with the previous query; Backspace in an empty filter does the same; Esc in normal search closes the launcher. Hide the launcher while it is loading, reopen it: no stale list, error or mode is shown.
+- [ ] Look at the mode in light and dark appearance: the token, filter field, rows (title, dim `owner/repo #number`, Draft label), loading text and hint are aligned and readable. Note anything cramped.
+- [ ] Native `--verify-pull-requests` uses fixtures and a fake opener; it does not prove the real `gh`, the browser, the physical typing flow or the on-screen layout.
+
 ## Compact settings
 
 - [ ] Open Settings → General: everything fits without scrolling at the default size. Make the window smaller: it scrolls only when it must.

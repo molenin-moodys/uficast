@@ -141,6 +141,27 @@ Design: `docs/superpowers/specs/2026-11-19-ai-text-rewrite-translate-design.md` 
 - The empty launcher search lists applications and commands by how often they were used through Uficast (launcher or an app hotkey that activates the app), then by recency, then by name. Counts are remembered locally across restarts and never include arguments or paths.
 - Ordering by frequency does not change the match tiers: an exact alias, then name exact/prefix/substring, then fuzzy always come first, and frequency only orders equal matches. Out of scope: time decay, per-query learning.
 
+## GitHub pull requests (owner addition, November 20, 2026)
+
+Design: `docs/superpowers/specs/2026-11-20-github-pull-requests-design.md` (approved with two owner changes: `gh` is found on `PATH`, and a missing `gh` only shows an install message).
+
+- The owner types `gh` in the launcher, presses Tab (Enter does the same), sees their own open pull requests (newest first), types a few letters to narrow the list by title, and presses Enter to open the pull request in the default browser. The launcher then closes and the browser comes forward.
+- The built-in command is named GitHub Pull Requests with default alias `gh`. An explicit user alias `gh` outranks it, as for `cafe`/`decafe`. Tab or Enter on the entry only enters the mode and never opens anything.
+- The list comes from the GitHub CLI (`gh`) already installed and signed in on the owner's Mac. Uficast does not talk to GitHub, stores no credentials and writes no pull request data (titles, URLs, repositories) to disk, logs or the exported configuration. Only the command's own usage counter is recorded.
+- Query: open pull requests authored by the owner across all repositories, at most the 100 newest; drafts are included and labelled "Draft". Uficast sorts: newest first for an empty filter, otherwise fuzzy match on the title (with the same U.S./Russian wrong-layout variants as launcher search) with ties newest first. The filter text never reaches `gh`.
+- Escape returns to the normal search with the previous query; Backspace in an empty filter does the same. Hiding the launcher leaves the mode and clears the filter. While loading, typing edits the filter, Enter does nothing and Escape leaves without cancelling the load.
+- The first entry runs `gh` (30 s timeout) and shows "Loading pull requests…". A success is kept in memory for 5 minutes, so re-entering shows it at once; after that the next entry loads again. A failure is never cached and never retried automatically: leaving and entering again is the retry. A late result never changes the visible view, reopens the panel or shows an error.
+- Messages: a missing `gh` shows "GitHub CLI (gh) is not installed. Install it (brew install gh), then run gh auth login." and nothing is installed or attempted. Other failures show the reason plus the first 512 characters of stderr; an empty list shows "You have no open pull requests." A URL that fails to open shows "Could not open the pull request."
+- Still no Accessibility, Input Monitoring or any new permission, no shell string and no launcher text in a command line.
+- Documented limitations, not handled:
+  - More than 100 open pull requests: the oldest are not listed.
+  - `gh`'s default host only. A `GH_HOST` set in a terminal profile is not visible to a GUI app.
+  - `gh` is looked up on the app's `PATH` plus the standard directories (`/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`, `/bin`, `/usr/sbin`, `/sbin`). A `gh` that is only in a directory added by a terminal profile (for example `~/.local/bin`) counts as not installed.
+  - `gh search prs` uses GitHub's search API: it has search rate limits, and pull requests in organizations that require SSO authorization of the `gh` token may be missing without any error.
+  - No manual refresh control; the list is reloaded on the first entry after 5 minutes. The store has an `invalidate()` for a future control.
+- Out of scope: other queries (review requested, closed, other authors, per repository), other hosts, checkout/review/merge actions, a general "script prints a list" mode, a Settings page, a persisted cache, notifications.
+- Acceptance: a real `gh` run with real pull requests, a signed-out `gh`, the browser opening and the physical Tab/Enter/typing flow are owner-led checks in `docs/MANUAL_TESTS.md`; they are not inferred from fixture tests.
+
 ## Calculator (owner addition, November 19, 2026)
 
 - Typing a formula in the launcher search shows its result as the first row. Enter copies the result (dot decimal, at most 15 significant digits) to the clipboard, remembers the calculation and closes the launcher, returning focus to the previous app.

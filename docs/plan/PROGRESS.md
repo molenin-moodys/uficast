@@ -1,10 +1,10 @@
 # Progress and handoff
 
-Last updated: November 19, 2026 (America/Los_Angeles).
+Last updated: November 20, 2026 (America/Los_Angeles).
 
 ## Current state
 
-Requested personal-use features through Stage 6k are implemented; Stage 6l is integrated into main at the owner’s request, with remaining manual acceptance pending. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. Window-shortcut/power checkpoint 7ebcf04 is pushed to origin/main. The calendar increment was developed on codex/day0-calendar-experiment and has now been fast-forward merged into main through 72d765c at the owner’s explicit request. Stage 6m (configurable launcher shortcut, focus-display placement and a clock-contrast experiment) is implemented on main and awaits the owner's hands-on checks. Stage 6n (AI text rewrite and translation) is implemented on branch `feat/ai-text` and awaits review and the owner's checks.
+Requested personal-use features through Stage 6k are implemented; Stage 6l is integrated into main at the owner’s request, with remaining manual acceptance pending. Mandatory: ordinary Cmd+Space (either Command key), no Accessibility or Input Monitoring requirement/request. English UI and repository documents. Implementation checkpoint 69b1310 and README checkpoint 2db8863 were committed and pushed to origin/main. Feature checkpoint 0dfeda7 (inline hotkeys and built-in commands) is also pushed. Decaf icon checkpoint c362fdf is pushed. Script-folder checkpoint dae22c0 is pushed. Alias/error UX checkpoint c50f480 is pushed. Window-shortcut/power checkpoint 7ebcf04 is pushed to origin/main. The calendar increment was developed on codex/day0-calendar-experiment and has now been fast-forward merged into main through 72d765c at the owner’s explicit request. Stage 6m (configurable launcher shortcut, focus-display placement and a clock-contrast experiment) is implemented on main and awaits the owner's hands-on checks. Stage 6n (AI text rewrite and translation) is implemented on branch `feat/ai-text` and awaits review and the owner's checks. Stage 6s (the built-in `gh` GitHub pull requests command) is implemented on main and awaits the owner's manual acceptance.
 
 | Stage | State | Evidence / remaining work |
 | --- | --- | --- |
@@ -29,6 +29,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 | 6p — Persistent frequency ordering | Implemented and merged into main (fast-forward) at the owner's request; installed locally | 99 core tests and `--verify-usage-order` pass. Real relaunch ordering not yet observed by the owner. |
 | 6q — Shortcuts instead of Services | Implemented on main; file import failed, replaced by guided manual steps; owner reported it works | 107 core tests and `--verify-ai-text` pass. Shortcuts refused the generated file as unsigned. The owner built the shortcut by hand and it works from Cmd+Ctrl+Shift+R (Ctrl+Cmd+R did nothing). Selection input in each app and Electron apps are not individually reported. |
 | 6r — Compact settings | Implemented on main; installed locally; owner look pending | 107 core tests and all native checks pass; light/dark previews inspected. Hands-on use not yet reported. |
+| 6s — GitHub pull requests | Implemented on main; manual acceptance pending | 133 core tests and `--verify-pull-requests` pass (fake `gh`, fake clock, fixtures). A real `gh` run, the browser opening and the physical Tab/Enter flow are not yet observed. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -345,3 +346,33 @@ The owner saw Translate return the English source as English. Cause: the prompt 
 ### Earlier cursor report checkpoint
 
 Commit 62e8296 preserved an unrelated stationary-cursor report. Its source/disappearance was not established; no app code changed for that report. Do not treat it as a verified Uficast defect or interact with unrelated apps to investigate it without a new request.
+
+## Stage 6s: GitHub pull requests
+
+- Owner request (November 20, 2026): reach one of the owner's open pull requests from the launcher: `gh` -> Tab -> type to filter -> Enter opens it in the browser. Approved design `docs/superpowers/specs/2026-11-20-github-pull-requests-design.md` (the owner changed two things: `gh` is found on `PATH`, and a missing `gh` only shows an install message; the 5-minute cache lifetime was added at the owner's request). Requirements: REQUIREMENTS "GitHub pull requests"; architecture: ARCHITECTURE "GitHub pull requests (Stage 6s)".
+- Built (Tasks 1-6, on main, last commit "feat: open pull-request mode from the gh command"):
+  - `PullRequest`, `PullRequestParser` and `PullRequestFilter` in `Sources/UficastCore/PullRequest.swift`.
+  - `GitHubPullRequestLoader` and `GitHubCLI` (finds `gh` on `PATH` plus the standard directories).
+  - `PullRequestStore`: shares one load, caches success for 5 minutes, `invalidate()`, `cancel()`.
+  - `BuiltInCommand.pullRequests` (alias `gh`).
+  - The pull-request mode in `LauncherPanelController` and the routing in `AppController`.
+- Builder calls: pull-request mode is its own mode that reuses the token, field and table; Enter on the entry behaves like Tab; a late success is cached and a late failure is dropped; only the command's usage counter is recorded (no pull request data on disk); drafts included and labelled; 100 newest open pull requests; no refresh control.
+
+Checks actually performed (with `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk`, the unresolved toolchain note above):
+
+- `scripts/test.sh --build-system native`: **133 core tests passed**. New tests cover the pull-request model, parser and filter, the loader (with a fake `gh` script), the store (with a fake clock) and the built-in command.
+- Native checks `--verify-pull-requests`, `--verify-calculator`, `--verify-usage-order`, `--verify-script-feedback` and `--verify-native-icons` print PASS.
+
+Not observed (pending, none of these is recorded as passed):
+
+- A real `gh` run with real pull requests.
+- The browser actually opening the selected pull request.
+- The physical Tab/Enter/typing flow in the real launcher.
+- The on-screen layout of the mode (no screenshot was taken).
+- A signed-out `gh`; the not-installed message is covered by unit tests only.
+- Cache expiry in real time (it is unit-tested with a fake clock only).
+- AppController routing (no automated test).
+
+Documented limitations: at most the 100 newest open pull requests; `gh`'s default host only; `GH_HOST` set in a terminal profile is not visible to a GUI app; a `gh` that is only in a directory added by a terminal profile (for example `~/.local/bin`) counts as not installed; pull requests in SSO-restricted organizations may be missing without any error; no manual refresh control (the list is reloaded on the first entry after 5 minutes).
+
+**Exact next step:** the owner quits Uficast normally, installs/uses the current build, and runs the items under "GitHub pull requests" in `docs/MANUAL_TESTS.md` (real `gh` with real pull requests, signed-out `gh`, first Tab latency, reload after 5 minutes, Keep Awake untouched, Esc/Backspace, light and dark layout). Record the results here. The earlier open items above stay open.

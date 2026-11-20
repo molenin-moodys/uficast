@@ -11,6 +11,7 @@ Uficast includes a Day-O-style clock and native calendar in its single menu-bar 
 - **Cmd+Space launcher** (or another shortcut you choose) with application icons, fuzzy search and aliases that rank first. It opens on the display of the window you are working in.
 - **Wrong-layout search** for U.S./Russian keyboards: type `сркщьу` to find Chrome without changing layouts.
 - **Calculator**: type a formula such as `24*3+10` or `200+10%` and Enter copies the result. Past calculations appear below as you type or after `calc`, and an unfinished formula is still there when you reopen the launcher.
+- **GitHub pull requests**: type `gh`, press Tab, type to filter your open pull requests by title, and press Enter to open one in the browser. It uses the GitHub CLI (`gh`) that is already installed and signed in; Uficast stores no GitHub credentials and no pull request data.
 - **Script folders** to discover local shell, Python and AppleScript commands, including Raycast title/argument headers.
 - **Local scripts** using shell, AppleScript or another configured interpreter. Pass one unchanged text argument and optionally open a generated URL.
 - **Per-app shortcuts** to show, hide or launch an application.
@@ -124,6 +125,12 @@ Default result handling runs for side effects and ignores stdout (the script can
 While a script runs, the launcher stays open with a running status. Success closes it; failure shows the exit/timeout error in the lower section, preferring stderr and falling back to stdout. **Edit Input** restores the exact submitted argument for correction; only an explicit Enter retries. The latest failure and argument stay in memory only. Hiding the launcher for any reason clears its error and remembered input. A late result cannot bring that error back or replace newer input. Each deliberate reopen starts clean.
 
 The **Recent Runs** button in the Settings footer shows active commands, Cancel controls and the ten most recent outcomes in memory. Each command can run once concurrently; different commands can overlap. Output capture is bounded to 1 MiB per stream while both pipes continue draining. Normal quit cancels managed process groups; deliberately detached daemons and force-quit/crash cleanup are outside that guarantee. AppleScript controlling other applications may need **Automation** consent; scripts depending on Accessibility are unsupported under the no-Accessibility requirement.
+
+## GitHub pull requests
+
+Install the [GitHub CLI](https://cli.github.com/) and sign in once (`brew install gh`, then `gh auth login`). In the launcher, type `gh` and press Tab (or Enter): Uficast lists your open pull requests across all repositories, newest first (for example `Fix flaky retry in upload  org/repo #412`). Type to filter by title, use Up/Down to select and press Enter to open the pull request in your default browser. Esc, or Backspace in an empty filter, returns to the normal search. An alias `gh` that you define yourself wins over the built-in command.
+
+The list is loaded by running `gh` the first time, kept in memory for 5 minutes and then loaded again on the next entry; a failure is shown in the launcher and re-entering the mode retries. Limits: the 100 newest open pull requests, `gh`'s default host only (a `GH_HOST` set in a terminal profile is not seen by a GUI app), and `gh` must be on the app's `PATH` or in `/opt/homebrew/bin`, `/usr/local/bin` or the system directories (a `gh` that only a terminal profile adds, such as `~/.local/bin`, counts as not installed). Pull requests in organizations that require SSO authorization of the `gh` token may be missing. No new permission is requested.
 
 ## AI text
 
