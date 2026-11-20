@@ -77,7 +77,7 @@ Keep explicit states: `hidden`, `search(query, selection)`, and `argument(comman
 - Refresh on startup, app install/remove/root changes where observable, and explicit Refresh. Keep previous results usable during refresh. No dependency on complete Spotlight indexing.
 - Combine app records with script records and user overrides. Persist aliases/enabled status separately from the rebuildable discovery cache.
 - Expand only search queries into deduplicated literal, Russian→U.S., and U.S.→Russian variants. Map before normalization so ё/й keep their physical-key identity. Rank by match tier, then literal/converted variant, then score/history. Apply to launcher and Settings search; never rewrite visible input, aliases, system layout, or script arguments.
-- Use normalized case-insensitive comparison, stable rank tiers, and fuzzy subsequence scoring. History breaks ties within a tier; it must never outrank an exact alias. Do not store argument text in usage history.
+- Use normalized case-insensitive comparison, stable rank tiers, and fuzzy subsequence scoring. History breaks ties within a tier; it must never outrank an exact alias. Do not store argument text in usage history. Counts are persisted by AppController in UserDefaults key `usage.v1` through `UsageStore` (identifiers, counts and dates, at most 1,000 most recently used entries), outside the exported configuration; `LauncherPanelController.recordUse` is the single place that counts a use.
 
 ## Persistence
 

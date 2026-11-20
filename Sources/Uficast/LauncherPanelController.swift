@@ -34,7 +34,12 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     private var isDismissing = false
     private var index = SearchIndex()
     private var results: [LauncherEntry] = []
-    var usage: [String: UsageRecord] = [:]
+    /// Launch counts that order the empty search and break ties between equal
+    /// matches. The owner of the controller persists them through `onUsageChange`.
+    var usage: [String: UsageRecord] = [:] {
+        didSet { if usage != oldValue { onUsageChange?(usage) } }
+    }
+    var onUsageChange: (([String: UsageRecord]) -> Void)?
     /// Remembered calculations and the unfinished formula. The owner of the
     /// controller persists it through `onCalculatorChange`.
     var calculator = CalculatorState() {
@@ -283,6 +288,39 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
                   "Hiding retained an error/input or allowed a late result to restore it.")
     }
 
+    /// Offscreen check that launches reorder the empty search by frequency, are
+    /// reported for saving and still order it in a fresh controller after a restart.
+    func verifyUsageOrder() throws {
+        func check(_ condition: Bool, _ message: String) throws {
+            if !condition { throw ConfigError.invalid(message) }
+        }
+        let entries = ["Alpha", "Beta", "Gamma"].map {
+            LauncherEntry(id: "app:\($0.lowercased())", name: $0, fileURL: URL(fileURLWithPath: "/fixture/\($0).app"))
+        }
+        var saved: [[String: UsageRecord]] = []
+        usage = [:]
+        onUsageChange = { saved.append($0) }
+        setEntries(entries)
+        show()
+        try check(results.map(\.name) == ["Alpha", "Beta", "Gamma"], "Without history the empty search must be alphabetical.")
+        dismiss(restoreFocus: false)
+        recordUse("app:gamma")
+        recordUse("app:gamma")
+        recordUse("app:beta")
+        try check(saved.count == 3 && saved.last?["app:gamma"]?.count == 2 && saved.last?["app:beta"]?.count == 1,
+                  "Each launch must be reported for saving with its running count.")
+        show()
+        try check(results.map(\.name) == ["Gamma", "Beta", "Alpha"], "The empty search is not ordered by frequency.")
+        dismiss(restoreFocus: false)
+
+        let restarted = LauncherPanelController()
+        restarted.usage = UsageStore.decode(UsageStore.encode(saved.last ?? [:]))
+        restarted.setEntries(entries)
+        restarted.show()
+        try check(restarted.results.map(\.name) == ["Gamma", "Beta", "Alpha"], "Frequency order did not survive a restart.")
+        restarted.dismiss(restoreFocus: false)
+    }
+
     /// Offscreen check of the calculator rows, copy-on-Enter, history suggestions and
     /// the remembered draft, using a private pasteboard so the real clipboard is untouched.
     func verifyCalculator() throws {
@@ -391,6 +429,11 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
               table.enclosingScrollView?.contentView.bounds.origin == origin else {
             throw ConfigError.invalid("Native icon refresh: \(loaded)/\(originals.count) loaded, or row geometry/scroll position changed.")
         }
+    }
+
+    /// Counts one use of an application or script; the next opening is ordered by it.
+    func recordUse(_ id: String) {
+        usage[id, default: UsageRecord()].record()
     }
 
     private func reloadResults(preserveSelection: Bool = true) {

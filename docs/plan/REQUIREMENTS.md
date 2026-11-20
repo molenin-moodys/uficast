@@ -135,6 +135,11 @@ Design: `docs/superpowers/specs/2026-11-19-ai-text-rewrite-translate-design.md` 
 - Inline formatting (bold, italics, links, fonts and colors of runs) is kept through `<sN>` span markers. If the model breaks them, the result falls back to the selection's base style with a visible note.
 - Still no Accessibility, Input Monitoring or synthetic input. Uficast stores no selected text or results; the configured CLI keeps data under its own settings.
 
+## Frequency ordering (owner addition, November 20, 2026)
+
+- The empty launcher search lists applications and commands by how often they were used through Uficast (launcher or an app hotkey that activates the app), then by recency, then by name. Counts are remembered locally across restarts and never include arguments or paths.
+- Ordering by frequency does not change the match tiers: an exact alias, then name exact/prefix/substring, then fuzzy always come first, and frequency only orders equal matches. Out of scope: time decay, per-query learning.
+
 ## Calculator (owner addition, November 19, 2026)
 
 - Typing a formula in the launcher search shows its result as the first row. Enter copies the result (dot decimal, at most 15 significant digits) to the clipboard, remembers the calculation and closes the launcher, returning focus to the previous app.

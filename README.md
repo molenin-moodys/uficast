@@ -73,7 +73,7 @@ dist/Uficast.app/Contents/MacOS/Uficast --diagnostics
 
 See [manual verification](docs/MANUAL_TESTS.md). Pure tests and signing checks do not prove real desktop shortcut delivery.
 
-Application discovery uses `/Applications`, `/System/Applications` and `~/Applications`. Use **Refresh Applications** after installing an app; default root changes are also observed. Search supports fuzzy abbreviations and U.S./Russian physical-key alternatives (for example `сркщьу` finds Chrome). Script arguments are never converted. Use Up/Down selection and Enter to launch/activate. Usage ordering is currently in memory. `--catalog-summary` prints a read-only discovery count/timing without launching apps.
+Application discovery uses `/Applications`, `/System/Applications` and `~/Applications`. Use **Refresh Applications** after installing an app; default root changes are also observed. Search supports fuzzy abbreviations and U.S./Russian physical-key alternatives (for example `сркщьу` finds Chrome). Script arguments are never converted. Use Up/Down selection and Enter to launch/activate. Applications and commands you use most come first in the empty search and win ties between equal matches; the counts are remembered locally across restarts (identifiers, counts and dates only). `--catalog-summary` prints a read-only discovery count/timing without launching apps.
 
 ## Keyboard shortcuts
 

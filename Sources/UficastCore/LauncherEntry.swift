@@ -31,12 +31,17 @@ public struct LauncherEntry: Identifiable, Hashable, Sendable {
     }
 }
 
-public struct UsageRecord: Sendable {
+public struct UsageRecord: Codable, Equatable, Sendable {
     public var count: Int
     public var lastUsed: Date
     public init(count: Int = 0, lastUsed: Date = .distantPast) {
         self.count = count
         self.lastUsed = lastUsed
+    }
+
+    public mutating func record(at date: Date = Date()) {
+        count += 1
+        lastUsed = date
     }
 }
 

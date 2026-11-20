@@ -85,6 +85,13 @@ Follow [requirements](plan/REQUIREMENTS.md). Caps Lock remapping, login items, o
 - [ ] `1password`, `7-zip` and `calendar` still behave as application searches.
 - [ ] Native `--verify-calculator` uses a private pasteboard and fixtures; it does not prove physical typing or paste into another app.
 
+## Frequency ordering
+
+- [ ] Launch two different apps from the launcher, one of them three times. Quit and reopen Uficast: the empty search lists the three-time app first, then the other, then the rest alphabetically.
+- [ ] Type a short prefix shared by two apps: the more used one comes first. An exact alias still beats a heavily used app.
+- [ ] Activate a running app with its app hotkey a few times; it moves up the empty list. Hiding it does not count.
+- [ ] Native `--verify-usage-order` uses fixtures and a second controller to stand in for a restart; it does not prove the real relaunch.
+
 ## Day-O calendar experiment
 
 - [ ] Compare the installed experiment with Day-O: one Uficast clock button, compact menu width, native calendar typography/arrows/selection, and light/dark appearance.

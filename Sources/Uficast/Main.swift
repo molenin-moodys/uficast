@@ -87,6 +87,19 @@ struct UficastMain {
             }
             return
         }
+        if CommandLine.arguments.contains("--verify-usage-order") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try LauncherPanelController().verifyUsageOrder()
+                print("PASS: launches reorder the empty search by frequency, are reported for saving and survive a restart.")
+            } catch {
+                FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
+            return
+        }
         if CommandLine.arguments.contains("--verify-calculator") {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)

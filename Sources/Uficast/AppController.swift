@@ -20,6 +20,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     private var restoringPower = true
     private let savedPowerKey = "keepAwakeSession.v1"
     private let calculatorKey = "calculator.v1"
+    private let usageKey = "usage.v1"
     private var didLoadConfiguration = false
     private var didReconcileKeyboard = false
     private var isTerminating = false
@@ -71,6 +72,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
             self.updateEntries()
         }
         launcher.beforeShow = { [weak self] in self?.catalog.refreshIfStale() }
+        launcher.usage = UsageStore.decode(UserDefaults.standard.data(forKey: usageKey))
+        launcher.onUsageChange = { [weak self] usage in self?.rememberUsage(usage) }
         launcher.calculator = CalculatorState.decode(UserDefaults.standard.data(forKey: calculatorKey))
         launcher.onCalculatorChange = { [weak self] state in self?.rememberCalculator(state) }
         launcher.onSelect = { [weak self] entry in self?.launch(entry) }
@@ -216,6 +219,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         menuBarClock?.setKeepAwake(active: state.isActive)
     }
 
+    private func rememberUsage(_ usage: [String: UsageRecord]) {
+        if let data = UsageStore.encode(usage) { UserDefaults.standard.set(data, forKey: usageKey) }
+    }
+
     /// Local, like the remembered Keep Awake session; never part of the exported configuration.
     private func rememberCalculator(_ state: CalculatorState) {
         if let data = try? JSONEncoder().encode(state) { UserDefaults.standard.set(data, forKey: calculatorKey) }
@@ -289,10 +296,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         Task { @MainActor in
             do {
                 _ = try await NSWorkspace.shared.openApplication(at: entry.fileURL, configuration: .init())
-                var usage = launcher.usage[entry.id] ?? UsageRecord()
-                usage.count += 1
-                usage.lastUsed = .now
-                launcher.usage[entry.id] = usage
+                launcher.recordUse(entry.id)
                 settingsModel.lastActionStatus = "Opened \(entry.name)"
             } catch {
                 settingsModel.lastActionStatus = "Could not open \(entry.name): \(error.localizedDescription)"
@@ -332,10 +336,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
                         let url = try result.outputURL()
                         guard NSWorkspace.shared.open(url) else { throw ScriptRunError.invalidURL }
                     }
-                    var usage = launcher.usage[command.entry.id] ?? UsageRecord()
-                    usage.count += 1
-                    usage.lastUsed = .now
-                    launcher.usage[command.entry.id] = usage
+                    launcher.recordUse(command.entry.id)
                     message = "\(command.name): completed."
                 } else {
                     message = "\(command.name): \(result.failureDescription ?? "Failed")"
@@ -415,7 +416,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
             if !running.hide() { settingsModel.lastActionStatus = "Could not hide \(entry.name)." }
         } else {
             running.unhide()
-            if !running.activate() { settingsModel.lastActionStatus = "Could not activate \(entry.name)." }
+            if running.activate() { launcher.recordUse(entry.id) }
+            else { settingsModel.lastActionStatus = "Could not activate \(entry.name)." }
         }
     }
 

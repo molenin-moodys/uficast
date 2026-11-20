@@ -205,6 +205,10 @@ Rewrite into correct, simple English and translate EN↔RU through an owner-edit
 
 Evaluate formulas typed in the launcher, copy the result on Enter, remember calculations and offer them as suggestions below the results, and restore an unfinished formula when the launcher reopens. See REQUIREMENTS "Calculator" and ARCHITECTURE "Calculator (Stage 6o)". Validate with core tests (evaluator, formatting, query detection, history, draft, codable state), `--verify-calculator` on a private pasteboard, light/dark previews and a release build. Physical typing, paste into another app and relaunch persistence need the owner's observation.
 
+## Stage 6p — Persistent frequency ordering (owner addition)
+
+Remember launch counts across restarts so the empty search and equal matches stay ordered by frequency. See REQUIREMENTS "Frequency ordering" and ARCHITECTURE "usage.v1". Validate with core tests (record, codable round trip, restart ordering, recency tie-break, corrupt/negative data, entry limit, no paths), `--verify-usage-order` and a release build. Real relaunch ordering needs the owner's observation.
+
 ## Stage 7 — Daily-use verification and source-build handoff
 
 Tasks:
