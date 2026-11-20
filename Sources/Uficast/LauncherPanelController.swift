@@ -226,7 +226,7 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     func setEntries(_ entries: [LauncherEntry], refreshing: Bool = false) {
         index = SearchIndex(entries: entries)
         reloadResults()
-        if results.isEmpty && refreshing { emptyLabel.stringValue = "Discovering applications…" }
+        if results.isEmpty && refreshing && !pullRequestMode { emptyLabel.stringValue = "Discovering applications…" }
     }
 
     func renderPreview(to url: URL, argumentMode: Bool, emptyArgument: Bool = false, failure: Bool = false,
@@ -447,8 +447,9 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         let generalChanges = NSPasteboard.general.changeCount
         usage = [:]
         calculator = CalculatorState()
-        setEntries([LauncherEntry(id: "app:notes", name: "Notes", fileURL: URL(fileURLWithPath: "/fixture/Notes.app"))]
-                   + BuiltInCommand.entries)
+        let allEntries = [LauncherEntry(id: "app:notes", name: "Notes", fileURL: URL(fileURLWithPath: "/fixture/Notes.app"))]
+            + BuiltInCommand.entries
+        setEntries(allEntries)
         show()
         try check(panel.isVisible, "enter/loading", "The launcher did not become visible.")
 
@@ -532,6 +533,39 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         show()
         try check(failureBox.isHidden && !pullRequestMode && token.isHidden && field.stringValue.isEmpty
                   && hint.stringValue == Self.defaultHint, "stale error", "Reopening showed a stale error or mode.")
+
+        dismiss(restoreFocus: false)
+        try check(!panel.isVisible && enterPullRequests(cached: nil) == nil && !pullRequestMode && token.isHidden
+                  && !field.isHidden && pullRequestLoadID == nil && field.placeholderString == "Search applications and commands…",
+                  "hidden panel", "Entering on a hidden panel started the mode.")
+        show()
+        try check(!pullRequestMode && token.isHidden && !field.isHidden && hint.stringValue == Self.defaultHint,
+                  "hidden panel", "Reopening showed a stale mode.")
+
+        type("gh")
+        let entered = enterPullRequests(cached: nil)
+        let second = enterPullRequests(cached: nil)
+        try check(entered != nil && second == nil && pullRequestMode && pullRequestLoadID == entered && field.stringValue.isEmpty,
+                  "double entry", "A second entry changed the mode or its load.")
+        press(#selector(NSResponder.cancelOperation(_:)))
+        try check(!pullRequestMode && field.stringValue == "gh", "double entry", "Escape did not restore the previous query.")
+
+        let refreshLoading = enterPullRequests(cached: nil)!
+        setEntries(allEntries, refreshing: true)
+        try check(emptyLabel.stringValue == "Loading pull requests…", "refresh text", "A refresh replaced the loading text.")
+        finishPullRequestLoad(refreshLoading, pullRequests: [], error: nil)
+        setEntries(allEntries, refreshing: true)
+        try check(emptyLabel.stringValue == "You have no open pull requests.", "refresh text",
+                  "A refresh replaced the no-pull-requests text.")
+        returnToSearch()
+        type("gh")
+        enterPullRequests(cached: fixtures)
+        type("zzzz")
+        setEntries(allEntries, refreshing: true)
+        try check(results.isEmpty && emptyLabel.stringValue == "No matching pull requests", "refresh text",
+                  "A refresh replaced the no-match text.")
+        returnToSearch()
+        setEntries(allEntries)
 
         type("gh")
         enterPullRequests(cached: fixtures)
@@ -837,6 +871,8 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
     /// without one the loading state is shown and the id of the new load is returned.
     @discardableResult
     func enterPullRequests(cached: [PullRequest]?) -> UUID? {
+        // Not on a hidden panel, and never twice: a second entry would overwrite previousQuery.
+        guard panel.isVisible, !pullRequestMode else { return nil }
         activeRunID = nil
         hideFailure()
         previousQuery = field.stringValue

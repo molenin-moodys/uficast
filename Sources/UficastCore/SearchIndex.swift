@@ -47,7 +47,7 @@ public struct SearchIndex: Sendable {
         let score: Int
         if query.isEmpty { tier = 6; score = 0 }
         else if item.alias == query { tier = 0; score = 0 }
-        else if let alias = item.alias, alias.hasPrefix(query) { tier = 1; score = 0 }
+        else if item.entry.matchesAliasByPrefix, let alias = item.alias, alias.hasPrefix(query) { tier = 1; score = 0 }
         else if item.name == query { tier = 2; score = 0 }
         else if item.name.hasPrefix(query) { tier = 3; score = 0 }
         else if item.name.contains(query) { tier = 4; score = 0 }

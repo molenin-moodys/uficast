@@ -20,7 +20,7 @@ public enum BuiltInCommand: String, CaseIterable, Sendable {
     public var entry: LauncherEntry {
         LauncherEntry(id: "builtin:\(rawValue)", name: displayName, kind: .builtIn,
                       fileURL: URL(string: "uficast://command/\(rawValue)")!,
-                      alias: alias)
+                      alias: alias, matchesAliasByPrefix: self != .pullRequests)
     }
     private var displayName: String { self == .pullRequests ? "GitHub Pull Requests" : rawValue }
     private var alias: String {

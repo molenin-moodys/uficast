@@ -20,15 +20,18 @@ public struct LauncherEntry: Identifiable, Hashable, Sendable {
     public var fileURL: URL
     public var alias: String?
     public var isEnabled: Bool
+    /// False makes the alias match only exactly, never as a prefix of the query.
+    public var matchesAliasByPrefix: Bool
 
     public init(id: String, name: String, kind: Kind = .application, fileURL: URL,
-                alias: String? = nil, isEnabled: Bool = true) {
+                alias: String? = nil, isEnabled: Bool = true, matchesAliasByPrefix: Bool = true) {
         self.id = id
         self.name = name
         self.kind = kind
         self.fileURL = fileURL
         self.alias = alias
         self.isEnabled = isEnabled
+        self.matchesAliasByPrefix = matchesAliasByPrefix
     }
 }
 
