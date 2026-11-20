@@ -47,6 +47,7 @@ final class SettingsModel: ObservableObject {
     var onSetLauncherHotkey: ((GlobalShortcut?) -> Void)?
     var onSetAICommand: ((String) -> Void)?
     var onSetAIHotkey: ((AITextAction, GlobalShortcut?) -> Void)?
+    var onCreateShortcut: ((AITextAction) -> Void)?
     @Published var aiHotkeyErrors: [AITextAction: String] = [:]
     var onBeginShortcutRecording: (() -> Void)?
     var onEndShortcutRecording: (() -> Void)?

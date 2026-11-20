@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import UficastCore
 
-/// General → AI Text: the editable command, clipboard shortcuts and Services guidance.
+/// General → AI Text: the editable command, clipboard shortcuts and the Shortcuts that open requests here.
 struct AITextSettings: View {
     @ObservedObject var model: SettingsModel
     @State private var draft = ""
@@ -45,11 +45,14 @@ struct AITextSettings: View {
             }.disabled(model.isBusy || model.isReadOnly)
             Text("Copy text, press the shortcut, check the result, then ↩ copies it for pasting. Esc cancels.")
                 .font(.caption).foregroundStyle(.secondary)
-            Text("Services: select text, then use “Rewrite with Uficast” or “Translate with Uficast”; ↩ replaces the selection. Assign their shortcuts in Keyboard Shortcuts → Services.")
-                .font(.caption).foregroundStyle(.secondary)
-            Button("Keyboard Shortcuts…") {
-                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.keyboard?Shortcuts") { NSWorkspace.shared.open(url) }
+            Text("Shortcuts").fontWeight(.medium)
+            HStack {
+                ForEach(AITextAction.allCases, id: \.self) { action in
+                    Button("Create \(action.title) Shortcut") { model.onCreateShortcut?(action) }
+                }
             }
+            Text("Opens the Shortcuts app so you can add “Rewrite with Uficast” or “Translate with Uficast”. They use the selected text where the app offers it, otherwise the clipboard, and show the result here; ↩ copies it. Assign a keyboard shortcut in the shortcut's details in Shortcuts.")
+                .font(.caption).foregroundStyle(.secondary)
             Text("The text is sent to the program the command runs (Anthropic for claude). Uficast stores no text; the program may keep data under its own settings.")
                 .font(.caption).foregroundStyle(.secondary)
         }

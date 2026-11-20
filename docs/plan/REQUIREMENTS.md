@@ -27,7 +27,7 @@ Recorded on November 18, 2026; updated the same day to ordinary Cmd+Space with n
 | Built-in commands | `caffeine` / `cafe` enables indefinite Keep Awake; `decaffeine` / `decafe` disables it. Fuzzy and wrong-layout search apply. |
 | Keep Awake (added November 18) | Built-in Caffeine-style prevention of idle display and Mac sleep; native app-owned power assertion. Owner clarified that the screen must stay on while caffeine is active. |
 | Menu bar calendar | The clock is the single Uficast menu-bar button. Use Day-O’s standard native calendar appearance, month browsing and Today; configurable date/time format and Show Icon. Upper menu bar only, no Dock addition. |
-| AI text (added November 19) | Rewrite selected or copied English into correct, simple English, and translate EN↔RU, through an owner-editable CLI command (default `claude -p` with Claude Haiku 5.5). Clipboard shortcuts and macOS Services; the result is shown first, Enter inserts or copies, Esc cancels; inline formatting is kept. |
+| AI text (added November 19) | Rewrite selected or copied English into correct, simple English, and translate EN↔RU, through an owner-editable CLI command (default `claude -p` with Claude Haiku 5.5). Clipboard shortcuts and `uficast://` links opened by Shortcuts that Settings creates; the result is shown first, Enter copies it, Esc cancels; inline formatting is kept for clipboard text. |
 | Deferred | Kasa/Shortcuts integration. |
 | Continuity | English plan in the repository, committed to Git; implementation can span sessions. |
 
@@ -127,8 +127,9 @@ Design: `docs/superpowers/specs/2026-11-19-ai-text-rewrite-translate-design.md` 
 - Two actions: Rewrite (correct, simple English) and Translate (Russian → English, otherwise → Russian).
 - Two entry points:
   - Clipboard: the owner copies text and presses a Uficast shortcut recorded in General. Enter copies the result for Cmd+V.
-  - macOS Services "Rewrite with Uficast" and "Translate with Uficast": the owner selects text and uses the Service, with its shortcut assigned in Keyboard Shortcuts → Services. Enter replaces the selection and also copies the result.
-  - Both entry points show the result first. Esc cancels without changes. A returning Service is disabled by macOS on read-only text; there the clipboard entry point applies.
+  - Shortcuts (owner decision, November 20, 2026, replacing the macOS Services entry point, which the owner found useless): Settings has "Create Rewrite Shortcut" and "Create Translate Shortcut". Each opens Shortcuts with a generated Quick Action that takes the selected text where the app offers it, otherwise the clipboard, and opens `uficast://rewrite?text=…` or `uficast://translate?text=…`. Enter copies the result; nothing replaces the selection, and formatting of a linked text is not kept (plain text only).
+  - Both entry points show the result first. Esc cancels without changes.
+  - A `uficast://` link only starts a request. Text over 20,000 characters is refused and a link without text uses the clipboard. Importing the generated file into Shortcuts is unverified and may need redoing; the fallback is creating the shortcut by hand (see README).
 - The command is an owner-editable shell command line. It gets the prompt on stdin and prints only the answer, so the model can be changed by hand or the CLI replaced (for example Codex).
   - Default: `claude -p --model claude-haiku-5-5 --tools "" --strict-mcp-config --disable-slash-commands --no-session-persistence --setting-sources project,local`.
   - The selected text is never placed in argv or shell text.

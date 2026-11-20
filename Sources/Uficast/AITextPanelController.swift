@@ -24,7 +24,6 @@ private final class AIResultTextView: NSTextView {
 /// launcher but keeps its own state, so launcher runs and AI requests never mix.
 @MainActor
 final class AITextPanelController: NSObject, NSWindowDelegate {
-    enum Mode { case replace, copy }
     private enum State { case hidden, working, result, failure, message }
 
     var onConfirm: ((NSAttributedString) -> Void)?
@@ -40,7 +39,6 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
     private let hintLabel = NSTextField(labelWithString: "")
     private let spinner = NSProgressIndicator()
     private var state = State.hidden
-    private var mode = Mode.copy
     private var result = NSAttributedString()
 
     var isVisible: Bool { state != .hidden }
@@ -120,8 +118,7 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
         ])
     }
 
-    func showWorking(action: AITextAction, mode: Mode) {
-        self.mode = mode
+    func showWorking(action: AITextAction) {
         result = NSAttributedString()
         titleLabel.stringValue = action.title
         display(.working, text: NSAttributedString(string: "Working…", attributes: secondaryText), note: "",
@@ -144,12 +141,6 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
         display(.message, text: NSAttributedString(string: message, attributes: secondaryText), note: "", hint: "Esc Close")
     }
 
-    func switchToCopyMode(note: String) {
-        mode = .copy
-        noteLabel.stringValue = note
-        if state == .result { hintLabel.stringValue = resultHint }
-    }
-
     func performConfirm() {
         switch state {
         case .result: onConfirm?(result)
@@ -169,7 +160,7 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
 
     func windowDidResignKey(_ notification: Notification) { performCancel() }
 
-    private var resultHint: String { mode == .replace ? "↩ Replace  ·  Esc Cancel" : "↩ Copy  ·  Esc Cancel" }
+    private let resultHint = "↩ Copy  ·  Esc Cancel"
     private var secondaryText: [NSAttributedString.Key: Any] {
         [.font: NSFont.systemFont(ofSize: 15), .foregroundColor: NSColor.secondaryLabelColor]
     }
@@ -197,7 +188,7 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
     }
 
     /// Source text colors can be unreadable on the panel's material; the copy that is
-    /// shown drops them, while the inserted or copied result keeps every attribute.
+    /// shown drops them, while the copied result keeps every attribute.
     private static func displayCopy(_ text: NSAttributedString) -> NSAttributedString {
         let copy = NSMutableAttributedString(attributedString: text)
         let range = NSRange(location: 0, length: copy.length)

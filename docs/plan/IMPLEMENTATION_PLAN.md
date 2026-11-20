@@ -209,6 +209,10 @@ Evaluate formulas typed in the launcher, copy the result on Enter, remember calc
 
 Remember launch counts across restarts so the empty search and equal matches stay ordered by frequency. See REQUIREMENTS "Frequency ordering" and ARCHITECTURE "usage.v1". Validate with core tests (record, codable round trip, restart ordering, recency tie-break, corrupt/negative data, entry limit, no paths), `--verify-usage-order` and a release build. Real relaunch ordering needs the owner's observation.
 
+## Stage 6q — Shortcuts instead of Services (owner addition)
+
+Remove the macOS Services entry point (nested event loop, replace mode, `NSServices`) and add the `uficast://rewrite|translate?text=…` link and Settings buttons that open a generated Quick Action in the Shortcuts app. Try it as built and redo it if Shortcuts refuses the file. Validate with core tests (link parsing, shortcut plist structure and UUID chain), `--verify-ai-text` (link flows, refused links, clipboard formatting) and a release build. Real import into Shortcuts, selection input and the Shortcut's keyboard shortcut need the owner's observation.
+
 ## Stage 7 — Daily-use verification and source-build handoff
 
 Tasks:

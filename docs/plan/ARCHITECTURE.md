@@ -205,14 +205,19 @@ AppMenu builds standard application/File/Edit/Window menus and a hidden-but-acti
 - **AITextPanelController** is a separate non-activating panel with the launcher's material and placement.
   - Builder decision: it is separate so the launcher's script run and stale-result state never mixes with AI requests.
   - The result view is read-only and selectable. Return/Enter confirms (or retries after a failure), and Esc, an outside click or losing key cancels.
-  - The shown copy drops source text colors for readability; the inserted or copied result keeps them.
+  - The shown copy drops source text colors for readability; the copied result keeps them.
 - **AITextCoordinator** owns one request at a time, identified by UUID. Results for any other UUID are ignored, and starting or cancelling a request cancels the runner.
   - Clipboard entry point: an empty or non-text clipboard shows "Copy text first."; Enter writes to the general pasteboard.
-  - The Services provider methods `rewriteText:userData:error:` and `translateText:userData:error:` run a nested `nextEvent`/`sendEvent` loop in the default mode until Enter, Esc or the 85 s deadline. Info.plist sets `NSTimeout` to 90000 ms.
-  - Enter writes the result to the Service pasteboard and to the general pasteboard. Esc returns without writing.
-  - At the deadline the panel switches to copy mode ("Time ran out for replacing.").
-  - A second Service request during a wait returns at once with an error.
-- **HotkeyService** registers the two clipboard actions as Carbon IDs 1000/1001. Configuration reserves them against the launcher, enabled app hotkeys and each other, and AppController probes a new one before saving it. `--verify-ai-text` checks the bridge, panel and coordinator with fakes and private pasteboards. Real Services delivery and replacement in other apps are owner-verified, not inferred.
+  - Link entry point (Stage 6q): `application(_:open:)` passes each URL to `runFromURL`. `AITextURL.parse` accepts only the `uficast` scheme with host `rewrite` or `translate` and an optional percent-decoded `text` query item (the first one wins). Text over 20,000 characters shows a message; a link without text falls back to the clipboard; any other link is ignored. The text is plain, so the result is copied as plain text.
+  - Results return through a plain `Task` on the main actor. The nested event loop and run-loop block that the macOS Services entry point needed were removed together with it (November 20, 2026).
+  - Info.plist registers the `uficast` URL scheme (`CFBundleURLTypes`) and no longer declares `NSServices`; macOS may keep listing the old Services until `pbs -update` or the next login.
+- **HotkeyService** registers the two clipboard actions as Carbon IDs 1000/1001. Configuration reserves them against the launcher, enabled app hotkeys and each other, and AppController probes a new one before saving it. `--verify-ai-text` checks the bridge, panel and coordinator with fakes and private pasteboards. Real Shortcuts import, link delivery and the selection input of a Quick Action are owner-verified, not inferred.
+
+## Create Shortcut (Stage 6q)
+
+- **ShortcutFile** (UficastCore) builds a binary property list for "Rewrite with Uficast" / "Translate with Uficast": `WFWorkflowTypes` `QuickActions`, `WFQuickActionSurfaces` `Services`, input class `WFStringContentItem`, no-input behavior `WFWorkflowNoInputBehaviorGetClipboard`, then the actions URL Encode (Shortcut Input), URL (`AITextURL.prefix(for:)` plus the encoded text) and Open URLs. Action outputs are chained by UUID. The format is undocumented and follows files written by Shortcuts and the Cherri compiler; core tests check the structure and the UUID chain only.
+- AppController writes the file to a temporary folder and opens it with the Shortcuts app (`com.apple.shortcuts`) on the owner's click. Shortcuts shows its own Add Shortcut confirmation; nothing is added or signed by Uficast. `shortcuts sign` was tried and refuses without an iCloud sign-in, so signing is not used. Whether Shortcuts accepts the unsigned file is unverified.
+- If import fails, Settings shows Shortcuts' error and README describes the manual shortcut.
 
 ## Calculator (Stage 6o)
 

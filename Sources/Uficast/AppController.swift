@@ -63,8 +63,6 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         hotkey.onAppToggle = { [weak self] in self?.toggleApplication($0) }
         hotkey.onAIAction = { [weak self] in self?.aiText.runFromClipboard($0) }
         aiText.beforePresent = { [weak self] in self?.launcher.dismiss(restoreFocus: false) }
-        NSApp.servicesProvider = aiText
-        NSUpdateDynamicServices()
         hotkey.onStatusChange = { [weak self] in self?.updateStatus() }
         hotkey.start()
         catalog.onChange = { [weak self] in
@@ -104,6 +102,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         settingsModel.onSetLauncherHotkey = { [weak self] in self?.setLauncherHotkey($0) }
         settingsModel.onSetAICommand = { [weak self] in self?.setAICommand($0) }
         settingsModel.onSetAIHotkey = { [weak self] in self?.setAIHotkey($0, $1) }
+        settingsModel.onCreateShortcut = { [weak self] in self?.createShortcut($0) }
         settingsModel.onBeginShortcutRecording = { [weak self] in self?.hotkey.stop() }
         settingsModel.onEndShortcutRecording = { [weak self] in self?.hotkey.start() }
         settingsModel.onSetKeepAwake = { [weak self] in self?.changeKeepAwake(enabled: $0) }
@@ -139,6 +138,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
 
     func applicationDidBecomeActive(_ notification: Notification) { updateLoginItemStatus() }
     func applicationDidHide(_ notification: Notification) { launcher.dismiss(restoreFocus: false) }
+
+    /// `uficast://rewrite|translate?text=…`, opened by the Shortcuts that Settings creates.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { aiText.runFromURL(url) }
+    }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         launcher.show()
@@ -397,6 +401,29 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
             return
         }
         saveConfiguration(config)
+    }
+
+    /// Writes the Shortcut file and hands it to Shortcuts, which asks the owner to add it.
+    /// Nothing is added without that confirmation.
+    private func createShortcut(_ action: AITextAction) {
+        let file = ShortcutFile.aiText(action)
+        guard let data = file.data else { settingsModel.status = "Could not build the shortcut file."; return }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("uficast-shortcuts", isDirectory: true)
+        let url = folder.appendingPathComponent(file.fileName)
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try data.write(to: url, options: .atomic)
+        } catch { settingsModel.status = "Could not write the shortcut file: \(error.localizedDescription)"; return }
+        guard let shortcuts = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.shortcuts") else {
+            settingsModel.status = "The Shortcuts app was not found."
+            return
+        }
+        NSWorkspace.shared.open([url], withApplicationAt: shortcuts, configuration: NSWorkspace.OpenConfiguration()) { [weak self] _, error in
+            Task { @MainActor in
+                self?.settingsModel.status = error.map { "Shortcuts could not open “\(file.fileName)”: \($0.localizedDescription)" }
+                    ?? "Shortcuts opened “\(file.fileName)”. Choose Add Shortcut there."
+            }
+        }
     }
 
     private func updateStatus() {

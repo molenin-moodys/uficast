@@ -71,9 +71,12 @@ Follow [requirements](plan/REQUIREMENTS.md). Caps Lock remapping, login items, o
   - In an Electron app (for example Teams or Slack), copy English text, press the rewrite shortcut and check the result. Enter, then Cmd+V pastes it.
   - Repeat with Russian and English text for translate.
   - With an empty clipboard or an image, the panel says "Copy text first."
-- **Services.** Assign shortcuts to "Rewrite with Uficast" and "Translate with Uficast" in Keyboard Shortcuts → Services. In Notes, Mail and a Safari text field, select text and use each Service; Enter replaces the selection. Esc while "Working…" and while the result is shown leaves the text unchanged.
-- **Formatting.** Select text that contains bold, italics and a link, then rewrite it through the Service. The replacement keeps them. Do the same through the clipboard and paste into Mail.
-- **Timeout.** Leave a Service result open for more than about 85 s. The panel switches to "Time ran out for replacing." and Enter only copies.
+- **Create Shortcut.** In General → AI Text, click Create Rewrite Shortcut. Shortcuts opens and offers "Rewrite with Uficast"; choose Add Shortcut. Repeat for Translate. If Shortcuts refuses the file, note its message (the file format is unverified).
+- **Shortcut run.** Run the shortcut from Shortcuts' Services menu entry or from its details window. With text selected in Notes or Safari, Uficast shows the result for that text; with nothing selected, for the clipboard. Enter copies it, Esc cancels, nothing replaces the selection. Try a multi-line text with `&`, `+` and Cyrillic characters.
+- **Shortcut keyboard shortcut.** Assign one in the shortcut's details and press it in Notes, Safari and an Electron app. Note where the selection arrives and where the clipboard is used instead.
+- **Links.** `open "uficast://rewrite?text=we%20was%20here"` shows the panel with a result; a link with more than 20,000 characters shows "The text is too long". Opening a link must not copy anything until Enter.
+- **Old Services.** After the update the old "Rewrite with Uficast" Services entries may linger in the Services menu until `/System/Library/CoreServices/pbs -update` or a new login; they no longer do anything.
+- **Formatting.** Select text that contains bold, italics and a link, copy it and use the clipboard shortcut, then paste into Mail. The bold and link are kept. Text that arrives through a Shortcut link is plain.
 - **Codex.** If Codex is installed, enter its command and check that only the answer appears.
 
 ## Calculator
