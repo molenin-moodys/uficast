@@ -87,6 +87,19 @@ struct UficastMain {
             }
             return
         }
+        if CommandLine.arguments.contains("--verify-calculator") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try LauncherPanelController().verifyCalculator()
+                print("PASS: calculator rows, copy on Enter, history suggestions, Tab edit and remembered draft.")
+            } catch {
+                FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
+            return
+        }
         if CommandLine.arguments.contains("--verify-alias-editor") {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)
@@ -139,7 +152,8 @@ struct UficastMain {
             do {
                 if CommandLine.arguments[flag] == "--preview-launcher" {
                     try LauncherPanelController().renderPreview(to: path, argumentMode: CommandLine.arguments.contains("--argument"),
-                        emptyArgument: CommandLine.arguments.contains("--empty-argument"), failure: CommandLine.arguments.contains("--failure"))
+                        emptyArgument: CommandLine.arguments.contains("--empty-argument"), failure: CommandLine.arguments.contains("--failure"),
+                        calculation: CommandLine.arguments.contains("--calculation"))
                 } else {
                     let model = ViewPreview.settingsModel()
                     if CommandLine.arguments.contains("--general") { model.section = "General" }

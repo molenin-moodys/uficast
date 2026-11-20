@@ -76,6 +76,15 @@ Follow [requirements](plan/REQUIREMENTS.md). Caps Lock remapping, login items, o
 - **Timeout.** Leave a Service result open for more than about 85 s. The panel switches to "Time ran out for replacing." and Enter only copies.
 - **Codex.** If Codex is installed, enter its command and check that only the answer appears.
 
+## Calculator
+
+- [ ] Type `2+2*3`: the first row shows `= 8`. Enter closes the launcher, focus returns to the previous app and Cmd+V pastes `8`.
+- [ ] Type `200+10%` (220), `1,5*2` (3), `(1+2)*3` (9). `1/0`, `2+` and `1,000+1` show no result row.
+- [ ] Open the launcher and type `calc`: the Calculator app is first and earlier calculations are listed below. Type the start of an earlier formula: it appears below the live result. Enter on it copies its result; Tab moves its expression into the field.
+- [ ] Type `7*`, press Esc and reopen: `7*` is back and selected. Typing `notes` replaces it; after closing with `notes` typed, the launcher reopens empty. Quit and relaunch with an unfinished formula: it is restored.
+- [ ] `1password`, `7-zip` and `calendar` still behave as application searches.
+- [ ] Native `--verify-calculator` uses a private pasteboard and fixtures; it does not prove physical typing or paste into another app.
+
 ## Day-O calendar experiment
 
 - [ ] Compare the installed experiment with Day-O: one Uficast clock button, compact menu width, native calendar typography/arrows/selection, and light/dark appearance.

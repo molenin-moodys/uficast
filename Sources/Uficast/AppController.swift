@@ -19,6 +19,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     private var powerRevision: UInt64 = 0
     private var restoringPower = true
     private let savedPowerKey = "keepAwakeSession.v1"
+    private let calculatorKey = "calculator.v1"
     private var didLoadConfiguration = false
     private var didReconcileKeyboard = false
     private var isTerminating = false
@@ -70,6 +71,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
             self.updateEntries()
         }
         launcher.beforeShow = { [weak self] in self?.catalog.refreshIfStale() }
+        launcher.calculator = CalculatorState.decode(UserDefaults.standard.data(forKey: calculatorKey))
+        launcher.onCalculatorChange = { [weak self] state in self?.rememberCalculator(state) }
         launcher.onSelect = { [weak self] entry in self?.launch(entry) }
         launcher.onArgumentSelection = { [weak self] entry in self?.selectArgumentCommand(entry) }
         launcher.onArgumentSubmit = { [weak self] id, argument in self?.runScript(id: id, argument: argument) }
@@ -211,6 +214,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         keepAwakeDetail.title = detail
         settingsModel.keepAwakeStatus = error.map { "\(detail) \($0)" } ?? detail
         menuBarClock?.setKeepAwake(active: state.isActive)
+    }
+
+    /// Local, like the remembered Keep Awake session; never part of the exported configuration.
+    private func rememberCalculator(_ state: CalculatorState) {
+        if let data = try? JSONEncoder().encode(state) { UserDefaults.standard.set(data, forKey: calculatorKey) }
     }
 
     private func rememberPower(_ state: KeepAwakeState) {

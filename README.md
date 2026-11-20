@@ -10,6 +10,7 @@ Uficast includes a Day-O-style clock and native calendar in its single menu-bar 
 
 - **Cmd+Space launcher** (or another shortcut you choose) with application icons, fuzzy search and aliases that rank first. It opens on the display of the window you are working in.
 - **Wrong-layout search** for U.S./Russian keyboards: type `сркщьу` to find Chrome without changing layouts.
+- **Calculator**: type a formula such as `24*3+10` or `200+10%` and Enter copies the result. Past calculations appear below as you type or after `calc`, and an unfinished formula is still there when you reopen the launcher.
 - **Script folders** to discover local shell, Python and AppleScript commands, including Raycast title/argument headers.
 - **Local scripts** using shell, AppleScript or another configured interpreter. Pass one unchanged text argument and optionally open a generated URL.
 - **Per-app shortcuts** to show, hide or launch an application.

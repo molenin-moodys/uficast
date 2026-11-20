@@ -201,6 +201,10 @@ Validate with core tests (legacy decode, round trip, validation, conflicts, disp
 
 Rewrite into correct, simple English and translate EN↔RU through an owner-editable CLI command (default `claude -p` with Haiku 5.5), from the clipboard or macOS Services, showing the result first and keeping inline formatting. Design: `docs/superpowers/specs/2026-11-19-ai-text-rewrite-translate-design.md`; task plan: `docs/superpowers/plans/2026-11-19-ai-text-rewrite-translate.md`. Validate with core tests (stdin worker, runner, prompt, markers, configuration), `--verify-ai-text` and a release build; real Services replacement, formatting in Mail/Notes and a Codex command need the owner's observation.
 
+## Stage 6o — Calculator (owner addition)
+
+Evaluate formulas typed in the launcher, copy the result on Enter, remember calculations and offer them as suggestions below the results, and restore an unfinished formula when the launcher reopens. See REQUIREMENTS "Calculator" and ARCHITECTURE "Calculator (Stage 6o)". Validate with core tests (evaluator, formatting, query detection, history, draft, codable state), `--verify-calculator` on a private pasteboard, light/dark previews and a release build. Physical typing, paste into another app and relaunch persistence need the owner's observation.
+
 ## Stage 7 — Daily-use verification and source-build handoff
 
 Tasks:

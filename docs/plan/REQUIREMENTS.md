@@ -135,6 +135,14 @@ Design: `docs/superpowers/specs/2026-11-19-ai-text-rewrite-translate-design.md` 
 - Inline formatting (bold, italics, links, fonts and colors of runs) is kept through `<sN>` span markers. If the model breaks them, the result falls back to the selection's base style with a visible note.
 - Still no Accessibility, Input Monitoring or synthetic input. Uficast stores no selected text or results; the configured CLI keeps data under its own settings.
 
+## Calculator (owner addition, November 19, 2026)
+
+- Typing a formula in the launcher search shows its result as the first row. Enter copies the result (dot decimal, at most 15 significant digits) to the clipboard, remembers the calculation and closes the launcher, returning focus to the previous app.
+- Supported: `+ - * / ^ %`, `× ÷ −`, parentheses, and `.` or `,` as the decimal separator. `200+10%` and `200-10%` are relative to the left side; otherwise `n%` is `n/100`. Input the evaluator cannot read exactly (incomplete, `1/0`, ambiguous `1,000`, more than 200 characters or 64 nesting levels) shows no result instead of a guess.
+- The last 50 distinct calculations are remembered locally (not in the exported configuration). While typing a formula start, or after `calc`, up to six matching entries appear below the results; Enter on one copies its result and Tab moves its expression into the search field. `calc` still lists the Calculator application first.
+- An unfinished formula (or `calc` plus text) is restored and selected when the launcher reopens; typing replaces it. Any other search text is still cleared on hide, so this is the one exception to the clear-on-hide rule, and errors/script input are unaffected.
+- Out of scope: functions, units, currencies, variables.
+
 ## Keyboard conventions (owner additions)
 
 - Settings opens locally with Cmd+, and the owner's additional Cmd+P (macOS normally uses Cmd+P for printing). Esc closes Settings, except that inline alias/hotkey edits consume the first Esc to cancel; script sheets retain their own Cancel behavior.

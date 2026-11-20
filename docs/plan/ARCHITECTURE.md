@@ -214,6 +214,14 @@ AppMenu builds standard application/File/Edit/Window menus and a hidden-but-acti
   - A second Service request during a wait returns at once with an error.
 - **HotkeyService** registers the two clipboard actions as Carbon IDs 1000/1001. Configuration reserves them against the launcher, enabled app hotkeys and each other, and AppController probes a new one before saving it. `--verify-ai-text` checks the bridge, panel and coordinator with fakes and private pasteboards. Real Services delivery and replacement in other apps are owner-verified, not inferred.
 
+## Calculator (Stage 6o)
+
+- **Calculator** (UficastCore) is a total recursive-descent evaluator: no `NSExpression`, nothing is executed, and invalid or incomplete input returns nil. Limits: 200 characters, 64 nesting levels, non-finite results rejected. A comma with exactly three fraction digits is refused as an ambiguous thousands separator.
+- **CalculatorQuery** decides whether launcher text is a calculation: only formula characters with a digit and an operator, or a `calc` word. Everything else (`1password`, `7-zip`, `calculator`) stays an application search.
+- **CalculatorState** holds up to 50 history entries and the draft. It is stored by AppController in UserDefaults key `calculator.v1`, like the remembered Keep Awake session, outside the exported configuration.
+- The launcher composes rows in `searchResults(for:)`: live result, then (for `calc`) application matches, then history suggestions. These rows are `LauncherEntry` kinds `.calculator` and `.history`, so they never enter SearchIndex. Result text travels in `name` and the expression in `alias`.
+- `dismiss()` remembers the draft only when the panel was visible. `copyCalculation` clears the field before dismissing so a completed calculation is not kept as a draft. The pasteboard is injectable for verification.
+
 ## Menu-bar calendar
 
 MenuBarClockController updates the existing NSStatusItem, never creating a second permanent button. Clock enabled/Show Icon/format live in schema-1 menuBarClock with default decoding for older files. Turning off the clock restores the existing cup/zzz state. The clock's tooltip and menu still expose Keep Awake; power behavior does not change.
