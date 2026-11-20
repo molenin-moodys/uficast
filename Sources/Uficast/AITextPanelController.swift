@@ -29,6 +29,8 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
     var onConfirm: ((NSAttributedString) -> Void)?
     var onCancel: (() -> Void)?
     var onRetry: (() -> Void)?
+    /// Called when the panel closes because it lost key status while a request was shown.
+    var onLostFocus: (() -> Void)?
     /// Verification turns this off so checks never put a window on screen.
     var presentsWindow = true
 
@@ -158,7 +160,10 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
 
     func dismiss() { hide() }
 
-    func windowDidResignKey(_ notification: Notification) { performCancel() }
+    func windowDidResignKey(_ notification: Notification) {
+        if state != .hidden { onLostFocus?() }
+        performCancel()
+    }
 
     private let resultHint = "↩ Copy  ·  Esc Cancel"
     private var secondaryText: [NSAttributedString.Key: Any] {

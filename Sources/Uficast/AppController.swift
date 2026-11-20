@@ -63,6 +63,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         hotkey.onAppToggle = { [weak self] in self?.toggleApplication($0) }
         hotkey.onAIAction = { [weak self] in self?.aiText.runFromClipboard($0) }
         aiText.beforePresent = { [weak self] in self?.launcher.dismiss(restoreFocus: false) }
+        aiText.onEvent = { [weak self] message in
+            guard let self else { return }
+            self.settingsModel.lastActionStatus = message
+            self.settingsModel.recentRuns.insert(message, at: 0)
+            self.settingsModel.recentRuns = Array(self.settingsModel.recentRuns.prefix(10))
+        }
         hotkey.onStatusChange = { [weak self] in self?.updateStatus() }
         hotkey.start()
         catalog.onChange = { [weak self] in

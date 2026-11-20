@@ -223,6 +223,30 @@ enum AITextVerification {
             spin(0.2) { false }
             try require(!panel.isVisible && Task.awaitValue { await runner.calls } == 0, "Refused links must not run the command")
         }
+        do { // Diagnostics: a link and a panel closed by lost focus are reported, a confirmed one is not.
+            let runner = FakeRunner([.success("Done.")], delay: .milliseconds(300))
+            let (coordinator, panel, general) = make(runner)
+            var events: [String] = []
+            coordinator.onEvent = { events.append($0) }
+            general.clearContents()
+            coordinator.runFromURL(URL(string: "uficast://rewrite?text=we%20was%20here")!)
+            try require(events == ["Rewrite link received (11 characters)."], "A link must be reported once: \(events)")
+            panel.windowDidResignKey(Notification(name: NSWindow.didResignKeyNotification))
+            try require(events.count == 2 && events[1] == "The result panel closed because it lost focus." && !panel.isVisible,
+                        "Losing focus while working must be reported and close the panel: \(events)")
+            spin(0.6) { false }
+            let confirmed = FakeRunner([.success("Done.")])
+            let (second, secondPanel, _) = make(confirmed)
+            var secondEvents: [String] = []
+            second.onEvent = { secondEvents.append($0) }
+            second.runFromURL(URL(string: "uficast://translate?text=hello")!)
+            spin { secondPanel.hint == copy }
+            secondPanel.performConfirm()
+            secondPanel.windowDidResignKey(Notification(name: NSWindow.didResignKeyNotification))
+            try require(secondEvents == ["Translate link received (5 characters)."], "A confirmed panel must not report lost focus: \(secondEvents)")
+            coordinator.runFromClipboard(.rewrite)
+            try require(events.count == 2, "A clipboard request must not report a link")
+        }
         do { // A rich clipboard keeps its bold run through the markers.
             let (coordinator, panel, general) = make(FakeRunner([.success("Kindly <s1>review</s1> the <s2>file</s2>")]))
             RichTextBridge.write(sample(), rich: true, to: general)

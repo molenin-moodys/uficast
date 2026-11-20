@@ -15,6 +15,9 @@ final class AITextCoordinator {
     var command = AITextPreferences.defaultCommand
     /// Called before the panel appears, so the launcher can hide.
     var beforePresent: (() -> Void)?
+    /// Short, text-free notes about what happened (a link arrived, the panel lost focus), so
+    /// Recent Runs can show why a request seemed to do nothing.
+    var onEvent: ((String) -> Void)?
 
     private let panel: AITextPanelController
     private let runner: AITextRunning
@@ -30,6 +33,7 @@ final class AITextCoordinator {
         panel.onConfirm = { [weak self] in self?.confirm($0) }
         panel.onCancel = { [weak self] in self?.cancelCurrent() }
         panel.onRetry = { [weak self] in self?.retry() }
+        panel.onLostFocus = { [weak self] in self?.onEvent?("The result panel closed because it lost focus.") }
     }
 
     func runFromClipboard(_ action: AITextAction) {
@@ -45,6 +49,7 @@ final class AITextCoordinator {
     /// one of our links is ignored.
     func runFromURL(_ url: URL) {
         guard let request = AITextURL.parse(url) else { return }
+        onEvent?("\(request.action.title) link received (\(request.text?.count ?? 0) characters).")
         guard !request.isTooLong else {
             show("The text is too long (the limit is \(AITextURL.maximumTextLength.formatted()) characters).")
             return
