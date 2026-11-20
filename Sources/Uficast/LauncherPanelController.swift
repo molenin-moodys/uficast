@@ -596,6 +596,30 @@ final class LauncherPanelController: NSObject, NSWindowDelegate, NSTextFieldDele
         try check(field.stringValue == "7*" && !pullRequestMode, "draft query", "The draft was not restored on reopen.")
         dismiss(restoreFocus: false)
         calculator = CalculatorState()
+
+        // Row layout: a pull request row gives the title the full width, shows
+        // `repository #number` as a subtitle below it and no kind label on the right.
+        let longTitle = String(repeating: "A very long pull request title ", count: 6)
+        let draft = PullRequest(number: 653, title: longTitle, url: URL(string: "https://github.com/org/core/pull/653")!,
+                                repository: "org/core", createdAt: Date(timeIntervalSince1970: 1), isDraft: true)
+        let rowWidth: CGFloat = 720, rowHeight: CGFloat = 56
+        let pullRow = EntryRow(frame: NSRect(x: 0, y: 0, width: rowWidth, height: rowHeight))
+        pullRow.configure(.pullRequest(draft), icons: icons)
+        pullRow.layoutSubtreeIfNeeded()
+        let pr = pullRow.layoutSnapshot
+        try check(pr.kindHidden, "row layout", "A pull request row still shows its kind on the right.")
+        try check(pr.name.maxX >= rowWidth - 20, "row layout", "The title does not use the full row width (ends at \(pr.name.maxX)).")
+        try check(abs(pr.subtitle.minX - pr.name.minX) <= 1, "row layout", "The subtitle does not start under the title.")
+        try check(pr.subtitle.maxY <= pr.name.minY + 1, "row layout", "The subtitle is not below the title.")
+        try check(pr.name.maxY <= rowHeight && pr.subtitle.minY >= 0, "row layout", "The two lines do not fit in the row.")
+        let plainRow = EntryRow(frame: NSRect(x: 0, y: 0, width: rowWidth, height: rowHeight))
+        plainRow.configure(LauncherEntry(id: "app:notes", name: "Notes", fileURL: URL(fileURLWithPath: "/fixture/Notes.app"), alias: "nt"),
+                           icons: icons)
+        plainRow.layoutSubtreeIfNeeded()
+        let plain = plainRow.layoutSnapshot
+        try check(!plain.kindHidden && abs(plain.subtitle.midY - plain.name.midY) <= 2, "row layout",
+                  "An ordinary row changed: its kind must stay on the right and its alias on the title's line.")
+
         try check(NSPasteboard.general.changeCount == generalChanges, "clipboard", "The check touched the real clipboard.")
     }
 
@@ -1071,8 +1095,15 @@ private final class EntryRow: NSTableCellView {
     private let alias = NSTextField(labelWithString: "")
     private let kind = NSTextField(labelWithString: "")
     private var representedURL: URL?
+    private var inlineConstraints: [NSLayoutConstraint] = []
+    private var subtitleConstraints: [NSLayoutConstraint] = []
+    private var usesSubtitleLayout = false
     var hasLoadedIcon: Bool {
         icon.image?.representations.contains { $0 is NSBitmapImageRep && $0.pixelsWide == 64 && $0.pixelsHigh == 64 } ?? false
+    }
+    /// Label frames after layout, for the native layout checks.
+    var layoutSnapshot: (name: NSRect, subtitle: NSRect, kindHidden: Bool) {
+        (name.frame, alias.frame, kind.isHidden)
     }
 
     override init(frame frameRect: NSRect) {
@@ -1093,13 +1124,34 @@ private final class EntryRow: NSTableCellView {
             icon.centerYAnchor.constraint(equalTo: centerYAnchor),
             icon.widthAnchor.constraint(equalToConstant: 30), icon.heightAnchor.constraint(equalToConstant: 30),
             name.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 14),
+            kind.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            kind.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+        // Ordinary rows: title, alias on the same line, kind on the right.
+        inlineConstraints = [
             name.centerYAnchor.constraint(equalTo: centerYAnchor),
             alias.leadingAnchor.constraint(equalTo: name.trailingAnchor, constant: 12),
             alias.centerYAnchor.constraint(equalTo: centerYAnchor),
             alias.trailingAnchor.constraint(lessThanOrEqualTo: kind.leadingAnchor, constant: -16),
-            kind.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            kind.centerYAnchor.constraint(equalTo: centerYAnchor),
-        ])
+        ]
+        // Pull request rows: the title over the full width, the subtitle below it.
+        subtitleConstraints = [
+            name.bottomAnchor.constraint(equalTo: centerYAnchor, constant: 3),
+            name.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16),
+            alias.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            alias.topAnchor.constraint(equalTo: name.bottomAnchor, constant: 1),
+            alias.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16),
+        ]
+        NSLayoutConstraint.activate(inlineConstraints)
+    }
+
+    private func showSubtitle(_ shows: Bool) {
+        guard shows != usesSubtitleLayout else { return }
+        usesSubtitleLayout = shows
+        NSLayoutConstraint.deactivate(shows ? inlineConstraints : subtitleConstraints)
+        NSLayoutConstraint.activate(shows ? subtitleConstraints : inlineConstraints)
+        alias.font = .monospacedSystemFont(ofSize: shows ? 12 : 13, weight: .regular)
+        kind.isHidden = shows
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -1120,11 +1172,14 @@ private final class EntryRow: NSTableCellView {
             }
         }
         let isCalculation = entry.kind == .calculator || entry.kind == .history
+        showSubtitle(entry.kind == .pullRequest)
         name.stringValue = isCalculation ? "= \(entry.name)" : entry.name
         alias.stringValue = entry.alias ?? ""
         kind.stringValue = entry.kind.title
+        // The kind is hidden on pull request rows but still read by VoiceOver.
         setAccessibilityLabel(isCalculation ? "\(entry.alias ?? "") equals \(entry.name), \(kind.stringValue)"
-                                            : "\(entry.name), \(kind.stringValue)")
+                              : entry.kind == .pullRequest ? "\(entry.name), \(entry.alias ?? ""), \(kind.stringValue)"
+                              : "\(entry.name), \(kind.stringValue)")
     }
 }
 

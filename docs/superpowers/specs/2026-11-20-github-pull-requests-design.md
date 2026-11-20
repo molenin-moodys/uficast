@@ -85,7 +85,7 @@ The reference workflow for scripts is `k` → Tab → input → Enter → browse
 
 - Empty filter: newest `createdAt` first.
 - Non-empty filter: fuzzy match on the title, best score first, ties newest first. The query goes through the same normalization and U.S./Russian wrong-layout variants as launcher search (this is a search query; it is never passed to `gh`).
-- Each row shows the title, then dim `owner/repo #number`. Drafts get a dim "Draft" label. No icons are fetched; a fixed SF Symbol is used.
+- Each row shows the title over the full row width and, as a dim subtitle on a second line, `owner/repo #number` (drafts add ` · Draft`). The kind label ("Pull Request") that other rows show on the right is not shown on these rows. No icons are fetched; a fixed SF Symbol is used. (Layout changed at the owner's request on November 20, 2026, after the first real look.)
 
 ### Open
 
