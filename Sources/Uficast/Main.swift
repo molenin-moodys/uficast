@@ -113,6 +113,19 @@ struct UficastMain {
             }
             return
         }
+        if CommandLine.arguments.contains("--verify-pull-requests") {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.finishLaunching()
+            do {
+                try LauncherPanelController().verifyPullRequests()
+                print("PASS: pull-request mode lists, filters, opens, leaves and ignores late results.")
+            } catch {
+                FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
+            return
+        }
         if CommandLine.arguments.contains("--verify-alias-editor") {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)
