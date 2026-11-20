@@ -25,6 +25,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     private var didReconcileKeyboard = false
     private var isTerminating = false
     private var cancelledScripts: Set<String> = []
+    private let pullRequestStore = PullRequestStore(loader: GitHubPullRequestLoader())
     private let settingsModel = SettingsModel()
     private let aiPanel = AITextPanelController()
     private lazy var aiText = AITextCoordinator(
@@ -161,6 +162,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
         devices.stop()
         Task {
             await scriptRunner.cancelAll()
+            await pullRequestStore.cancel()
             await scriptRunner.waitUntilIdle()
             await keepAwake.waitUntilIdle()
             if !restoringPower { rememberPower(await keepAwake.state) }
@@ -288,6 +290,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     private func launch(_ entry: LauncherEntry) {
         if entry.kind == .builtIn {
             guard let command = BuiltInCommand(entryID: entry.id) else { return }
+            if command == .pullRequests { openPullRequests(); return }
             guard !settingsModel.isKeepAwakeBusy, !isTerminating else {
                 launcher.showInputError("Keep Awake is updating. Try again.")
                 return
@@ -315,9 +318,29 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuItemValidation
     }
 
     private func selectArgumentCommand(_ entry: LauncherEntry) {
+        if entry.kind == .builtIn {
+            if BuiltInCommand(entryID: entry.id) == .pullRequests { openPullRequests() }
+            return
+        }
         guard let command = settingsModel.configuration.scripts.first(where: { $0.entry.id == entry.id && $0.isEnabled }),
               command.requiresArgument else { return }
         launcher.enterArgument(command)
+    }
+
+    private func openPullRequests() {
+        guard !isTerminating else { return }
+        Task { @MainActor in
+            let cached = await pullRequestStore.cached
+            guard !isTerminating, let id = launcher.enterPullRequests(cached: cached) else { return }
+            do {
+                let pullRequests = try await pullRequestStore.list()
+                guard !isTerminating else { return }
+                launcher.finishPullRequestLoad(id, pullRequests: pullRequests, error: nil)
+            } catch {
+                guard !isTerminating else { return }
+                launcher.finishPullRequestLoad(id, pullRequests: nil, error: error.localizedDescription)
+            }
+        }
     }
 
     private func runScript(id: String, argument: String?) {
