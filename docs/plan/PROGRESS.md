@@ -28,6 +28,7 @@ Requested personal-use features through Stage 6k are implemented; Stage 6l is in
 | 6o — Calculator | Implemented and merged into main (fast-forward) at the owner's request; installed locally | 93 core tests and `--verify-calculator` (private pasteboard) pass. Physical typing, paste into another app and relaunch persistence not yet observed by the owner. |
 | 6p — Persistent frequency ordering | Implemented and merged into main (fast-forward) at the owner's request; installed locally | 99 core tests and `--verify-usage-order` pass. Real relaunch ordering not yet observed by the owner. |
 | 6q — Shortcuts instead of Services | Implemented on main; file import failed, replaced by guided manual steps | 107 core tests and `--verify-ai-text` pass. Owner saw Shortcuts refuse the generated file as unsigned. The guided path is not yet tried by the owner. |
+| 6r — Compact settings | Implemented on main; installed locally; owner look pending | 107 core tests and all native checks pass; light/dark previews inspected. Hands-on use not yet reported. |
 | 7 — Daily-use handoff | Partial | README guide, three neutral screenshots and source-only release build/signature verification complete. Hands-on evidence gaps remain. Manual evidence gaps listed below. |
 
 ## Implementation map
@@ -314,6 +315,18 @@ Owner check (November 19, 2026): the build from `feat/ai-text` (891df35) was ins
 - Not performed: building the shortcut by hand, the real wording of Shortcuts' controls versus the steps, the selection input in real apps, the shortcut's own keyboard shortcut, and real link delivery by `open "uficast://…"` (it would start a real AI request). Items are in `docs/MANUAL_TESTS.md` under AI text.
 - The deploy order rule in `AGENTS.md` changed the same day: build to a staging folder, quit the old app, copy the build over the owner's bundle, open the new app.
 - The hotkey-delivery check in `AITextVerification.swift` (`hotkeyDelivery`, from another session) was already in the working tree; it passes and was left as it was.
+
+## Stage 6r — Compact settings
+
+- Owner request (November 20, 2026): make the settings page compact and good-looking instead of a long scroll, with almost every element on one row. The owner approved option A of two: a single page of two-column cards (option B, a sidebar of sub-pages, was declined). The owner also sent a screenshot of how Shortcuts opens a new shortcut ("Title" at the top left, ⓘ and an action library on the right), which matches the steps; they now say "Click “Title”", "Click ⓘ" and "Search Actions for Run Shell Script".
+- Built: `SettingsCard` and `InfoButton` (`SettingsCards.swift`); a two-column General (Launcher, Menu Bar Clock, Power & Keyboard | AI Text, Application Folders, Configuration) in `ViewThatFits`, with a `ScrollView` fallback for tiny windows; a slim capsule top bar; a footer with a truncated status and a Recent Runs popover; the shortcut steps in a sheet. Window default 980×640, minimum 820×540. Long captions moved behind ⓘ; status lines stay as one or two caption lines. The footer padding that clipped the status text in the owner's screenshot is now a plain 16 pt.
+- Unchanged: every control's behavior, bindings and accessibility labels; the Commands page (only its top bar changed).
+- Checks actually performed (with `SDKROOT=…MacOSX26.5.sdk`):
+  - **107 core tests passed**; warm search p95 **18.07 ms**. The guide's steps tests still pass with the new wording.
+  - All nine native checks pass on the release build in the staging folder, including the ones that host the Settings view (recorder, alias editor, keyboard shortcuts).
+  - Offscreen General previews in light and dark at the default size show everything without scrolling; a 420-point-high window falls back to scrolling. The guide sheet and the regenerated Commands screenshot (`docs/screenshots/commands.png`) were inspected. The other three README screenshots were not touched.
+- Not performed: using the new page by hand (popovers, every button, the sheet over the real window), a check at minimum window size on a real display, and the Recent Runs popover with real runs. Items are in `docs/MANUAL_TESTS.md` under Compact settings.
+- Deploy followed the new order: build into `.build/staging`, normal quit of the old app, copy over the owner's bundle, open.
 
 ### Earlier cursor report checkpoint
 

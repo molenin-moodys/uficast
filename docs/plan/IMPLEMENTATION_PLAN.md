@@ -213,6 +213,10 @@ Remember launch counts across restarts so the empty search and equal matches sta
 
 Remove the macOS Services entry point (nested event loop, replace mode, `NSServices`) and add the `uficast://rewrite|translate?text=…` link and Settings buttons for a Shortcuts-based entry. The first try (a generated `.shortcut` file) was rejected by Shortcuts as unsigned, so the buttons now open an empty shortcut, copy a script and show the steps. Validate with core tests (link parsing; the script run in zsh against `AITextURL`), `--verify-ai-text` (link flows, refused links, clipboard formatting) and a release build. Building the shortcut, selection input and its keyboard shortcut need the owner's observation.
 
+## Stage 6r — Compact settings (owner addition)
+
+Rearrange Settings → General into two columns of cards with one-row settings, ⓘ popovers for long explanations, a slim top bar and a footer with Recent Runs, so it fits the window without scrolling. Keep every control's behavior. Validate with light/dark offscreen previews (including a very small window), the existing native checks that host the Settings view, core tests and a release build. The owner's hands-on look is required.
+
 ## Stage 7 — Daily-use verification and source-build handoff
 
 Tasks:

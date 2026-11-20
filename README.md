@@ -97,6 +97,8 @@ Apple's [standard Mac shortcuts](https://support.apple.com/en-us/102650) use Cmd
 
 ## Settings and aliases
 
+**Settings → General** fits one window without scrolling: two columns of cards (Launcher, Menu Bar Clock, Power & Keyboard, AI Text, Application Folders, Configuration). Most settings are a single row, and the longer explanations are behind the ⓘ buttons. It scrolls only if the window is made very small.
+
 In **Settings… → Commands**, double-click an **Alias** cell (or the alias in the inspector), type a value and press **Enter** to save. **Escape** cancels without saving; click **×** to remove an assigned alias. Invalid or duplicate aliases keep the draft open and show an error. Enabled controls visibility in launcher search. Exact aliases always outrank name/fuzzy matches; enabled commands cannot share an alias. General starts with **Start Uficast at login** and also contains Menu Bar Calendar, Keep Awake, Caps Lock, application roots, refresh, import/export and backup recovery.
 
 In **Settings → Commands**, double-click an application’s **Hotkey** cell (the current shortcut or **Add Hotkey**) to open its inline recorder. A single click only selects the row. **Escape** closes recording without saving and keeps the previous shortcut. Click the **×** beside an assigned shortcut to remove it. You can also select an application and click **Record Hotkey** under **Show / Hide**. Press a combination containing Command, Control or Option; Escape cancels and Delete clears it. Enabled app shortcuts must be unique, and the launcher shortcut (Cmd+Space unless changed) is reserved. The table shows assigned shortcuts and registration errors. If another app claims a chord, release it there first. Script-specific global hotkeys remain deferred.
@@ -121,7 +123,7 @@ Default result handling runs for side effects and ignores stdout (the script can
 
 While a script runs, the launcher stays open with a running status. Success closes it; failure shows the exit/timeout error in the lower section, preferring stderr and falling back to stdout. **Edit Input** restores the exact submitted argument for correction; only an explicit Enter retries. The latest failure and argument stay in memory only. Hiding the launcher for any reason clears its error and remembered input. A late result cannot bring that error back or replace newer input. Each deliberate reopen starts clean.
 
-General → Recent Runs shows active commands, Cancel controls and the ten most recent outcomes in memory. Each command can run once concurrently; different commands can overlap. Output capture is bounded to 1 MiB per stream while both pipes continue draining. Normal quit cancels managed process groups; deliberately detached daemons and force-quit/crash cleanup are outside that guarantee. AppleScript controlling other applications may need **Automation** consent; scripts depending on Accessibility are unsupported under the no-Accessibility requirement.
+The **Recent Runs** button in the Settings footer shows active commands, Cancel controls and the ten most recent outcomes in memory. Each command can run once concurrently; different commands can overlap. Output capture is bounded to 1 MiB per stream while both pipes continue draining. Normal quit cancels managed process groups; deliberately detached daemons and force-quit/crash cleanup are outside that guarantee. AppleScript controlling other applications may need **Automation** consent; scripts depending on Accessibility are unsupported under the no-Accessibility requirement.
 
 ## AI text
 
@@ -182,7 +184,7 @@ The last caffeine/decaf mode is remembered locally and restored on relaunch. Tim
 
 The clock is Uficast's one menu-bar button. Click it for a compact native calendar, use its arrows to browse months and the dot to return to today. Each opening starts at today. The menu also offers Open Launcher, Settings, macOS Date & Time, Keep Awake and Quit.
 
-In **Settings → General → Menu Bar Calendar**, edit **Date & Time Format** and press Enter or Apply. **Show Icon** controls the calendar/day icon beside the text; the `zzz`/cup power indicator stays visible to its left. The default `EEE HH:mm:ss` shows weekday and 24-hour time; `E h:mm:ss a` uses 12-hour time. A preview updates while you edit. Disabling date/time restores the cup/zzz button.
+In **Settings → General → Menu Bar Clock**, edit the date format and press Enter or Apply. **Show icon** controls the calendar/day icon beside the text; the `zzz`/cup power indicator stays visible to its left. The default `EEE HH:mm:ss` shows weekday and 24-hour time; `E h:mm:ss a` uses 12-hour time. A preview updates while you edit. Disabling date/time restores the cup/zzz button.
 
 Seconds are scheduled at system-second boundaries, including during menu tracking, and resynchronize after wake or time-zone/clock changes. Calendar browsing uses AppKit NSDatePicker; it does not read calendar events/accounts.
 
@@ -195,7 +197,7 @@ dist/Uficast.app/Contents/MacOS/Uficast --preview-calendar /tmp/uficast-calendar
 
 ## Start at login
 
-The checkbox is at the top of **Settings → General**. macOS may require approval in **Login Items**; Uficast shows the actual registered/pending/disabled state. Keep the app at a stable path and recheck registration after moving it. A checked box alone is not evidence of a successful relogin test.
+The **Start at login** checkbox is in the **Launcher** card of **Settings → General**. macOS may require approval in **Login Items**; Uficast shows the actual registered/pending/disabled state. Keep the app at a stable path and recheck registration after moving it. A checked box alone is not evidence of a successful relogin test.
 
 ## Native icon regression check
 

@@ -79,6 +79,14 @@ Follow [requirements](plan/REQUIREMENTS.md). Caps Lock remapping, login items, o
 - **Formatting.** Select text that contains bold, italics and a link, copy it and use the clipboard shortcut, then paste into Mail. The bold and link are kept. Text that arrives through a Shortcut link is plain.
 - **Codex.** If Codex is installed, enter its command and check that only the answer appears.
 
+## Compact settings
+
+- [ ] Open Settings → General: everything fits without scrolling at the default size. Make the window smaller: it scrolls only when it must.
+- [ ] Every ⓘ opens its explanation. Recent Runs in the footer lists active runs with Cancel and the latest outcomes.
+- [ ] Each control still works as before: start at login, launcher shortcut record/reset/retry, clock toggles/format/Apply/Reset, Keep Awake and its timers, Caps Lock mapping and Check Mapping, AI command Apply/reset, both clipboard hotkeys with ×, folders Save/Refresh, Import/Export/Restore.
+- [ ] Create Rewrite Shortcut opens Shortcuts and a sheet with the five steps; Done and Esc close the sheet.
+- [ ] Check light and dark appearance and note anything cramped.
+
 ## Calculator
 
 - [ ] Type `2+2*3`: the first row shows `= 8`. Enter closes the launcher, focus returns to the previous app and Cmd+V pastes `8`.

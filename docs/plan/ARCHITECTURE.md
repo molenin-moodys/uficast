@@ -219,6 +219,16 @@ AppMenu builds standard application/File/Edit/Window menus and a hidden-but-acti
 - **ShortcutGuide** (UficastCore) provides the shortcut name, five steps and the script for the Run Shell Script action: `open "uficast://rewrite?text=$(perl -pe 's/([^A-Za-z0-9_.~-])/sprintf("%%%02X", ord($1))/ge')"`. The input comes on stdin and is percent-encoded byte by byte with the system perl, so the text can neither alter the command nor the link, and empty input opens a link without text (the clipboard applies). Core tests run the script in zsh with a stub `open` and parse the recorded link with `AITextURL`, so encoder and parser agree.
 - AppController's `createShortcut` runs on the owner's click: it copies the script, sets `SettingsModel.shortcutGuide`, which makes AI Text show the steps and the script, and opens `shortcuts://create-shortcut` (an empty shortcut). Nothing else is written or registered.
 
+## Settings layout (Stage 6r)
+
+- **General** is two equal columns of `SettingsCard`s inside `ViewThatFits(in: .vertical)`: the plain layout when it fits, a `ScrollView` of the same layout only in a very small window. Window default 980×640, minimum 820×540.
+  - Left: Launcher (start at login and the launcher shortcut), Menu Bar Clock, Power & Keyboard (Keep Awake, Caps Lock → F19).
+  - Right: AI Text, Application Folders, Configuration.
+- Each setting is one row: toggle or field, small buttons, and an `InfoButton` (ⓘ popover) for text that used to be a caption. Status lines stay as one or two caption lines.
+- Recent Runs moved out of the page into a popover button in the footer; the footer status is one truncated line with the full text as its tooltip.
+- The shortcut-building steps open in a sheet (`ShortcutGuideSheet`) instead of growing the page. `--preview-settings <png> --shortcut-guide` renders that sheet alone.
+- The top bar is a slim row of two capsule buttons. Behavior, bindings and accessibility labels of the controls were kept; only their arrangement changed. The Commands page was not redesigned.
+
 ## Calculator (Stage 6o)
 
 - **Calculator** (UficastCore) is a total recursive-descent evaluator: no `NSExpression`, nothing is executed, and invalid or incomplete input returns nil. Limits: 200 characters, 64 nesting levels, non-finite results rejected. A comma with exactly three fraction digits is refused as an ambiguous thousands separator.

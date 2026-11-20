@@ -16,11 +16,11 @@ public enum ShortcutGuide {
 
     public static func steps(for action: AITextAction) -> [String] {
         [
-            "In Shortcuts, name the new shortcut “\(shortcutName(for: action))”.",
-            "Open the shortcut's details (the ⓘ button), turn on Use as Quick Action and choose Services Menu.",
+            "Click “Title” at the top left of the new shortcut and rename it to “\(shortcutName(for: action))”.",
+            "Click ⓘ at the top right, turn on Use as Quick Action and choose Services Menu.",
             "In the first action (Receive … input from Quick Actions), set the type to Text and set “If there's no input” to Get Clipboard.",
-            "Add the action Run Shell Script, set Pass Input to “to stdin” and paste the script (it is on your clipboard).",
-            "In the details, choose Add Keyboard Shortcut and press the keys you want.",
+            "Search Actions for Run Shell Script and add it. Set Pass Input to “to stdin” and paste the script (it is on your clipboard).",
+            "In the ⓘ details, choose Add Keyboard Shortcut and press the keys you want.",
         ]
     }
 }
