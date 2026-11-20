@@ -50,7 +50,7 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
     var shownText: String { textView.string }
 
     override init() {
-        panel = AITextPanel(contentRect: NSRect(x: 0, y: 0, width: 720, height: 340),
+        panel = AITextPanel(contentRect: NSRect(x: 0, y: 0, width: 760, height: 420),
                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         super.init()
         panel.delegate = self
@@ -134,7 +134,7 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
     }
 
     func showFailure(_ message: String) {
-        display(.failure, text: NSAttributedString(string: message, attributes: [.font: NSFont.systemFont(ofSize: 13), .foregroundColor: NSColor.systemRed]),
+        display(.failure, text: NSAttributedString(string: message, attributes: [.font: NSFont.systemFont(ofSize: 15), .foregroundColor: NSColor.systemRed]),
                 note: "", hint: "↩ Retry  ·  Esc Close")
     }
 
@@ -200,6 +200,19 @@ final class AITextPanelController: NSObject, NSWindowDelegate {
         copy.removeAttribute(.foregroundColor, range: range)
         copy.removeAttribute(.backgroundColor, range: range)
         copy.addAttribute(.foregroundColor, value: NSColor.labelColor, range: range)
+        // Source fonts are often small (or missing, which AppKit draws as 12 pt Helvetica),
+        // so the shown copy raises every run to a readable minimum and keeps its traits.
+        copy.enumerateAttribute(.font, in: range) { value, runRange, _ in
+            guard let font = value as? NSFont else {
+                copy.addAttribute(.font, value: NSFont.systemFont(ofSize: minimumResultFontSize), range: runRange)
+                return
+            }
+            guard font.pointSize < minimumResultFontSize else { return }
+            let resized = NSFont(descriptor: font.fontDescriptor, size: minimumResultFontSize) ?? font
+            copy.addAttribute(.font, value: resized, range: runRange)
+        }
         return copy
     }
+
+    private static let minimumResultFontSize: CGFloat = 17
 }
