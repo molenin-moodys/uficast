@@ -7,6 +7,7 @@
 - At each session boundary, update `PROGRESS.md` with actual changes, checks and results, unresolved issues, and the exact next step. Never mark an unperformed manual check as passed.
 - Keep stages small enough to resume without chat history. Record architectural changes in `ARCHITECTURE.md` and adjust the remaining plan when evidence requires it.
 - The owner explicitly requested committing the plan and work for continuity. Commit completed increments after appropriate verification; stage only relevant project files. Do not commit private configuration, real internal URLs, credentials, or build artifacts.
+- Push to the fork's `main` (`git push origin main`) after each verified commit, so every good state is recoverable on the remote. If a change turns out wrong, go back to the earlier state with a new commit (`git revert`) or by restoring files from an earlier commit, then push that. Never force push or rewrite pushed history.
 - After a change to the app, run the latest build in this order, so the owner always runs it:
   1. Build, into a staging folder (`UFICAST_OUTPUT_ROOT="$PWD/.build/staging" scripts/build.sh`), so the running bundle is untouched.
   2. Close the old app with a normal quit, not `kill`, because a normal quit saves the remembered caffeine state.
