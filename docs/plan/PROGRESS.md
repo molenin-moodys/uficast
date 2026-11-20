@@ -338,6 +338,10 @@ Owner check (November 19, 2026): the build from `feat/ai-text` (891df35) was ins
 
 The owner found the translation in the AI result panel too small: results without a source font were drawn as 12 pt Helvetica. At the owner's request the shown copy now uses the font of the owner's iTerm profile (Meslo LG S NF Mono, 16 pt, vertical spacing 1.0, so the natural line height), with the system monospaced font as the fallback when Meslo is not installed. Source fonts only contribute bold/italic; source paragraph styles are dropped for display. The copied result is unchanged. Failure/working text uses the same font, and the panel grew from 720×340 to 760×420. `--verify-ai-text` passes. The build needed `SDKROOT=…/MacOSX26.5.sdk` (the unresolved toolchain note above). The panel itself is not previewed offscreen, so the owner's look at a real translation is pending. The new build is installed and running.
 
+### Translate returned English unchanged
+
+The owner saw Translate return the English source as English. Cause: the prompt said "if it is mainly Russian, translate into English; otherwise into Russian", and Claude Haiku 5.5 sometimes ignored the condition, most often for formatted (style-marker) text copied from a browser. A neutral reproduction returned English in 1 of 3 marker runs and 0 of 3 plain runs. The direction is now decided in code (`AITextPrompt.isMainlyRussian`: Cyrillic letters outnumber Latin ones, markers ignored) and named in the prompt ("from English into Russian. The result must be written in Russian."). A neutral reproduction with the new prompt translated in 9 of 9 parallel runs. 108 core tests (one new) and `--verify-ai-text` pass; the build used the `SDKROOT` workaround. Real use of Translate from the owner's shortcut is pending.
+
 ### Earlier cursor report checkpoint
 
 Commit 62e8296 preserved an unrelated stationary-cursor report. Its source/disappearance was not established; no app code changed for that report. Do not treat it as a verified Uficast defect or interact with unrelated apps to investigate it without a new request.
